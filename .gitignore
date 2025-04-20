@@ -144,3 +144,5 @@ cython_debug/
 
 # Static analysis reports
 pylint_report.txt
+
+.env
