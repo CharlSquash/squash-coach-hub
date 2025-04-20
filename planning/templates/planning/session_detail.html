@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan: {% if session.school_group %}{{ session.school_group.name }}{% else %}Session{% endif %} {{ session.date }}</title>
+    <link rel="stylesheet" href="{% static 'planning/style.css' %}">
+    {# Styles moved to style.css, but added specific button/link styles here #}
+    <style>
+        /* Style for action buttons */
+        .action-button {
+            font-weight: bold; padding: 8px 12px; border-radius: 4px;
+            text-decoration: none; display: inline-block; margin-right: 10px;
+            margin-bottom: 5px; /* Add margin for stacking on mobile */
+            border: 1px solid transparent; /* Base border */
+            cursor: pointer;
+            text-align: center;
+        }
+        .live-view-btn { background-color: #28a745; color: white; border-color: #28a745;}
+        .live-view-btn:hover { background-color: #218838; border-color: #1e7e34;}
+        .one-page-btn { background-color: #17a2b8; color: white; border-color: #17a2b8;} /* Teal */
+        .one-page-btn:hover { background-color: #138496; border-color: #117a8b;}
+
+        /* Style for assessment links */
+         .attendee-list li { display: flex; justify-content: space-between; align-items: center; padding: 4px 0;} /* Added padding */
+         .attendee-list .assess-link {
+            font-size: 0.8em; padding: 2px 6px; margin-left: 10px;
+            background-color: #eee; border: 1px solid #ccc; border-radius: 3px;
+            color: #333; text-decoration: none; white-space: nowrap; /* Prevent wrapping */
+         }
+         .attendee-list .assess-link:hover { background-color: #ddd;}
+         body.dark-mode .attendee-list .assess-link {
+            background-color: var(--court-bg); /* Use a subtle background */
+            border-color: var(--court-border);
+            color: var(--link-color); /* Use link color */
+         }
+         body.dark-mode .attendee-list .assess-link:hover {
+             background-color: var(--activity-bg); /* Slightly different hover */
+             color: var(--link-hover-color);
+         }
+         /* Ensure player link doesn't wrap awkwardly */
+         .attendee-list li > span { flex-grow: 1; margin-right: 10px; }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <h1>
+            {% if session.school_group %}
+                {{ session.school_group.name }}
+            {% else %}
+                Session Plan
+            {% endif %}
+            : {{ session.date|date:"D, d M Y" }} at {{ session.start_time|time:"H:i" }}
+        </h1>
+
+        {# --- Action Buttons --- #}
+        <div style="margin-top: 10px; margin-bottom: 20px;">
+            <a href="{% url 'planning:live_session' session.id %}" class="action-button live-view-btn">
+                Go to Live Session View
+            </a>
+            {# --- NEW BUTTON ADDED --- #}
+            <a href="{% url 'planning:one_page_plan' session.id %}" class="action-button one-page-btn" target="_blank">
+                View One-Page Plan
+            </a>
+            {# --- END NEW BUTTON --- #}
+        </div>
+
+        <div class="session-info">
+             <p><strong>Planned Duration:</strong> {{ session.planned_duration_minutes }} minutes</p>
+             {% if session.notes %} <p><strong>Notes/Objectives:</strong> {{ session.notes|linebreaksbr }}</p> {% endif %}
+             {% if session.coaches_attending.all %} <p><strong>Coaches Attending:</strong> {% for coach in session.coaches_attending.all %} {{ coach.name }}{% if not forloop.last %}, {% endif %} {% endfor %} </p> {% endif %}
+        </div>
+        <hr>
+
+        {# --- ATTENDANCE SECTION --- #}
+        <div class="attendance-section">
+            <h2>Attendance ({{ current_attendees.count }} Player{{ current_attendees.count|pluralize }})</h2>
+            {% if session.school_group %}
+                <div class="attendance-layout-container">
+                    <div class="current-attendees-display">
+                        <strong>Currently Attending (from group: {{ session.school_group.name }}):</strong>
+                        <ul class="attendee-list">
+                            {% for player in current_attendees %}
+                                <li>
+                                    <span> {# Wrap player name link #}
+                                        <a href="{% url 'planning:player_profile' player.id %}">{{ player.full_name }}</a>
+                                    </span>
+                                    <a href="{% url 'planning:assess_player_session' session.id player.id %}" class="assess-link">
+                                        Assess
+                                    </a>
+                                </li>
+                            {% empty %}
+                                <li>No players marked as attending yet.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <form method="post" class="attendance-form attendance-update-form">
+                         {% csrf_token %}
+                         <p><strong>Update Attendance (Select from {{ session.school_group.name }}):</strong></p>
+                         {{ attendance_form.attendees.errors }}
+                         {{ attendance_form.attendees }} {# Renders checkboxes #}
+                         <br>
+                         <button type="submit" name="update_attendance" style="margin-top:10px; background-color:#ffc107; color:#333; padding: 6px 10px; border: 1px solid #c69500; border-radius: 4px; cursor:pointer;">Update Attendance</button>
+                    </form>
+                </div>
+            {% else %}
+                <p class="alert-warning" style="color: #856404; background-color: #fff3cd; border: 1px solid #ffeeba; padding: 10px; border-radius: 4px;">
+                    Please assign a School Group to this session via the admin interface to manage attendance and player groups.
+                </p>
+            {% endif %}
+        </div>
+
+        {# --- Player Group Assignments (Per Block) --- #}
+        {% if session.school_group %}
+        <div class="grouping-section">
+            <h2>Player Group Assignments (Per Block)</h2>
+            {% if block_data %}
+                 <div> {# Removed inline style #}
+                     {% for data_item in block_data %}
+                        {% with block=data_item.block assignments=data_item.assignments %}
+                            <h5>Block: {{ block.block_start_datetime|time:"H:i" }} - {{ block.block_end_datetime|time:"H:i" }} ({{ block.number_of_courts }} Court{{ block.number_of_courts|pluralize }})</h5>
+                            {% if assignments %}
+                            <div class="block-player-groups">
+                                {% for court_num, players in assignments.items|dictsort:0 %}
+                                    <div>
+                                        <strong>Court {{ court_num }}:</strong>
+                                        <ul class="group-list">
+                                            {% for player in players %}
+                                                <li> <a href="{% url 'planning:player_profile' player.id %}">{{ player.full_name }}</a> </li>
+                                            {% empty %}
+                                                <li>--</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            {% elif current_attendees %}
+                                <p style="font-style: italic; font-size: 0.9em;">(No groups assigned for this block?)</p> {# Clarified message #}
+                            {% endif %}
+                        {% endwith %}
+                     {% endfor %}
+                 </div>
+            {% elif current_attendees %}
+                <p>No time blocks defined for this session.</p>
+            {% else %}
+                <p>No players marked as attending.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {# --- Activity Plan Details --- #}
+        <h2>Activity Plan Details</h2>
+        <div class="timeline-container">
+             {% if block_data %} {# Use block_data to check if blocks exist #}
+                {% for data_item in block_data %}
+                    {% with block=data_item.block %}
+                    <div class="time-block">
+                         <h4> Block: {{ block.block_start_datetime|time:"H:i" }} - {{ block.block_end_datetime|time:"H:i" }} ({{ block.duration_minutes }} min) | Courts: {{ block.number_of_courts }} {% if block.block_focus %} | Focus: {{ block.block_focus }} {% endif %} </h4>
+                         <div class="courts-container">
+                            {% for i in ""|ljust:block.number_of_courts %}
+                                {% with court_display_num=forloop.counter %}
+                                <div class="court-column">
+                                    <strong>Court {{ court_display_num }} Activities:</strong>
+                                    <ul>
+                                        {# Loop through activities and display if match block/court #}
+                                        {% for activity in activities %}
+                                            {% if activity.time_block.id == block.id and activity.court_number == court_display_num %}
+                                                <li class="activity-item">
+                                                    <span>
+                                                        - {% if activity.drill %}{{ activity.drill.name }}{% else %}{{ activity.custom_activity_name }}{% endif %}
+                                                        ({{ activity.duration_minutes }} min)
+                                                        {% if activity.lead_coach %} [{{ activity.lead_coach.name }}]{% endif %}
+                                                    </span>
+                                                    <span class="activity-actions">
+                                                        <a href="{% url 'planning:edit_activity' activity.id %}" class="edit-link">Edit</a>
+                                                        <a href="{% url 'planning:delete_activity' activity.id %}" class="delete-link">Del</a>
+                                                    </span>
+                                                </li>
+                                            {% endif %}
+                                        {% endfor %}
+                                        {# Removed the invalid check for empty activities #}
+                                    </ul>
+                                     <a href="{% url 'planning:add_activity' block.id court_display_num %}" class="add-link"> + Add Activity </a>
+                                </div>
+                                {% endwith %}
+                            {% endfor %}
+                         </div>
+                    </div>
+                    {% endwith %}
+                {% endfor %}
+             {% else %}
+                 <p>No time blocks have been defined for this session yet.</p>
+             {% endif %}
+        </div>
+
+        <hr>
+        <p><a href="{% url 'planning:session_list' %}" class="back-link">Back to Session List</a></p>
+
+    </div> {# End container #}
+</body>
+</html>

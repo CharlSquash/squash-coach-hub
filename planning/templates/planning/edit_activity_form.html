@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Activity</title>
+    {# Re-use the same styles as the add form #}
+    <style>
+        body { font-family: sans-serif; margin: 20px; line-height: 1.5; }
+        .form-container { max-width: 600px; }
+        .form-field { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input[type="text"], input[type="number"], select, textarea { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 95%; max-width: 400px; box-sizing: border-box; }
+        .helptext { font-size: 0.9em; color: #666; margin-top: 3px; display: block; }
+        .errorlist { color: #cc0000; list-style: none; padding-left: 0; margin: 5px 0 0 0; font-weight: bold; font-size: 0.9em;}
+        button { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1em;}
+        button:hover { background-color: #0056b3; }
+        .cancel-link { color: #0066cc; margin-left: 15px; text-decoration: none; }
+        .cancel-link:hover { text-decoration: underline; }
+        h1, h2 { border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 15px;}
+        .error-summary { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 15px;}
+    </style>
+</head>
+<body>
+
+    <h1>Edit Activity for Session: {{ session.date }} @ {{ session.start_time }}</h1>
+    <h2>Time Block starting @ {{ time_block.start_offset_minutes }} min, Court {{ court_num }}</h2>
+
+    <form method="post" class="form-container" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="error-summary">
+                <strong>Please correct the following errors:</strong>
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        {% for field in form %}
+            <div class="form-field">
+                {{ field.label_tag }}
+                {% if field.errors %}
+                    <div class="errorlist">
+                        {{ field.errors }}
+                    </div>
+                {% endif %}
+                {{ field }}
+                {% if field.help_text %}
+                    <small class="helptext">{{ field.help_text|safe }}</small>
+                {% endif %}
+            </div>
+        {% endfor %}
+
+        <button type="submit">Save Changes</button> {# Changed button text #}
+        <a href="{% url 'planning:session_detail' session.id %}" class="cancel-link">Cancel</a>
+
+    </form>
+
+</body>
+</html>

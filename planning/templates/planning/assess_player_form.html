@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% if assessment_instance %}Edit{% else %}Add{% endif %} Assessment for {{ player.full_name }}</title>
+    <link rel="stylesheet" href="{% static 'planning/style.css' %}">
+    {# Re-use styles from other forms if needed #}
+    <style>
+        .form-container { max-width: 700px; }
+        .form-field { margin-bottom: 20px; }
+        .form-field ul { list-style: none; padding-left: 0; margin-top: 5px;} /* RadioSelect list */
+        .form-field ul li { display: inline-block; margin-right: 15px; } /* RadioSelect items inline */
+        .form-field label { display: block; font-weight: bold; margin-bottom: 8px; } /* Main field label */
+        .form-field ul label { margin-left: 3px; font-weight: normal;} /* Radio button label */
+        textarea { padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; width: 95%; max-width: 600px; box-sizing: border-box;}
+        .errorlist { color: #cc0000; list-style: none; padding-left: 0; margin: 5px 0 0 0; font-weight: bold; font-size: 0.9em;}
+        button { padding: 10px 15px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1em;}
+        button:hover { background-color: #218838; }
+        .cancel-link { color: #0066cc; margin-left: 15px; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {# Title changes based on adding new or editing existing #}
+        <h1>{% if assessment_instance %}Edit{% else %}Add{% endif %} Session Assessment</h1>
+        <p>
+            <strong>Player:</strong> {{ player.full_name }}<br>
+            <strong>Session:</strong> {{ session.date|date:"D, d M Y" }} {% if session.school_group %}({{ session.school_group.name }}){% endif %} at {{ session.start_time|time:"H:i" }}
+        </p>
+        <hr>
+
+        <form method="post" class="form-container" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="errorlist error-summary"> {# Style as needed #}
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            {# Render fields using loop or individually #}
+             {% for field in form %}
+                <div class="form-field">
+                    {{ field.label_tag }}
+                    {% if field.errors %}<div class="errorlist">{{ field.errors }}</div>{% endif %}
+                    {{ field }} {# Renders widget (RadioSelect for ratings, Textarea for notes) #}
+                    {% if field.help_text %}<small class="helptext">{{ field.help_text|safe }}</small>{% endif %}
+                </div>
+            {% endfor %}
+
+            <button type="submit">Save Assessment</button>
+            <a href="{% url 'planning:session_detail' session.id %}" class="cancel-link">Cancel</a>
+
+        </form>
+    </div>
+</body>
+</html>

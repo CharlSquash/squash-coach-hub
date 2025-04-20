@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Court Sprint Record for {{ player.full_name }}</title>
+    <link rel="stylesheet" href="{% static 'planning/style.css' %}">
+    {# Re-use styles from assess_player_form if needed, or general form styles #}
+     <style>
+        body { font-family: sans-serif; margin: 20px; line-height: 1.5; }
+        .container { max-width: 600px; margin: 20px auto; padding: 20px; background: #fff; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid var(--border-color);}
+        .form-field { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input[type="text"], input[type="number"], input[type="date"], select { padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; width: 95%; max-width: 400px; box-sizing: border-box; background-color: var(--container-bg); color: var(--text-color); }
+        .helptext { font-size: 0.9em; color: #666; margin-top: 3px; display: block; }
+        .errorlist { color: #cc0000; list-style: none; padding-left: 0; margin: 5px 0 0 0; font-weight: bold; font-size: 0.9em;}
+        button { padding: 10px 15px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1em;}
+        button:hover { background-color: #218838; }
+        .cancel-link { color: var(--link-color); margin-left: 15px; text-decoration: none; }
+        h1 { border-bottom: 1px solid var(--border-light); padding-bottom: 5px; margin-bottom: 20px;}
+         /* Dark mode specific for date picker potentially */
+         body.dark-mode input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Add Court Sprint Record</h1>
+        <p><strong>Player:</strong> {{ player.full_name }}</p>
+        <hr>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="errorlist error-summary">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            {% for field in form %}
+                <div class="form-field">
+                    {{ field.label_tag }}
+                    {% if field.errors %}<div class="errorlist">{{ field.errors }}</div>{% endif %}
+                    {{ field }}
+                    {% if field.help_text %}<small class="helptext">{{ field.help_text|safe }}</small>{% endif %}
+                </div>
+            {% endfor %}
+
+            <button type="submit">Save Sprint Record</button>
+            {# Link back to the player profile page #}
+            <a href="{% url 'planning:player_profile' player.id %}" class="cancel-link">Cancel</a>
+        </form>
+    </div>
+</body>
+</html>

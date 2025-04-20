@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Profile: {{ player.full_name }}</title>
+    <link rel="stylesheet" href="{% static 'planning/style.css' %}">
+    {# --- CHART.JS Dependencies (Using date-fns adapter) --- #}
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@^2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@^3"></script>
+    {# Chart.js Library #}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@^4"></script>
+    {# --- END CHART.JS Dependencies --- #}
+    <style>
+        /* Assuming base styles are in style.css */
+        .chart-container { margin-top: 20px; margin-bottom: 30px; max-width: 800px; margin-left: auto; margin-right: auto; padding: 15px; background-color: var(--court-bg); border: 1px solid var(--court-border); border-radius: 5px;}
+        canvas { max-width: 100%; height: auto; }
+        /* Styles for profile page elements (should match style.css) */
+        .profile-header { display: flex; align-items: flex-start; gap: 20px; margin-bottom: 20px; flex-wrap: wrap;}
+        .profile-photo img { width: 150px; height: 150px; border-radius: 50%; border: 3px solid var(--border-color); object-fit: cover;}
+        .profile-details { flex: 1; } .profile-details h1 { margin-top: 0; }
+        .profile-section { margin-bottom: 30px; padding: 20px; background-color: var(--container-bg); border: 1px solid var(--border-color); border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);}
+        .profile-section h3 { margin-top: 0; color: var(--subheading-color); border-bottom: 1px solid var(--border-light); font-size: 1.3em; padding-bottom: 8px; margin-bottom: 15px;}
+        .profile-section h4 { margin-top: 20px; color: var(--subheading-color); border-bottom: 1px dashed var(--border-light); font-size: 1.1em; padding-bottom: 5px; margin-bottom: 10px;}
+        .history-list li, .data-table td, .data-table th { padding: 8px 5px; border-bottom: 1px dotted var(--border-light); font-size: 0.95em; vertical-align: top;}
+        .history-list li:last-child, .data-table tr:last-child td { border-bottom: none; }
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 10px;}
+        .data-table th { text-align: left; font-weight: bold; color: var(--subheading-color); padding-right: 15px; border-bottom-width: 2px; border-bottom-style: solid;}
+        .no-data-msg { color: var(--subheading-color); font-style: italic;}
+        .notes-cell { font-size: 0.9em; color: #555; } body.dark-mode .notes-cell { color: #bbb; }
+        .add-data-link { display: inline-block; margin: 0 5px 5px 0; font-size: 0.9em; background-color: var(--action-add-bg); color: var(--action-add-text); padding: 4px 10px; border-radius: 4px; text-decoration: none; border: 1px solid var(--action-add-border); }
+        .add-data-link:hover { background-color: var(--action-add-hover); }
+        .back-link { font-weight: bold; margin-top: 25px; display: inline-block; font-size: 1.1em;}
+        details > summary { cursor: pointer; font-size: 0.9em; color: var(--link-color); margin-top: 10px;}
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        {# --- Profile Header --- #}
+        <div class="profile-header">
+             <div class="profile-photo"> {% if player.photo %} <img src="{{ player.photo.url }}" alt="Photo of {{ player.full_name }}"> {% else %} <img src="{% static 'planning/placeholder.png' %}" alt="Placeholder image" width="150" height="150" style="border-radius: 50%; border: 1px solid var(--border-light);"> {% endif %} </div>
+             <div class="profile-details"> <h1>{{ player.full_name }}</h1> <p><strong>Skill Level:</strong> {{ player.get_skill_level_display }}</p> <p><strong>Status:</strong> {% if player.is_active %}Active{% else %}Inactive{% endif %}</p> <p> <strong>Groups:</strong> {% for group in player.school_groups.all %} {{ group.name }}{% if not forloop.last %}, {% endif %} {% empty %} Not assigned to any groups. {% endfor %} </p> <div style="margin-top: 15px;"> <a href="{% url 'planning:add_sprint_record' player.id %}" class="add-data-link">Add Sprint</a> <a href="{% url 'planning:add_volley_record' player.id %}" class="add-data-link">Add Volley</a> <a href="{% url 'planning:add_drive_record' player.id %}" class="add-data-link">Add Drive</a> <a href="{% url 'planning:add_match_result' player.id %}" class="add-data-link">Add Match</a> </div> </div>
+        </div>
+        <hr>
+
+        {# --- Session Attendance History --- #}
+        <div class="profile-section">
+            <h3>Session Attendance History</h3>
+             {% if sessions_attended %} <table class="data-table"> <thead><tr><th>Date</th><th>Session</th><th>Time</th></tr></thead> <tbody> {% for session in sessions_attended %} <tr> <td>{{ session.date|date:"D, d M Y" }}</td> <td><a href="{% url 'planning:session_detail' session.id %}">{% if session.school_group %}{{ session.school_group.name }}{% else %}Session{% endif %}</a></td> <td>{{ session.start_time|time:"H:i" }}</td> </tr> {% endfor %} </tbody> </table> {% else %} <p class="no-data-msg">No session attendance recorded yet.</p> {% endif %}
+        </div>
+
+        {# --- Session Assessments --- #}
+        <div class="profile-section">
+            <h3>Session Assessments</h3>
+             {% if assessments %} <table class="data-table"> <thead><tr><th>Date</th><th>Session</th><th>Effort</th><th>Focus</th><th>Resilience</th><th>Composure</th><th>Decision Making</th><th>Notes</th></tr></thead> <tbody> {% for assessment in assessments %} <tr> <td>{{ assessment.date_recorded|date:"Y-m-d" }}</td> <td><a href="{% url 'planning:session_detail' assessment.session.id %}">{{ assessment.session.date|date:"d M" }}</a></td> <td style="text-align: center;">{{ assessment.get_effort_rating_display|default:"-" }}</td> <td style="text-align: center;">{{ assessment.get_focus_rating_display|default:"-" }}</td> <td style="text-align: center;">{{ assessment.get_resilience_rating_display|default:"-" }}</td> <td style="text-align: center;">{{ assessment.get_composure_rating_display|default:"-" }}</td> <td style="text-align: center;">{{ assessment.get_decision_making_rating_display|default:"-" }}</td> <td class="notes-cell">{{ assessment.coach_notes|default:""|linebreaksbr }}</td> </tr> {% endfor %} </tbody> </table> {% else %} <p class="no-data-msg">No session assessments recorded yet.</p> {% endif %}
+        </div>
+
+        {# --- Metric Records & CHARTS --- #}
+        <div class="profile-section">
+            <h3>Metric Records</h3>
+
+            {# === Court Sprints === #}
+            <h4>Court Sprints <a href="{% url 'planning:add_sprint_record' player.id %}" class="add-data-link" style="font-size: 0.8em; margin-left: 10px;">+ Add</a></h4>
+            {% if sprints %}
+                <div class="chart-container"><canvas id="sprintChart"></canvas></div>
+                <details><summary>View Sprint Data Table</summary><table class="data-table"><thead><tr><th>Date</th><th>Duration</th><th>Score (Laps)</th><th>Session</th></tr></thead><tbody>{% for sprint in sprints %}<tr><td>{{ sprint.date_recorded|date:"Y-m-d" }}</td><td>{{ sprint.get_duration_choice_display }}</td><td>{{ sprint.score }}</td><td>{% if sprint.session %}<a href="{% url 'planning:session_detail' sprint.session.id %}">Session</a>{% else %}-{% endif %}</td></tr>{% endfor %}</tbody></table></details>
+            {% else %} <p class="no-data-msg">No court sprint records found.</p> {% endif %}
+
+
+             {# === Volleys === #}
+            <h4 style="margin-top: 25px;">Volleys (Consecutive) <a href="{% url 'planning:add_volley_record' player.id %}" class="add-data-link" style="font-size: 0.8em; margin-left: 10px;">+ Add</a></h4>
+             {% if volleys %}
+                <div class="chart-container"><canvas id="volleyChart"></canvas></div>
+                 <details><summary>View Volley Data Table</summary><table class="data-table"><thead><tr><th>Date</th><th>Type</th><th>Count</th><th>Session</th></tr></thead><tbody>{% for volley in volleys %}<tr><td>{{ volley.date_recorded|date:"Y-m-d" }}</td><td>{{ volley.get_shot_type_display }}</td><td>{{ volley.consecutive_count }}</td><td>{% if volley.session %}<a href="{% url 'planning:session_detail' volley.session.id %}">Session</a>{% else %}-{% endif %}</td></tr>{% endfor %}</tbody></table></details>
+             {% else %} <p class="no-data-msg">No volley records found.</p> {% endif %}
+
+
+             {# === Backwall Drives === #}
+            <h4 style="margin-top: 25px;">Backwall Drives (Consecutive) <a href="{% url 'planning:add_drive_record' player.id %}" class="add-data-link" style="font-size: 0.8em; margin-left: 10px;">+ Add</a></h4>
+             {% if drives %}
+                 <div class="chart-container"><canvas id="driveChart"></canvas></div>
+                 <details><summary>View Drive Data Table</summary><table class="data-table"><thead><tr><th>Date</th><th>Type</th><th>Count</th><th>Session</th></tr></thead><tbody>{% for drive in drives %}<tr><td>{{ drive.date_recorded|date:"Y-m-d" }}</td><td>{{ drive.get_shot_type_display }}</td><td>{{ drive.consecutive_count }}</td><td>{% if drive.session %}<a href="{% url 'planning:session_detail' drive.session.id %}">Session</a>{% else %}-{% endif %}</td></tr>{% endfor %}</tbody></table></details>
+             {% else %} <p class="no-data-msg">No backwall drive records found.</p> {% endif %}
+       </div>
+
+       {# --- Match History --- #}
+       <div class="profile-section">
+            <h3>Match History <a href="{% url 'planning:add_match_result' player.id %}" class="add-data-link" style="font-size: 0.8em; margin-left: 10px;">+ Add</a></h3>
+             {% if matches %} <table class="data-table"> <thead> <tr> <th>Date</th> <th>Type</th> <th>Opponent</th> <th>Score</th> <th>Notes</th> <th>Session</th> </tr> </thead> <tbody> {% for match in matches %} <tr> <td>{{ match.date|date:"Y-m-d" }}</td> <td>{% if match.is_competitive %}Competitive{% else %}Practice{% endif %}</td> <td>{{ match.opponent_name|default:"N/A" }}</td> <td>{{ match.player_score_str }}{% if match.opponent_score_str %} / {{ match.opponent_score_str }}{% endif %}</td> <td class="notes-cell">{{ match.match_notes|default:""|linebreaksbr }}</td> <td>{% if match.session %}<a href="{% url 'planning:session_detail' match.session.id %}">Session</a>{% else %}-{% endif %}</td> </tr> {% endfor %} </tbody> </table> {% else %} <p class="no-data-msg">No match results recorded yet.</p> {% endif %}
+        </div>
+
+        <hr>
+        <p><a href="{% url 'planning:session_list' %}" class="back-link">Back to Session List</a></p>
+
+    </div> {# End container #}
+
+    {# --- Embed JSON Chart Data --- #}
+    {{ sprint_chart_data|json_script:"sprint-chart-data" }}
+    {{ volley_chart_data|json_script:"volley-chart-data" }}
+    {{ drive_chart_data|json_script:"drive-chart-data" }}
+
+    {# --- JavaScript for Charts (Time Scale Disabled, Cleaned Logging) --- #}
+    <script>
+        // Helper to get data safely
+        function getChartData(jsonScriptId) {
+            const scriptElement = document.getElementById(jsonScriptId);
+            if (!scriptElement || !scriptElement.textContent) { console.error(`ERROR: Script element ${jsonScriptId} not found or empty.`); return null; }
+            try {
+                const jsonData = JSON.parse(scriptElement.textContent);
+                if (typeof jsonData === 'object' && jsonData !== null) { return jsonData; }
+                 else { console.warn(`Parsed data for ${jsonScriptId} is not an object.`); return null; }
+            } catch (e) { console.error(`ERROR parsing JSON for ${jsonScriptId}:`, e); return null; }
+        }
+
+        // Function to create a chart
+        function createLineChart(canvasId, chartData, chartTitle, yAxisLabel) {
+            const canvasElement = document.getElementById(canvasId);
+            if (!canvasElement) { console.error(`ERROR: Canvas ${canvasId} not found.`); return; }
+            const ctx = canvasElement.getContext('2d');
+            if (!chartData || typeof chartData !== 'object' || Object.keys(chartData).length === 0) {
+                console.warn(`WARN: No data for chart ${canvasId}`);
+                ctx.font = "16px sans-serif"; ctx.fillStyle = "grey"; ctx.textAlign = "center";
+                ctx.fillText("No data available for chart.", canvasElement.width / 2, canvasElement.height / 2);
+                return;
+            }
+
+            const datasets = [];
+            const colors = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6c757d'];
+            let colorIndex = 0;
+            const dataKeys = Object.keys(chartData);
+            let allLabels = new Set();
+            dataKeys.forEach(key => { if(chartData[key] && Array.isArray(chartData[key].labels)){ chartData[key].labels.forEach(label => allLabels.add(label));}});
+            const sortedLabels = Array.from(allLabels).sort();
+
+            dataKeys.forEach(key => {
+                const datasetData = chartData[key];
+                if (datasetData && typeof datasetData === 'object' && Array.isArray(datasetData.labels) && Array.isArray(datasetData.data) && datasetData.data.length > 0) {
+                    const alignedData = sortedLabels.map(label => {
+                        const index = datasetData.labels.indexOf(label);
+                        return index !== -1 ? datasetData.data[index] : null;
+                    });
+                    if (alignedData.some(point => point !== null)) {
+                        datasets.push({
+                            label: key.replace('m', ' Min').replace('FH','Forehand').replace('BH','Backhand'),
+                            data: alignedData,
+                            borderColor: colors[colorIndex % colors.length],
+                            tension: 0.1, spanGaps: false
+                        });
+                        colorIndex++;
+                    }
+                }
+            });
+
+            if (datasets.length === 0) {
+                console.warn(`WARN: No valid datasets constructed for ${canvasId}.`);
+                ctx.font = "16px sans-serif"; ctx.fillStyle = "grey"; ctx.textAlign = "center";
+                ctx.fillText("Not enough data points for chart.", canvasElement.width / 2, canvasElement.height / 2);
+                return;
+            }
+
+            try {
+                new Chart(ctx, {
+                    type: 'line',
+                    data: { labels: sortedLabels, datasets: datasets },
+                    options: {
+                         responsive: true, maintainAspectRatio: true,
+                         plugins: { title: { display: true, text: chartTitle, font: { size: 16 } }, legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false } },
+                         scales: {
+                            // --- Use Default Category Scale for X-Axis ---
+                            x: {
+                                title: { display: true, text: 'Date Recorded' }
+                                // type: 'time', // Time scale is disabled
+                                // time: { ... }
+                            },
+                            // --- End Change ---
+                            y: {
+                                beginAtZero: true,
+                                title: { display: true, text: yAxisLabel }
+                            }
+                         },
+                         interaction: { mode: 'nearest', axis: 'x', intersect: false }
+                     }
+                });
+                 // console.log(`Chart created successfully for ${canvasId}`);
+            } catch(e) {
+                 console.error(`*** ERROR creating Chart.js instance for ${canvasId}:`, e);
+                 ctx.font = "16px sans-serif"; ctx.fillStyle = "red"; ctx.textAlign = "center";
+                 ctx.fillText("Error creating chart instance.", canvasElement.width / 2, canvasElement.height / 2);
+            }
+        }
+
+        // Create the charts when the DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            const sprintData = getChartData('sprint-chart-data');
+            createLineChart('sprintChart', sprintData, 'Court Sprint Progress', 'Score (Laps)');
+
+            const volleyData = getChartData('volley-chart-data');
+            createLineChart('volleyChart', volleyData, 'Volley Consistency Progress', 'Consecutive Count');
+
+            const driveData = getChartData('drive-chart-data');
+            createLineChart('driveChart', driveData, 'Backwall Drive Progress', 'Consecutive Count');
+        });
+    </script>
+    {# --- END JavaScript --- #}
+
+</body>
+</html>

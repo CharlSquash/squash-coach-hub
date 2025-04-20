@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session Plan: {% if session.school_group %}{{ session.school_group.name }}{% endif %} {{ session.date|date:"d M Y" }}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7f6;
+            color: #333;
+            line-height: 1.5;
+        }
+        .plan-container {
+            max-width: 800px; /* Max width for readability */
+            margin: 15px auto;
+            padding: 15px;
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: relative; /* Needed for absolute positioning of button if desired */
+            padding-bottom: 60px; /* Add padding at bottom if using fixed button */
+        }
+        h1, h2, h3 {
+            margin-top: 0;
+            margin-bottom: 0.75em;
+            color: #004085; /* Dark blue heading */
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.3em;
+        }
+        h1 { font-size: 1.6em; }
+        h2 { font-size: 1.3em; margin-top: 1.5em; }
+        h3 { font-size: 1.1em; margin-top: 1em; color: #17a2b8; border-bottom-style: dashed;} /* Teal for block focus */
+        p, ul { margin-bottom: 1em; }
+        ul { padding-left: 20px; list-style: disc; }
+        li { margin-bottom: 0.5em; }
+        strong { font-weight: bold; }
+        .session-header p { margin-bottom: 0.5em; font-size: 0.95em; }
+        .time-block-card {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 1.5em;
+            padding: 15px;
+            background-color: #fdfdfd;
+        }
+        .block-header {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        .courts-grid {
+            display: grid;
+            gap: 15px;
+        }
+        .court-section {
+            border: 1px dashed #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .court-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: block;
+            color: #495057; /* Dark grey */
+        }
+        .court-section ul {
+            padding-left: 15px;
+            margin-bottom: 0;
+        }
+        .court-section li {
+            font-size: 0.9em;
+            margin-bottom: 3px;
+        }
+        /* Share Button Style */
+        #shareButton {
+            display: none; /* Hidden by default, shown by JS if API supported */
+            position: fixed; /* Or absolute relative to .plan-container */
+            bottom: 15px;
+            right: 15px;
+            padding: 10px 15px;
+            font-size: 1em;
+            font-weight: bold;
+            color: white;
+            background-color: #007bff; /* Blue */
+            border: none;
+            border-radius: 50px; /* Pill shape */
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+         #shareButton:hover {
+            background-color: #0056b3;
+        }
+
+        /* Basic responsiveness */
+        @media (min-width: 600px) {
+            .courts-grid {
+                 grid-template-columns: repeat(var(--court-count, 1), 1fr);
+            }
+        }
+        @media print {
+            body { background-color: #fff; }
+            .plan-container { border: none; box-shadow: none; margin: 0; padding: 0; max-width: 100%; padding-bottom: 0;}
+            h1, h2, h3 { color: #000; border-color: #ccc;}
+            .court-section { border-style: solid; }
+            a { text-decoration: none; color: #000;}
+            #shareButton { display: none !important; } /* Hide button when printing */
+        }
+
+    </style>
+</head>
+<body>
+    <div class="plan-container">
+        <h1>
+            Session Plan: {% if session.school_group %}{{ session.school_group.name }}{% endif %}
+        </h1>
+        <div class="session-header">
+            <p><strong>Date:</strong> {{ session.date|date:"D, d M Y" }}</p>
+            <p><strong>Time:</strong> {{ session.start_time|time:"H:i" }} ({{ session.planned_duration_minutes }} min)</p>
+            {% if coaches %}
+                <p><strong>Coaches:</strong>
+                    {% for coach in coaches %}
+                        {{ coach.name }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </p>
+            {% endif %}
+            {% if session.notes %}
+                <p><strong>Overall Notes/Objectives:</strong><br>{{ session.notes|linebreaksbr }}</p>
+            {% endif %}
+        </div>
+
+        {% for block in time_blocks %}
+            <div class="time-block-card">
+                <div class="block-header">
+                    {{ block.block_start_datetime|time:"H:i" }} - {{ block.block_end_datetime|time:"H:i" }}
+                    ({{ block.duration_minutes }} min)
+                    {% if block.block_focus %}| Focus: {{ block.block_focus }} {% endif %}
+                    | {{ block.number_of_courts }} Court{{ block.number_of_courts|pluralize }}
+                </div>
+
+                {# Set CSS variable for grid columns #}
+                <div class="courts-grid" style="--court-count: {{ block.number_of_courts|default:1 }};">
+                    {% for i in ""|ljust:block.number_of_courts %}
+                        {% with court_num=forloop.counter %}
+                        <div class="court-section">
+                            <span class="court-title">Court {{ court_num }}</span>
+                            <ul>
+                                {# Loop through ALL activities passed from view #}
+                                {% for activity in activities %}
+                                    {# Display activity only if it matches current block and court #}
+                                    {% if activity.time_block.id == block.id and activity.court_number == court_num %}
+                                        <li>
+                                            {% if activity.drill %}
+                                                {{ activity.drill.name }}
+                                            {% else %}
+                                                {{ activity.custom_activity_name }}
+                                            {% endif %}
+                                            ({{ activity.duration_minutes }} min)
+                                            {% if activity.lead_coach %}
+                                                [{{ activity.lead_coach.name }}]
+                                            {% endif %}
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                {# Removed the invalid check for empty activities #}
+                            </ul>
+                        </div>
+                        {% endwith %}
+                    {% endfor %}
+                </div> {# End courts-grid #}
+            </div> {# End time-block-card #}
+        {% empty %}
+            <p>No time blocks defined for this session.</p>
+        {% endfor %}
+
+        {# --- ADD SHARE BUTTON --- #}
+        <button id="shareButton">Share Plan</button>
+        {# --- END SHARE BUTTON --- #}
+
+    </div> {# End plan-container #}
+
+    {# --- JavaScript for Share Button --- #}
+    <script>
+        const shareButton = document.getElementById('shareButton');
+        const sessionTitle = document.title; // Use the page title
+        const sessionText = "Check out this squash session plan for {{ session.date|date:"D, M d" }}";
+
+        // Check if Web Share API is supported
+        if (navigator.share) {
+            // Show the button only if supported
+            shareButton.style.display = 'block';
+
+            shareButton.addEventListener('click', async () => {
+                const shareData = {
+                    title: sessionTitle,
+                    text: sessionText,
+                    url: window.location.href // Share the URL of the current page
+                };
+                try {
+                    await navigator.share(shareData);
+                    console.log('Plan shared successfully');
+                } catch (err) {
+                    console.error('Share failed:', err.message);
+                    // Handle error (e.g., user cancelled share) - maybe show a message
+                    // alert(`Could not share: ${err.message}`);
+                }
+            });
+        } else {
+            // Optional: Hide button or show a message if API not supported
+            console.warn('Web Share API not supported on this browser.');
+            // shareButton.style.display = 'none'; // Already hidden by default CSS
+            // You could add a fallback here, like showing a "Copy Link" button
+        }
+    </script>
+    {# --- END JavaScript --- #}
+
+</body>
+</html>

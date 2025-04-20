@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Session List</title>
+    </head>
+<body>
+
+    <h1>Sessions</h1>
+
+    {% if sessions_list %}
+        <ul>
+            {% for session in sessions_list %}
+                <li>
+                    {# Use the url tag to create a link to the detail view #}
+                    {# We need to pass the session's primary key (id) to the URL #}
+                    {# We will name the URL pattern 'session_detail' in urls.py #}
+                    <a href="{% url 'planning:session_detail' session.id %}">
+                        {{ session }}
+                    </a>
+                    </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No sessions have been planned yet.</p>
+    {% endif %}
+
+    </body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Activity</title>
+    <style>
+        /* Basic styling for the form */
+        body { font-family: sans-serif; margin: 20px; line-height: 1.5; }
+        .form-container { max-width: 600px; }
+        .form-field { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input[type="text"], input[type="number"], select, textarea { /* Added textarea for consistency */
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 95%; /* Responsive width */
+            max-width: 400px;
+            box-sizing: border-box; /* Include padding in width */
+        }
+        .helptext { font-size: 0.9em; color: #666; margin-top: 3px; display: block; }
+        .errorlist { color: #cc0000; list-style: none; padding-left: 0; margin: 5px 0 0 0; font-weight: bold; font-size: 0.9em;}
+        button { padding: 10px 15px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1em;}
+        button:hover { background-color: #218838; }
+        .cancel-link { color: #0066cc; margin-left: 15px; text-decoration: none; }
+        .cancel-link:hover { text-decoration: underline; }
+        h1, h2 { border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 15px;}
+        .error-summary { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 15px;}
+    </style>
+</head>
+<body>
+
+    <h1>Add Activity to Session: {{ session.date }} @ {{ session.start_time }}</h1>
+    <h2>For Time Block starting @ {{ time_block.start_offset_minutes }} min, Court {{ court_num }}</h2>
+
+    {# The form submits back to the same URL via POST #}
+    <form method="post" class="form-container" novalidate>
+        {% csrf_token %} {# Required for security against Cross-Site Request Forgery #}
+
+        {# Display general form errors (e.g., from clean method validation) #}
+        {% if form.non_field_errors %}
+            <div class="error-summary">
+                <strong>Please correct the following errors:</strong>
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        {# Loop through each field provided by the form object #}
+        {% for field in form %}
+            <div class="form-field">
+                {{ field.label_tag }} {# Display the field's label (e.g., <label for="id_drill">...) #}
+
+                {# Display any validation errors specific to this field #}
+                {% if field.errors %}
+                    <div class="errorlist">
+                        {{ field.errors }}
+                    </div>
+                {% endif %}
+
+                {{ field }} {# Display the actual input/select widget for the field #}
+
+                {# Display the help text associated with the field #}
+                {% if field.help_text %}
+                    <small class="helptext">{{ field.help_text|safe }}</small> {# Use |safe if help_text contains HTML #}
+                {% endif %}
+            </div>
+        {% endfor %}
+
+        <button type="submit">Save Activity</button>
+        {# Link back to the detail page for the session this block belongs to #}
+        <a href="{% url 'planning:session_detail' session.id %}" class="cancel-link">Cancel</a>
+
+    </form>
+
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Confirm Deletion</title>
+     <style>
+        body { font-family: sans-serif; margin: 20px; line-height: 1.5; }
+        .confirm-box { border: 1px solid #dc3545; background-color: #f8d7da; padding: 20px; border-radius: 5px; max-width: 500px;}
+        button { padding: 10px 15px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1em;}
+        button:hover { background-color: #c82333; }
+        a { color: #0066cc; margin-left: 15px; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        h1 { border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+    <h1>Confirm Deletion</h1>
+
+    <div class="confirm-box">
+        <p>Are you sure you want to delete the activity:</p>
+        <p><strong>"{% if activity.drill %}{{ activity.drill.name }}{% else %}{{ activity.custom_activity_name }}{% endif %}"</strong>?</p>
+        <p>(Duration: {{ activity.duration_minutes }} min, Court: {{ activity.court_number }}, Lead Coach: {{ activity.lead_coach.name|default:"N/A" }})</p>
+
+        {# Form submits back to this same URL via POST to confirm #}
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit">Yes, Delete</button>
+            {# Link back to the detail page using the session_id passed from the view #}
+            <a href="{% url 'planning:session_detail' session_id %}">Cancel</a>
+        </form>
+    </div>
+
+</body>
+</html>
