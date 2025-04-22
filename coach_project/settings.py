@@ -20,7 +20,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-c8jyl^ojgen@nhgstcgqk2id^4fd9ry!y6n+$nlg!-r7=4azqy'
+SECRET_KEY = os.environ.get('SECRET_KEY')
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -34,6 +35,7 @@ ALLOWED_HOSTS = [
     # '192.168.x.x',
     # Add the ngrok wildcard domain
     '.ngrok-free.app', # Or potentially '.ngrok.io' if you get an older URL format
+    'CharlSquash.pythonanywhere.com',
 ]
 
 # --- ADD THIS SETTING ---
@@ -140,13 +142,14 @@ USE_TZ = True
 # ... (other settings) ...
 
 # Static files (STATIC_URL, STATICFILES_DIRS, etc. - already there)
-STATIC_URL = 'static/'
+STATIC_ROOT = '/home/CharlSquash/squash_coach_app/staticfiles'
+STATIC_URL = '/static/'
 # Add STATIC_ROOT if preparing for production later, e.g.
 # STATIC_ROOT = BASE_DIR / 'staticfiles_prod'
 
 # --- Add these lines for Media files ---
+MEDIA_ROOT = '/home/CharlSquash/squash_coach_app/mediafiles'
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media' # Store media files in a 'media' folder in your project's base directory
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
