@@ -5,17 +5,11 @@ from . import views
 app_name = 'planning'
 
 urlpatterns = [
-    # Session List/Detail/Live
+    # Session List/Detail/Live/Plan
     path('', views.session_list, name='session_list'),
     path('session/<int:session_id>/', views.session_detail, name='session_detail'),
     path('session/<int:session_id>/live/', views.live_session_view, name='live_session'),
-
-    # One-Page Plan View (NEW)
-    path(
-        'session/<int:session_id>/one_page_plan/',
-        views.one_page_plan_view, # New view function
-        name='one_page_plan'
-    ),
+    path('session/<int:session_id>/one_page_plan/', views.one_page_plan_view, name='one_page_plan'),
 
     # Activity Add/Edit/Delete
     path('block/<int:block_id>/court/<int:court_num>/add/', views.add_activity, name='add_activity'),
@@ -29,4 +23,17 @@ urlpatterns = [
     path('player/<int:player_id>/add_volley/', views.add_volley_record, name='add_volley_record'),
     path('player/<int:player_id>/add_drive/', views.add_drive_record, name='add_drive_record'),
     path('player/<int:player_id>/add_match/', views.add_match_result, name='add_match_result'),
+
+    # --- APIs for Manual Assignment ---
+    path(
+        'api/update_assignment/',
+        views.update_manual_assignment_api,
+        name='update_manual_assignment_api'
+    ),
+    # --- NEW API Endpoint for Clearing Assignments ---
+    path(
+        'api/clear_block_assignments/<int:time_block_id>/',
+        views.clear_manual_assignments_api, # New view function
+        name='clear_manual_assignments_api'
+    ),
 ]

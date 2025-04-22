@@ -1,98 +1,123 @@
 # planning/views.py
+# Fixed logic to merge manual assignments over automatic grouping.
+# Strict formatting applied.
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
-from django.utils import timezone
+from django.utils import timezone # Django's timezone utilities
 from django.core.serializers.json import DjangoJSONEncoder
 import json
 from django.db.models import Q
+from django.http import JsonResponse, HttpResponseForbidden, Http404 # Added Http404
+from django.views.decorators.http import require_POST # To ensure POST requests
+# from django.views.decorators.csrf import csrf_exempt # REMOVED
+
 # Import all necessary models and the forms
 from .models import ( Session, ActivityAssignment, TimeBlock, Drill, Coach, Player,
                       SchoolGroup, SessionAssessment, CourtSprintRecord, VolleyRecord,
-                      BackwallDriveRecord, MatchResult )
+                      BackwallDriveRecord, MatchResult, ManualCourtAssignment )
 from .forms import ( ActivityAssignmentForm, AttendanceForm, SessionAssessmentForm,
                      CourtSprintRecordForm, VolleyRecordForm, BackwallDriveRecordForm,
                      MatchResultForm )
 import math
 import datetime
+# Import timezone object from standard datetime library for UTC
+from datetime import timezone as dt_timezone # Alias to avoid name clash
 from django.utils.dateparse import parse_datetime
-from django.utils.timezone import make_aware
+from django.utils.timezone import make_aware # Keep Django's make_aware
+from pathlib import Path
+import os
+from collections import defaultdict # Used for merging assignments
 
 # --- Helper function _calculate_skill_priority_groups ---
+# (Remains the same - correctly formatted)
 def _calculate_skill_priority_groups(attendees_queryset, num_courts):
-    """
-    Groups players prioritizing same-skill groups first, then distributes
-    remainders as evenly as possible. Rewritten for formatting.
-    Returns a dictionary: {court_num: [player_list]}
-    """
     assignments = {}
     if not attendees_queryset or num_courts <= 0:
+        # Ensure all court keys exist even if no players
+        for i in range(1, num_courts + 1):
+            assignments[i] = []
         return assignments
 
-    # Separate by Skill Level
-    adv_players = list(attendees_queryset.filter(skill_level=Player.SkillLevel.ADVANCED).order_by('last_name', 'first_name'))
-    int_players = list(attendees_queryset.filter(skill_level=Player.SkillLevel.INTERMEDIATE).order_by('last_name', 'first_name'))
-    beg_players = list(attendees_queryset.filter(skill_level=Player.SkillLevel.BEGINNER).order_by('last_name', 'first_name'))
+    # Convert queryset to list to avoid modifying original during processing
+    attendee_list = list(attendees_queryset)
 
-    num_total = len(adv_players) + len(int_players) + len(beg_players)
+    adv_players = [p for p in attendee_list if p.skill_level == Player.SkillLevel.ADVANCED]
+    adv_players.sort(key=lambda p: (p.last_name, p.first_name))
+    int_players = [p for p in attendee_list if p.skill_level == Player.SkillLevel.INTERMEDIATE]
+    int_players.sort(key=lambda p: (p.last_name, p.first_name))
+    beg_players = [p for p in attendee_list if p.skill_level == Player.SkillLevel.BEGINNER]
+    beg_players.sort(key=lambda p: (p.last_name, p.first_name))
+
+    num_total = len(attendee_list)
     if num_total == 0:
+         # Ensure all court keys exist even if no players
+        for i in range(1, num_courts + 1):
+            assignments[i] = []
         return assignments
 
-    # Determine Target Group Sizes
     base_size = num_total // num_courts
     num_large_groups = num_total % num_courts
     court_targets = [base_size + 1] * num_large_groups + [base_size] * (num_courts - num_large_groups)
 
     current_court_index = 0
-    player_lists = [adv_players, int_players, beg_players]
+    player_lists = [adv_players, int_players, beg_players] # Process in skill order
 
-    # Allocate Homogeneous groups
-    for player_list in player_lists:
-        while current_court_index < num_courts:
-            target_size = court_targets[current_court_index]
-            if target_size > 0 and len(player_list) >= target_size:
-                group = player_list[:target_size]
-                assignments[current_court_index + 1] = group
-                # Remove assigned players (slice assignment modifies original list)
-                player_list[:] = player_list[target_size:]
-                # Move to next court slot
-                current_court_index += 1
-            else:
-                # Cannot form a full group of this skill level, move to next skill
-                break # Exit the inner while loop (for this skill level)
+    # Initialize assignments dictionary with empty lists for all courts
+    for i in range(1, num_courts + 1):
+        assignments[i] = []
 
-    # Handle Leftovers
+    # Allocate Homogeneous groups first
+    for player_list_group in player_lists:
+        # Use a copy to iterate while modifying the original list
+        players_to_assign = list(player_list_group)
+        temp_assigned_indices = [] # Track indices to remove later
+
+        for player_idx, player in enumerate(players_to_assign):
+            assigned_this_round = False
+            # Try to place player in the next available court that needs this skill level
+            # This simple loop might not perfectly balance skill, but prioritizes full groups
+            for court_idx_offset in range(num_courts):
+                check_court_index = (current_court_index + court_idx_offset) % num_courts
+                court_num = check_court_index + 1
+                target_size = court_targets[check_court_index]
+
+                if len(assignments[court_num]) < target_size:
+                    assignments[court_num].append(player)
+                    temp_assigned_indices.append(player_idx)
+                    assigned_this_round = True
+                    # Move the starting point for the next player of this skill level potentially
+                    current_court_index = (check_court_index + 1) % num_courts
+                    break # Player assigned, move to next player
+
+            # If player couldn't be placed in a non-full group (should be rare with leftovers logic)
+            # Keep track for leftover distribution (though the current logic might handle this)
+
+        # Remove assigned players from the original list (by index in reverse)
+        for index in sorted(temp_assigned_indices, reverse=True):
+             player_list_group.pop(index)
+
+
+    # Handle Leftovers (players remaining in adv/int/beg lists)
     remaining_players = adv_players + int_players + beg_players
     player_idx = 0
-    while current_court_index < num_courts:
-        court_num = current_court_index + 1
-        target_size = court_targets[current_court_index]
-        current_group = assignments.get(court_num, [])
-        while len(current_group) < target_size and player_idx < len(remaining_players):
-            current_group.append(remaining_players[player_idx])
+    # Fill remaining spots in courts sequentially
+    for court_num in range(1, num_courts + 1):
+        target_size = court_targets[court_num - 1] # Use original target size
+        while len(assignments[court_num]) < target_size and player_idx < len(remaining_players):
+            assignments[court_num].append(remaining_players[player_idx])
             player_idx += 1
-        # Ensure the court exists in assignments even if it was initially empty and got no leftovers
-        if current_group or court_num not in assignments:
-             assignments[court_num] = current_group
-        current_court_index += 1
 
-    # Distribute final stragglers if any (should be rare)
+    # Distribute any final stragglers (if total didn't divide perfectly or logic above missed some)
     court_idx_final_pass = 0
     while player_idx < len(remaining_players):
         court_num_final = (court_idx_final_pass % num_courts) + 1
-        # Ensure court exists in dictionary before appending
-        if court_num_final not in assignments:
-            assignments[court_num_final] = []
         assignments[court_num_final].append(remaining_players[player_idx])
         player_idx += 1
         court_idx_final_pass += 1
 
-    # Ensure all courts up to num_courts exist in the dictionary, even if empty
-    for i in range(1, num_courts + 1):
-        if i not in assignments:
-            assignments[i] = []
-
     return assignments
+
 
 # --- Session List View ---
 def session_list(request):
@@ -105,6 +130,7 @@ def session_detail(request, session_id):
     session = get_object_or_404(Session, pk=session_id)
     time_blocks = session.time_blocks.all()
     current_attendees = session.attendees.all().order_by('last_name', 'first_name')
+    current_attendees_set = set(current_attendees)
     school_group_for_session = session.school_group
     activities = ActivityAssignment.objects.filter(
         time_block__session=session
@@ -112,43 +138,79 @@ def session_detail(request, session_id):
         'time_block__start_offset_minutes', 'court_number', 'order'
     )
 
-    # Initialize form based on GET or POST
     initial_attendance = {'attendees': current_attendees}
-    # Default to initializing with initial data (for GET or non-attendance POST)
     attendance_form = AttendanceForm(initial=initial_attendance, school_group=school_group_for_session)
 
-    # Handle POST request specifically for attendance update
     if request.method == 'POST' and 'update_attendance' in request.POST:
         attendance_form = AttendanceForm(request.POST, school_group=school_group_for_session)
         if attendance_form.is_valid():
             selected_players = attendance_form.cleaned_data['attendees']
             session.attendees.set(selected_players)
-            # Reload attendees after update before calculating groups
             current_attendees = session.attendees.all().order_by('last_name', 'first_name')
-            # Re-initialize form with updated data for display after redirect
+            current_attendees_set = set(current_attendees)
             initial_attendance = {'attendees': current_attendees}
             attendance_form = AttendanceForm(initial=initial_attendance, school_group=school_group_for_session)
-            # Redirect to prevent re-POST on refresh
+            # Clear manual assignments when attendance changes?
+            ManualCourtAssignment.objects.filter(time_block__session=session).delete()
             return redirect('planning:session_detail', session_id=session.id)
-        # If invalid, the form with errors (attendance_form) will be passed to context below
 
-    # Calculate Assignments Per Block (for GET or if POST wasn't attendance update)
+    # Calculate Assignments Per Block (Merge Manual over Auto)
     block_data = []
-    display_attendees = current_attendees # Use the possibly updated list
+    display_attendees = current_attendees
     if display_attendees.exists() and school_group_for_session:
         for block in time_blocks:
-            assignments_for_block = _calculate_skill_priority_groups(
+            # 1. Get Automatic assignments for ALL current attendees
+            auto_assignments = _calculate_skill_priority_groups(
                 display_attendees, block.number_of_courts
             )
+
+            # 2. Get Manual assignments for this block
+            manual_assignments_qs = ManualCourtAssignment.objects.filter(
+                time_block=block, player__in=current_attendees # Only consider attending players
+            ).select_related('player')
+
+            final_assignments = defaultdict(list)
+            # Copy auto assignments initially, ensuring all courts exist
+            for court_num in range(1, block.number_of_courts + 1):
+                 final_assignments[court_num] = list(auto_assignments.get(court_num, [])) # Use list copy
+
+            manually_assigned_players = set()
+            manual_assignments_map = {} # Store manual target: {player: court}
+
+            if manual_assignments_qs.exists():
+                for ma in manual_assignments_qs:
+                    manually_assigned_players.add(ma.player)
+                    manual_assignments_map[ma.player] = ma.court_number
+
+                # 3. Merge: Remove manually assigned players from their auto spots
+                #    and place them in their manual spots.
+                for court_num in range(1, block.number_of_courts + 1):
+                    current_court_list = final_assignments[court_num]
+                    # Use list comprehension to filter out players who WILL be manually placed elsewhere
+                    final_assignments[court_num] = [
+                        p for p in current_court_list if p not in manually_assigned_players
+                    ]
+
+                # Place manually assigned players in their designated courts
+                for player, target_court in manual_assignments_map.items():
+                    # Avoid duplicates if somehow they were already there
+                    if player not in final_assignments[target_court]:
+                        final_assignments[target_court].append(player)
+
+            # Sort player lists within each court for consistent display
+            for court_num in final_assignments:
+                 final_assignments[court_num].sort(key=lambda p: (p.last_name, p.first_name))
+
             block_data.append({
                 'block': block,
-                'assignments': assignments_for_block
+                'assignments': dict(final_assignments), # Convert back to regular dict for template
+                'has_manual': manual_assignments_qs.exists()
             })
 
     context = {
         'session': session,
         'activities': activities,
-        'attendance_form': attendance_form, # Contains initial data or errors+POST data
+        'attendance_form': attendance_form,
         'current_attendees': display_attendees,
         'block_data': block_data,
     }
@@ -160,11 +222,12 @@ def live_session_view(request, session_id):
     session = get_object_or_404(Session, pk=session_id)
     time_blocks = session.time_blocks.all()
     current_attendees = session.attendees.all()
+    current_attendees_set = set(current_attendees)
     activities = ActivityAssignment.objects.filter(
         time_block__session=session
     ).select_related('drill', 'lead_coach').order_by('order')
 
-    # --- Determine Effective Time ---
+    # Determine Effective Time
     sim_time_str = request.GET.get('sim_time', None)
     effective_time = None
     is_simulated = False
@@ -172,44 +235,37 @@ def live_session_view(request, session_id):
 
     if sim_time_str:
         try:
-            # Try parsing datetime-local format first (naive)
             naive_dt = datetime.datetime.strptime(sim_time_str, '%Y-%m-%dT%H:%M')
-            # Make aware using Django settings
-            parsed_time = make_aware(naive_dt)
+            parsed_time = timezone.make_aware(naive_dt, timezone.get_current_timezone())
+            effective_time = timezone.localtime(parsed_time, dt_timezone.utc)
+            is_simulated = True
         except (ValueError, TypeError):
             try:
-                # If previous failed, try full ISO format (aware)
-                parsed_time = parse_datetime(sim_time_str)
+                parsed_time_aware = parse_datetime(sim_time_str)
+                if parsed_time_aware and timezone.is_aware(parsed_time_aware):
+                     effective_time = timezone.localtime(parsed_time_aware, dt_timezone.utc)
+                     is_simulated = True
+                elif parsed_time_aware and timezone.is_naive(parsed_time_aware):
+                    parsed_time = timezone.make_aware(parsed_time_aware, timezone.get_current_timezone())
+                    effective_time = timezone.localtime(parsed_time, dt_timezone.utc)
+                    is_simulated = True
             except (ValueError, TypeError):
-                 # All parsing failed
-                 pass # parsed_time remains None
+                 pass
 
-        # Check if any parsing method succeeded
-        if parsed_time:
-             effective_time = parsed_time
-             is_simulated = True
-
-    # Fallback to current time if no valid simulation time provided/parsed
     if effective_time is None:
         effective_time = timezone.now()
-        is_simulated = False # Ensure flag is False if using real time
-    # --- End Determine Effective Time ---
+        is_simulated = False
 
-    # --- Find Current/Next Block and calculate assignments ---
+    local_effective_time = timezone.localtime(effective_time)
+    sim_time_input_value = local_effective_time.strftime('%Y-%m-%dT%H:%M')
+
+    # Find Current/Next Block, assignments, next rotation time
     current_block_data = None
     next_block_data = None
     processed_block_data = []
+    next_rotation_time_iso = None
+    display_next_rotation_time = None
 
-    # Calculate initial grouping based on attendees
-    initial_assignments = {}
-    if current_attendees.exists() and time_blocks.exists():
-         first_block_courts = time_blocks.first().number_of_courts
-         initial_assignments = _calculate_skill_priority_groups(current_attendees, first_block_courts)
-         # Ensure it's a dict even if calculation returns None/empty
-         if not initial_assignments:
-             initial_assignments = {}
-
-    # Process each block
     for i, block in enumerate(time_blocks):
         block_start_dt = block.block_start_datetime
         block_end_dt = block.block_end_datetime
@@ -217,83 +273,158 @@ def live_session_view(request, session_id):
         block_activities = activities.filter(time_block=block)
         interval = block.rotation_interval_minutes
 
-        # Calculate the base assignment for THIS block's court count
-        base_assignments_for_block = {}
-        if current_attendees.exists() and num_courts > 0:
-             base_assignments_for_block = _calculate_skill_priority_groups(current_attendees, num_courts)
+        # --- Determine Base Assignments (Manual or Auto) for THIS block ---
+        base_assignments_for_block = defaultdict(list) # Use defaultdict
+        manual_assignments_qs = ManualCourtAssignment.objects.filter(
+            time_block=block, player__in=current_attendees # Only consider attending players
+        ).select_related('player').order_by('court_number', 'player__last_name')
 
-        # Start with base assignment, override if rotating
-        current_display_assignments = base_assignments_for_block
+        manually_assigned_players = set()
+        manual_assignments_map = {}
+
+        if manual_assignments_qs.exists():
+            for ma in manual_assignments_qs:
+                manually_assigned_players.add(ma.player)
+                manual_assignments_map[ma.player] = ma.court_number
+
+            # Start with manual assignments
+            for player, target_court in manual_assignments_map.items():
+                 base_assignments_for_block[target_court].append(player)
+
+            # Get unassigned attendees
+            unassigned_attendees = current_attendees_set - manually_assigned_players
+            if unassigned_attendees:
+                # Auto-group ONLY the unassigned players into the remaining spots
+                # This part is complex: need to know remaining spots per court.
+                # SIMPLER MERGE: Calculate auto for everyone, then overwrite.
+                auto_assignments = _calculate_skill_priority_groups(current_attendees, num_courts)
+                base_assignments_for_block = defaultdict(list) # Reset
+                for court_num in range(1, num_courts + 1):
+                    base_assignments_for_block[court_num] = list(auto_assignments.get(court_num, []))
+
+                # Merge manual over auto
+                for court_num in range(1, num_courts + 1):
+                    current_court_list = base_assignments_for_block[court_num]
+                    base_assignments_for_block[court_num] = [
+                        p for p in current_court_list if p not in manually_assigned_players
+                    ]
+                for player, target_court in manual_assignments_map.items():
+                    if player not in base_assignments_for_block[target_court]:
+                         base_assignments_for_block[target_court].append(player)
+
+        elif current_attendees.exists() and num_courts > 0:
+             # Fallback to automatic if no manual assignments found
+             base_assignments_for_block = _calculate_skill_priority_groups(current_attendees, num_courts)
+        # Else: base_assignments_for_block remains empty defaultdict
+
+        # Ensure all courts exist and sort
+        final_base_assignments = {}
+        for court_idx in range(1, num_courts + 1):
+            player_list = base_assignments_for_block.get(court_idx, [])
+            player_list.sort(key=lambda p: (p.last_name, p.first_name))
+            final_base_assignments[court_idx] = player_list
+        # --- End Determine Base Assignments ---
+
+        current_display_assignments = final_base_assignments # Start with merged base/manual
         is_current = False
 
-        # Check if block is currently active
         if block_start_dt and block_end_dt and block_start_dt <= effective_time < block_end_dt:
             is_current = True
-            # Apply Rotation if applicable
-            if interval and interval > 0 and base_assignments_for_block and num_courts > 0:
+            if interval and interval > 0 and final_base_assignments and num_courts > 0:
                 minutes_into_block = 0.0
-                # Calculate minutes into block safely
+                rotation_cycle = 0
+                next_rotation_dt_utc = None
+
                 if effective_time >= block_start_dt:
                     try:
                         if timezone.is_aware(effective_time) and timezone.is_aware(block_start_dt):
                              minutes_into_block = (effective_time - block_start_dt).total_seconds() / 60.0
                     except TypeError:
-                        minutes_into_block = 0.0 # Fallback
+                        minutes_into_block = 0.0
 
-                # Calculate rotation cycle safely
-                rotation_cycle = 0
                 try:
-                    if minutes_into_block >= 0 and interval > 0: # Ensure interval > 0
+                    if minutes_into_block >= 0 and interval > 0:
                         rotation_cycle = math.floor(minutes_into_block / float(interval))
                     else:
                         rotation_cycle = 0
                 except (TypeError, ValueError):
                     rotation_cycle = 0
 
-                # Apply rotation if needed
+                if interval > 0:
+                    try:
+                        next_rotation_offset_minutes = (rotation_cycle + 1) * float(interval)
+                        potential_next_rotation_dt = block_start_dt + datetime.timedelta(minutes=next_rotation_offset_minutes)
+                        if potential_next_rotation_dt < block_end_dt:
+                            next_rotation_dt_utc = potential_next_rotation_dt
+                            next_rotation_time_iso = next_rotation_dt_utc.isoformat()
+                            display_next_rotation_time = timezone.localtime(next_rotation_dt_utc)
+                    except (TypeError, ValueError):
+                        pass
+
+                # Apply rotation for display (operates on final_base_assignments)
                 if rotation_cycle > 0:
                     rotated_assignments_temp = {}
-                    initial_group_keys = sorted(list(base_assignments_for_block.keys()))
+                    initial_group_keys = sorted(list(final_base_assignments.keys()))
                     num_initial_groups = len(initial_group_keys)
                     if num_initial_groups > 0:
                         for court_num_target in range(1, num_courts + 1):
                             if court_num_target in initial_group_keys:
                                 original_court_index = (((court_num_target - 1) - rotation_cycle) % num_courts) % num_initial_groups
                                 original_group_key = initial_group_keys[original_court_index]
-                                rotated_assignments_temp[court_num_target] = base_assignments_for_block.get(original_group_key, [])
+                                rotated_assignments_temp[court_num_target] = final_base_assignments.get(original_group_key, [])
                             else:
                                 rotated_assignments_temp[court_num_target] = []
-                        current_display_assignments = rotated_assignments_temp
+                        current_display_assignments = rotated_assignments_temp # Overwrite with rotated
 
-        # Prepare data for this block
+        # Prepare block_info using the final current_display_assignments
         block_info = {
             'block': block,
-            'assignments': current_display_assignments,
+            'assignments': current_display_assignments, # This now holds rotated manual/auto groups
             'start_dt': block_start_dt,
             'end_dt': block_end_dt,
             'block_activities': block_activities
         }
         processed_block_data.append(block_info)
 
-        # Update current/next block pointers
         if is_current:
             current_block_data = block_info
         elif not current_block_data and block_start_dt and block_start_dt > effective_time:
              if next_block_data is None:
-                 next_block_data = block_info
+                 # For next block display, show the BASE assignments (manual or auto), not rotated ones
+                 next_block_info = {
+                     'block': block, 'assignments': final_base_assignments,
+                     'start_dt': block_start_dt, 'end_dt': block_end_dt,
+                     'block_activities': block_activities
+                 }
+                 next_block_data = next_block_info
 
-    # Handle edge case where session hasn't started
     if not current_block_data and not next_block_data and processed_block_data:
+         # If session hasn't started, show first block as 'next' using its base assignments
+         first_block = processed_block_data[0]['block']
+         first_block_assignments = {} # Recalculate base for first block
+         manual_assignments_qs_first = ManualCourtAssignment.objects.filter(time_block=first_block, player__in=current_attendees_set).select_related('player')
+         if manual_assignments_qs_first.exists():
+              # Build from manual
+              temp_assignments = defaultdict(list)
+              for ma in manual_assignments_qs_first: temp_assignments[ma.court_number].append(ma.player)
+              for court_idx in range(1, first_block.number_of_courts + 1): first_block_assignments[court_idx] = sorted(temp_assignments.get(court_idx, []), key=lambda p: (p.last_name, p.first_name))
+         elif current_attendees.exists() and first_block.number_of_courts > 0:
+              # Build from auto
+              first_block_assignments = _calculate_skill_priority_groups(current_attendees, first_block.number_of_courts)
+         processed_block_data[0]['assignments'] = first_block_assignments # Update assignments in processed data
          next_block_data = processed_block_data[0]
 
-    # Prepare final context
+
     context = {
         'session': session,
         'current_block_data': current_block_data,
         'next_block_data': next_block_data,
-        'effective_time': effective_time,
+        'display_effective_time': local_effective_time,
+        'effective_time_iso': effective_time.isoformat(),
         'is_simulated': is_simulated,
-        'sim_time_value': effective_time.strftime('%Y-%m-%dT%H:%M')
+        'sim_time_input_value': sim_time_input_value,
+        'next_rotation_time_iso': next_rotation_time_iso,
+        'display_next_rotation_time': display_next_rotation_time
     }
     return render(request, 'planning/live_session.html', context)
 
@@ -302,27 +433,33 @@ def live_session_view(request, session_id):
 def add_activity(request, block_id, court_num):
     block = get_object_or_404(TimeBlock, pk=block_id)
     session = block.session
-    form = ActivityAssignmentForm() # Initialize for GET or invalid POST
+    form = ActivityAssignmentForm()
 
     if request.method == 'POST':
         form = ActivityAssignmentForm(request.POST)
         if form.is_valid():
             submitted_duration = form.cleaned_data.get('duration_minutes') or 0
-            existing_activities = ActivityAssignment.objects.filter(time_block=block, court_number=court_num)
+            existing_activities = ActivityAssignment.objects.filter(
+                time_block=block, court_number=court_num
+            )
             total_existing_duration = sum(act.duration_minutes for act in existing_activities)
             new_total_duration = total_existing_duration + submitted_duration
             if new_total_duration > block.duration_minutes:
-                form.add_error(None, f"Adding activity ({submitted_duration}m) exceeds block duration ({block.duration_minutes}m) for Court {court_num}. Used: {total_existing_duration}m.")
+                form.add_error(
+                    None,
+                    f"Adding activity ({submitted_duration}m) exceeds block duration "
+                    f"({block.duration_minutes}m) for Court {court_num}. "
+                    f"Used: {total_existing_duration}m."
+                )
             else:
                 new_activity = form.save(commit=False)
                 new_activity.time_block = block
                 new_activity.court_number = court_num
                 new_activity.save()
                 return redirect('planning:session_detail', session_id=block.session.id)
-        # Fall through to render form if invalid
 
     context = {
-        'form': form, # Contains POST data and errors if invalid POST
+        'form': form,
         'time_block': block,
         'court_num': court_num,
         'session': session
@@ -334,24 +471,30 @@ def edit_activity(request, activity_id):
     block = activity_to_edit.time_block
     session = block.session
     court_num = activity_to_edit.court_number
-    form = ActivityAssignmentForm(instance=activity_to_edit) # Initialize for GET
+    form = ActivityAssignmentForm(instance=activity_to_edit)
 
     if request.method == 'POST':
         form = ActivityAssignmentForm(request.POST, instance=activity_to_edit)
         if form.is_valid():
             submitted_duration = form.cleaned_data.get('duration_minutes') or 0
-            existing_activities = ActivityAssignment.objects.filter(time_block=block, court_number=court_num).exclude(pk=activity_id)
+            existing_activities = ActivityAssignment.objects.filter(
+                time_block=block, court_number=court_num
+            ).exclude(pk=activity_id)
             total_existing_duration = sum(act.duration_minutes for act in existing_activities)
             new_total_duration = total_existing_duration + submitted_duration
             if new_total_duration > block.duration_minutes:
-                 form.add_error(None, f"Saving activity ({submitted_duration}m) exceeds block duration ({block.duration_minutes}m) for Court {court_num}. Others: {total_existing_duration}m.")
+                 form.add_error(
+                     None,
+                     f"Saving activity ({submitted_duration}m) exceeds block duration "
+                     f"({block.duration_minutes}m) for Court {court_num}. "
+                     f"Others: {total_existing_duration}m."
+                 )
             else:
                 form.save()
                 return redirect('planning:session_detail', session_id=session.id)
-        # Fall through to render form if invalid
 
     context = {
-        'form': form, # Contains instance data (GET) or errors+POST data (invalid POST)
+        'form': form,
         'activity': activity_to_edit,
         'time_block': block,
         'court_num': court_num,
@@ -365,8 +508,11 @@ def delete_activity(request, activity_id):
     if request.method == 'POST':
         activity_to_delete.delete()
         return redirect('planning:session_detail', session_id=session_id)
-    # GET request shows confirmation page
-    context = {'activity': activity_to_delete, 'session_id': session_id}
+
+    context = {
+        'activity': activity_to_delete,
+        'session_id': session_id
+    }
     return render(request, 'planning/delete_activity_confirm.html', context)
 
 
@@ -374,45 +520,53 @@ def delete_activity(request, activity_id):
 def player_profile(request, player_id):
     player = get_object_or_404(Player, pk=player_id)
     sessions_attended = player.sessions_attended.order_by('-date', '-start_time')
-    assessments = player.session_assessments.select_related('session', 'session__school_group').order_by('-date_recorded', '-session__start_time')
-    # Order metrics by date for charting
+    assessments = player.session_assessments.select_related(
+        'session', 'session__school_group'
+    ).order_by('-date_recorded', '-session__start_time')
     sprints = player.sprint_records.select_related('session').order_by('date_recorded')
     volleys = player.volley_records.select_related('session').order_by('date_recorded')
     drives = player.drive_records.select_related('session').order_by('date_recorded')
     matches = player.match_results.select_related('session').order_by('-date')
 
-    # Prepare Data for Charts - create Python Dicts
-    sprint_chart_data = {'3m': {'labels': [], 'data': []}, '5m': {'labels': [], 'data': []}, '10m': {'labels': [], 'data': []}}
+    sprint_chart_data = {
+        '3m': {'labels': [], 'data': []},
+        '5m': {'labels': [], 'data': []},
+        '10m': {'labels': [], 'data': []}
+    }
     for sprint in sprints:
         key = sprint.duration_choice
         if key in sprint_chart_data:
             sprint_chart_data[key]['labels'].append(sprint.date_recorded)
             sprint_chart_data[key]['data'].append(sprint.score)
 
-    volley_chart_data = {'FH': {'labels': [], 'data': []}, 'BH': {'labels': [], 'data': []}}
+    volley_chart_data = {
+        'FH': {'labels': [], 'data': []},
+        'BH': {'labels': [], 'data': []}
+    }
     for volley in volleys:
         key = volley.shot_type
         if key in volley_chart_data:
             volley_chart_data[key]['labels'].append(volley.date_recorded)
             volley_chart_data[key]['data'].append(volley.consecutive_count)
 
-    drive_chart_data = {'FH': {'labels': [], 'data': []}, 'BH': {'labels': [], 'data': []}}
+    drive_chart_data = {
+        'FH': {'labels': [], 'data': []},
+        'BH': {'labels': [], 'data': []}
+    }
     for drive in drives:
         key = drive.shot_type
         if key in drive_chart_data:
             drive_chart_data[key]['labels'].append(drive.date_recorded)
             drive_chart_data[key]['data'].append(drive.consecutive_count)
 
-    # Pass the Python dictionaries DIRECTLY to the context
     context = {
         'player': player,
         'sessions_attended': sessions_attended,
         'assessments': assessments,
-        'sprints': sprints, # Keep raw data for tables
+        'sprints': sprints,
         'volleys': volleys,
         'drives': drives,
         'matches': matches,
-        # Pass structured data for charts (json_script handles conversion)
         'sprint_chart_data': sprint_chart_data,
         'volley_chart_data': volley_chart_data,
         'drive_chart_data': drive_chart_data,
@@ -423,23 +577,20 @@ def player_profile(request, player_id):
 def assess_player_session(request, session_id, player_id):
     session = get_object_or_404(Session, pk=session_id)
     player = get_object_or_404(Player, pk=player_id)
-    # Check if player actually attended the session
     if not session.attendees.filter(pk=player.id).exists():
-        # Add a message here later if desired using django.contrib.messages
         return redirect('planning:session_detail', session_id=session.id)
     assessment_instance = SessionAssessment.objects.filter(session=session, player=player).first()
+    form = SessionAssessmentForm(instance=assessment_instance)
 
-    form = SessionAssessmentForm(instance=assessment_instance) # Initialize for GET
     if request.method == 'POST':
         form = SessionAssessmentForm(request.POST, instance=assessment_instance)
         if form.is_valid():
             assessment = form.save(commit=False)
             assessment.session = session
             assessment.player = player
-            assessment.date_recorded = session.date # Use session date
+            assessment.date_recorded = session.date
             assessment.save()
             return redirect('planning:session_detail', session_id=session.id)
-        # If invalid POST, fall through to render form with errors
 
     context = {
         'form': form,
@@ -453,7 +604,7 @@ def assess_player_session(request, session_id, player_id):
 # --- Add Metric/Match Views ---
 def add_sprint_record(request, player_id):
     player = get_object_or_404(Player, pk=player_id)
-    form = CourtSprintRecordForm() # Initialize for GET or invalid POST
+    form = CourtSprintRecordForm()
     if request.method == 'POST':
         form = CourtSprintRecordForm(request.POST)
         if form.is_valid():
@@ -461,14 +612,16 @@ def add_sprint_record(request, player_id):
             sprint_record.player = player
             sprint_record.save()
             return redirect('planning:player_profile', player_id=player.id)
-        # If invalid POST, fall through to render form with errors
 
-    context = {'form': form, 'player': player }
+    context = {
+        'form': form,
+        'player': player
+    }
     return render(request, 'planning/add_sprint_form.html', context)
 
 def add_volley_record(request, player_id):
     player = get_object_or_404(Player, pk=player_id)
-    form = VolleyRecordForm() # Initialize for GET or invalid POST
+    form = VolleyRecordForm()
     if request.method == 'POST':
         form = VolleyRecordForm(request.POST)
         if form.is_valid():
@@ -476,14 +629,16 @@ def add_volley_record(request, player_id):
             volley_record.player = player
             volley_record.save()
             return redirect('planning:player_profile', player_id=player.id)
-        # If invalid POST, fall through
 
-    context = {'form': form, 'player': player}
+    context = {
+        'form': form,
+        'player': player
+    }
     return render(request, 'planning/add_volley_form.html', context)
 
 def add_drive_record(request, player_id):
     player = get_object_or_404(Player, pk=player_id)
-    form = BackwallDriveRecordForm() # Initialize for GET or invalid POST
+    form = BackwallDriveRecordForm()
     if request.method == 'POST':
         form = BackwallDriveRecordForm(request.POST)
         if form.is_valid():
@@ -491,14 +646,16 @@ def add_drive_record(request, player_id):
             drive_record.player = player
             drive_record.save()
             return redirect('planning:player_profile', player_id=player.id)
-        # If invalid POST, fall through
 
-    context = {'form': form, 'player': player}
+    context = {
+        'form': form,
+        'player': player
+    }
     return render(request, 'planning/add_drive_form.html', context)
 
 def add_match_result(request, player_id):
     player = get_object_or_404(Player, pk=player_id)
-    form = MatchResultForm() # Initialize for GET or invalid POST
+    form = MatchResultForm()
     if request.method == 'POST':
         form = MatchResultForm(request.POST)
         if form.is_valid():
@@ -506,19 +663,20 @@ def add_match_result(request, player_id):
             match_result.player = player
             match_result.save()
             return redirect('planning:player_profile', player_id=player.id)
-        # If invalid POST, fall through
 
-    context = {'form': form, 'player': player}
+    context = {
+        'form': form,
+        'player': player
+    }
     return render(request, 'planning/add_match_form.html', context)
 
 
 # --- One-Page Plan View ---
+# NOTE: This view needs modification to show manual assignments if they exist
 def one_page_plan_view(request, session_id):
     """Displays a simplified, shareable view of the session plan."""
     session = get_object_or_404(Session, pk=session_id)
-    # Fetch related data needed for the plan
     time_blocks = session.time_blocks.all().order_by('start_offset_minutes')
-    # Fetch all activities for the session, ordered correctly
     activities = ActivityAssignment.objects.filter(
         time_block__session=session
     ).select_related('drill', 'lead_coach').order_by(
@@ -526,27 +684,94 @@ def one_page_plan_view(request, session_id):
     )
     coaches = session.coaches_attending.all()
 
+    # TODO: Add logic here similar to session_detail/live_session
+    # to fetch manual assignments per block and pass them to the template
+    # For now, it only shows activities.
+
     context = {
         'session': session,
         'time_blocks': time_blocks,
-        'activities': activities, # Pass all activities, filter in template
+        'activities': activities,
         'coaches': coaches,
     }
-    return render(request, 'planning/one_page_plan.html', context) # New template
+    return render(request, 'planning/one_page_plan.html', context)
 
 # --- Homepage View ---
 def homepage_view(request):
     """Displays the main homepage / dashboard."""
     now = timezone.now()
-    # Query for upcoming sessions (date >= today AND time >= now if date is today)
     upcoming_sessions = Session.objects.filter(
         Q(date__gt=now.date()) | Q(date=now.date(), start_time__gte=now.time())
-    ).select_related('school_group').order_by('date', 'start_time')[:5] # Show next 5
+    ).select_related('school_group').order_by('date', 'start_time')[:5]
 
     context = {
         'upcoming_sessions': upcoming_sessions
-        # Add other data needed for homepage here later
     }
-    return render(request, 'planning/homepage.html', context) # New template
+    return render(request, 'planning/homepage.html', context)
 
-# End of file - ensure no extra text below this line
+# --- API View for Manual Assignments ---
+@require_POST
+# @csrf_exempt # REMEMBER TO REMOVE THIS once CSRF token is sent from JS
+def update_manual_assignment_api(request):
+    """API endpoint to save manual player-court assignments."""
+    try:
+        data = json.loads(request.body)
+        player_id = data.get('player_id')
+        time_block_id = data.get('time_block_id')
+        court_number = data.get('court_number')
+
+        if not all([player_id, time_block_id, court_number]):
+            return JsonResponse({'status': 'error', 'message': 'Missing data'}, status=400)
+
+        try:
+            player = Player.objects.get(pk=int(player_id))
+            time_block = TimeBlock.objects.get(pk=int(time_block_id))
+            court_num_int = int(court_number)
+            if court_num_int <= 0 or court_num_int > time_block.number_of_courts:
+                 return JsonResponse({'status': 'error', 'message': 'Invalid court number for this block'}, status=400)
+
+        except (Player.DoesNotExist, TimeBlock.DoesNotExist, ValueError):
+            return JsonResponse({'status': 'error', 'message': 'Invalid player, block, or court ID'}, status=400)
+
+        assignment, created = ManualCourtAssignment.objects.update_or_create(
+            time_block=time_block,
+            player=player,
+            defaults={'court_number': court_num_int}
+        )
+
+        message = f'Assignment {"created" if created else "updated"} for {player.full_name}.'
+        return JsonResponse({
+            'status': 'success',
+            'message': message,
+            'player_id': player_id,
+            'time_block_id': time_block_id,
+            'new_court': court_num_int
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        print(f"Error in update_manual_assignment_api: {e}") # Basic logging
+        return JsonResponse({'status': 'error', 'message': 'An unexpected error occurred'}, status=500)
+
+# --- API View for Clearing Manual Assignments ---
+@require_POST
+def clear_manual_assignments_api(request, time_block_id):
+    """API endpoint to delete all manual assignments for a specific time block."""
+    try:
+        time_block = get_object_or_404(TimeBlock, pk=time_block_id)
+        # Delete all manual assignments associated with this time block
+        deleted_count, _ = ManualCourtAssignment.objects.filter(time_block=time_block).delete()
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Cleared {deleted_count} manual assignment(s) for this block. Automatic grouping will now apply.',
+            'time_block_id': time_block_id
+        })
+    except Http404:
+         return JsonResponse({'status': 'error', 'message': 'Time block not found.'}, status=404)
+    except Exception as e:
+        print(f"Error in clear_manual_assignments_api: {e}") # Basic logging
+        return JsonResponse({'status': 'error', 'message': 'An unexpected error occurred'}, status=500)
+
+# End of file

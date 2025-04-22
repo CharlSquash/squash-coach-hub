@@ -27,7 +27,25 @@ DEBUG = True
 
 # coach_project/settings.py
 # Add your computer's actual IP address here
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.3.6'] 
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '192.168.3.6',
+    # '192.168.x.x',
+    # Add the ngrok wildcard domain
+    '.ngrok-free.app', # Or potentially '.ngrok.io' if you get an older URL format
+]
+
+# --- ADD THIS SETTING ---
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    # Add your computer's local IP if needed
+    # 'http://192.168.x.x:8000',
+    # Add the ngrok domain with the HTTPS scheme
+    'https://*.ngrok-free.app', # Or potentially '*.ngrok.io'
+]
+# --- END ADD ---
 
 
 # Application definition
@@ -107,7 +125,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# coach_project/settings.py
+TIME_ZONE = 'Africa/Johannesburg'
 
 USE_I18N = True
 

@@ -6,41 +6,62 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plan: {% if session.school_group %}{{ session.school_group.name }}{% else %}Session{% endif %} {{ session.date }}</title>
     <link rel="stylesheet" href="{% static 'planning/style.css' %}">
-    {# Styles moved to style.css, but added specific button/link styles here #}
+    {# --- SORTABLEJS LIBRARY --- #}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+    {# --- END SORTABLEJS LIBRARY --- #}
     <style>
         /* Style for action buttons */
-        .action-button {
-            font-weight: bold; padding: 8px 12px; border-radius: 4px;
-            text-decoration: none; display: inline-block; margin-right: 10px;
-            margin-bottom: 5px; /* Add margin for stacking on mobile */
-            border: 1px solid transparent; /* Base border */
-            cursor: pointer;
-            text-align: center;
-        }
+        .action-button { font-weight: bold; padding: 8px 12px; border-radius: 4px; text-decoration: none; display: inline-block; margin-right: 10px; margin-bottom: 5px; border: 1px solid transparent; cursor: pointer; text-align: center; }
         .live-view-btn { background-color: #28a745; color: white; border-color: #28a745;}
         .live-view-btn:hover { background-color: #218838; border-color: #1e7e34;}
-        .one-page-btn { background-color: #17a2b8; color: white; border-color: #17a2b8;} /* Teal */
+        .one-page-btn { background-color: #17a2b8; color: white; border-color: #17a2b8;}
         .one-page-btn:hover { background-color: #138496; border-color: #117a8b;}
 
         /* Style for assessment links */
-         .attendee-list li { display: flex; justify-content: space-between; align-items: center; padding: 4px 0;} /* Added padding */
-         .attendee-list .assess-link {
-            font-size: 0.8em; padding: 2px 6px; margin-left: 10px;
-            background-color: #eee; border: 1px solid #ccc; border-radius: 3px;
-            color: #333; text-decoration: none; white-space: nowrap; /* Prevent wrapping */
-         }
+         .attendee-list li { display: flex; justify-content: space-between; align-items: center; padding: 4px 0;}
+         .attendee-list .assess-link { font-size: 0.8em; padding: 2px 6px; margin-left: 10px; background-color: #eee; border: 1px solid #ccc; border-radius: 3px; color: #333; text-decoration: none; white-space: nowrap; }
          .attendee-list .assess-link:hover { background-color: #ddd;}
-         body.dark-mode .attendee-list .assess-link {
-            background-color: var(--court-bg); /* Use a subtle background */
-            border-color: var(--court-border);
-            color: var(--link-color); /* Use link color */
-         }
-         body.dark-mode .attendee-list .assess-link:hover {
-             background-color: var(--activity-bg); /* Slightly different hover */
-             color: var(--link-hover-color);
-         }
-         /* Ensure player link doesn't wrap awkwardly */
+         body.dark-mode .attendee-list .assess-link { background-color: var(--court-bg); border-color: var(--court-border); color: var(--link-color); }
+         body.dark-mode .attendee-list .assess-link:hover { background-color: var(--activity-bg); color: var(--link-hover-color); }
          .attendee-list li > span { flex-grow: 1; margin-right: 10px; }
+
+         /* Style for the warning message */
+        .alert-warning { color: #856404; background-color: #fff3cd; border: 1px solid #ffeeba; padding: 10px 15px; border-radius: 4px; margin-top: 10px; }
+        body.dark-mode .alert-warning { color: #ffeeba; background-color: #3b310a; border-color: #856404; }
+
+        /* --- Styles for Drag and Drop --- */
+        .block-player-groups { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-light); }
+        .court-group-column { flex: 1; min-width: 180px; }
+        .court-group-column strong { display: block; margin-bottom: 5px; font-weight: bold; color: var(--court-header-color); }
+        .player-group-list { min-height: 60px; border: 1px dashed var(--border-color); padding: 8px; border-radius: 4px; background-color: var(--court-bg); list-style: none; margin: 0; }
+        .player-group-list li { cursor: grab; background-color: var(--container-bg); padding: 5px 8px; margin-bottom: 5px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 0.9em; display: block; }
+        .player-group-list li:last-child { margin-bottom: 0; }
+        .player-group-list li:hover { background-color: var(--activity-bg); }
+        .sortable-ghost { opacity: 0.4; background-color: #cce5ff; }
+        .sortable-drag { opacity: 0.9; background-color: #b8daff; }
+        body.dark-mode .player-group-list { border-color: var(--court-border); background-color: var(--court-bg); }
+        body.dark-mode .player-group-list li { background-color: var(--activity-bg); border-color: var(--activity-border); }
+        body.dark-mode .player-group-list li:hover { background-color: var(--court-bg); }
+        body.dark-mode .sortable-ghost { background-color: #004085; }
+        body.dark-mode .sortable-drag { background-color: #0056b3; }
+
+        /* Style for status messages */
+        .status-message { padding: 10px; margin-top: 15px; border-radius: 4px; text-align: center; font-weight: bold; display: none; }
+        .status-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        /* Style for clear button */
+        .clear-assignments-btn {
+            font-size: 0.8em; padding: 2px 6px; margin-left: 10px;
+            background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;
+            border-radius: 3px; cursor: pointer; vertical-align: middle;
+        }
+        .clear-assignments-btn:hover { background-color: #f1c1c1; }
+        body.dark-mode .clear-assignments-btn {
+             background-color: var(--action-del-bg); color: var(--action-del-text); border-color: var(--action-del-border);
+        }
+        body.dark-mode .clear-assignments-btn:hover { background-color: var(--action-del-hover); }
+
 
     </style>
 </head>
@@ -48,24 +69,14 @@
     <div class="container">
 
         <h1>
-            {% if session.school_group %}
-                {{ session.school_group.name }}
-            {% else %}
-                Session Plan
-            {% endif %}
+            {% if session.school_group %}{{ session.school_group.name }}{% else %}Session Plan{% endif %}
             : {{ session.date|date:"D, d M Y" }} at {{ session.start_time|time:"H:i" }}
         </h1>
 
         {# --- Action Buttons --- #}
         <div style="margin-top: 10px; margin-bottom: 20px;">
-            <a href="{% url 'planning:live_session' session.id %}" class="action-button live-view-btn">
-                Go to Live Session View
-            </a>
-            {# --- NEW BUTTON ADDED --- #}
-            <a href="{% url 'planning:one_page_plan' session.id %}" class="action-button one-page-btn" target="_blank">
-                View One-Page Plan
-            </a>
-            {# --- END NEW BUTTON --- #}
+            <a href="{% url 'planning:live_session' session.id %}" class="action-button live-view-btn">Go to Live Session View</a>
+            <a href="{% url 'planning:one_page_plan' session.id %}" class="action-button one-page-btn" target="_blank">View One-Page Plan</a>
         </div>
 
         <div class="session-info">
@@ -85,12 +96,8 @@
                         <ul class="attendee-list">
                             {% for player in current_attendees %}
                                 <li>
-                                    <span> {# Wrap player name link #}
-                                        <a href="{% url 'planning:player_profile' player.id %}">{{ player.full_name }}</a>
-                                    </span>
-                                    <a href="{% url 'planning:assess_player_session' session.id player.id %}" class="assess-link">
-                                        Assess
-                                    </a>
+                                    <span><a href="{% url 'planning:player_profile' player.id %}">{{ player.full_name }}</a></span>
+                                    <a href="{% url 'planning:assess_player_session' session.id player.id %}" class="assess-link">Assess</a>
                                 </li>
                             {% empty %}
                                 <li>No players marked as attending yet.</li>
@@ -98,47 +105,59 @@
                         </ul>
                     </div>
                     <form method="post" class="attendance-form attendance-update-form">
-                         {% csrf_token %}
+                         {% csrf_token %} {# Important for form submission #}
                          <p><strong>Update Attendance (Select from {{ session.school_group.name }}):</strong></p>
                          {{ attendance_form.attendees.errors }}
-                         {{ attendance_form.attendees }} {# Renders checkboxes #}
+                         {{ attendance_form.attendees }}
                          <br>
                          <button type="submit" name="update_attendance" style="margin-top:10px; background-color:#ffc107; color:#333; padding: 6px 10px; border: 1px solid #c69500; border-radius: 4px; cursor:pointer;">Update Attendance</button>
                     </form>
                 </div>
             {% else %}
-                <p class="alert-warning" style="color: #856404; background-color: #fff3cd; border: 1px solid #ffeeba; padding: 10px; border-radius: 4px;">
-                    Please assign a School Group to this session via the admin interface to manage attendance and player groups.
-                </p>
+                <p class="alert-warning"><strong>No School Group assigned!</strong> Please assign a School Group to this session via the admin interface to manage attendance and player groups.</p>
             {% endif %}
         </div>
 
-        {# --- Player Group Assignments (Per Block) --- #}
+        {# --- Player Group Assignments (Per Block - WITH DRAG & DROP) --- #}
         {% if session.school_group %}
         <div class="grouping-section">
-            <h2>Player Group Assignments (Per Block)</h2>
+            <h2>Player Group Assignments (Per Block) - Drag to Adjust</h2>
+            {# Add a div for status messages #}
+            <div id="assignment-status" class="status-message"></div>
+
             {% if block_data %}
-                 <div> {# Removed inline style #}
+                 <div>
                      {% for data_item in block_data %}
-                        {% with block=data_item.block assignments=data_item.assignments %}
-                            <h5>Block: {{ block.block_start_datetime|time:"H:i" }} - {{ block.block_end_datetime|time:"H:i" }} ({{ block.number_of_courts }} Court{{ block.number_of_courts|pluralize }})</h5>
+                        {% with block=data_item.block assignments=data_item.assignments has_manual=data_item.has_manual %} {# Get has_manual flag #}
+                            <h5>
+                                Block: {{ block.block_start_datetime|time:"H:i" }} - {{ block.block_end_datetime|time:"H:i" }} ({{ block.number_of_courts }} Court{{ block.number_of_courts|pluralize }})
+                                {# --- Add Clear Button if manual assignments exist --- #}
+                                {% if has_manual %}
+                                    <button class="clear-assignments-btn" data-block-id="{{ block.id }}">
+                                        Use Auto Grouping
+                                    </button>
+                                {% endif %}
+                                {# --- End Clear Button --- #}
+                            </h5>
                             {% if assignments %}
-                            <div class="block-player-groups">
+                            <div class="block-player-groups" data-block-id="{{ block.id }}">
                                 {% for court_num, players in assignments.items|dictsort:0 %}
-                                    <div>
+                                    <div class="court-group-column">
                                         <strong>Court {{ court_num }}:</strong>
-                                        <ul class="group-list">
+                                        <ul class="group-list player-group-list" data-court-id="{{ court_num }}">
                                             {% for player in players %}
-                                                <li> <a href="{% url 'planning:player_profile' player.id %}">{{ player.full_name }}</a> </li>
+                                                <li data-player-id="{{ player.id }}">
+                                                    <a href="{% url 'planning:player_profile' player.id %}">{{ player.full_name }}</a>
+                                                </li>
                                             {% empty %}
-                                                <li>--</li>
+                                                {# Empty list acts as a drop target #}
                                             {% endfor %}
                                         </ul>
                                     </div>
                                 {% endfor %}
                             </div>
                             {% elif current_attendees %}
-                                <p style="font-style: italic; font-size: 0.9em;">(No groups assigned for this block?)</p> {# Clarified message #}
+                                <p style="font-style: italic; font-size: 0.9em;">(No groups assigned for this block?)</p>
                             {% endif %}
                         {% endwith %}
                      {% endfor %}
@@ -154,7 +173,7 @@
         {# --- Activity Plan Details --- #}
         <h2>Activity Plan Details</h2>
         <div class="timeline-container">
-             {% if block_data %} {# Use block_data to check if blocks exist #}
+             {% if block_data %}
                 {% for data_item in block_data %}
                     {% with block=data_item.block %}
                     <div class="time-block">
@@ -165,23 +184,14 @@
                                 <div class="court-column">
                                     <strong>Court {{ court_display_num }} Activities:</strong>
                                     <ul>
-                                        {# Loop through activities and display if match block/court #}
                                         {% for activity in activities %}
                                             {% if activity.time_block.id == block.id and activity.court_number == court_display_num %}
                                                 <li class="activity-item">
-                                                    <span>
-                                                        - {% if activity.drill %}{{ activity.drill.name }}{% else %}{{ activity.custom_activity_name }}{% endif %}
-                                                        ({{ activity.duration_minutes }} min)
-                                                        {% if activity.lead_coach %} [{{ activity.lead_coach.name }}]{% endif %}
-                                                    </span>
-                                                    <span class="activity-actions">
-                                                        <a href="{% url 'planning:edit_activity' activity.id %}" class="edit-link">Edit</a>
-                                                        <a href="{% url 'planning:delete_activity' activity.id %}" class="delete-link">Del</a>
-                                                    </span>
+                                                    <span>- {% if activity.drill %}{{ activity.drill.name }}{% else %}{{ activity.custom_activity_name }}{% endif %} ({{ activity.duration_minutes }} min){% if activity.lead_coach %} [{{ activity.lead_coach.name }}]{% endif %}</span>
+                                                    <span class="activity-actions"><a href="{% url 'planning:edit_activity' activity.id %}" class="edit-link">Edit</a> <a href="{% url 'planning:delete_activity' activity.id %}" class="delete-link">Del</a></span>
                                                 </li>
                                             {% endif %}
                                         {% endfor %}
-                                        {# Removed the invalid check for empty activities #}
                                     </ul>
                                      <a href="{% url 'planning:add_activity' block.id court_display_num %}" class="add-link"> + Add Activity </a>
                                 </div>
@@ -200,5 +210,155 @@
         <p><a href="{% url 'planning:session_list' %}" class="back-link">Back to Session List</a></p>
 
     </div> {# End container #}
+
+    {# --- Initialize SortableJS & API Calls --- #}
+    <script>
+        // Function to get CSRF token from cookies
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+
+        // API URLs
+        const updateApiUrl = "{% url 'planning:update_manual_assignment_api' %}";
+        // Base URL for clearing, block ID will be appended
+        const clearApiUrlBase = "/planning/api/clear_block_assignments/"; // Adjust if your app URL prefix changes
+
+        const statusDiv = document.getElementById('assignment-status');
+
+        // Function to show status message
+        function showStatusMessage(message, isError = false) {
+            if (!statusDiv) return;
+            statusDiv.textContent = message;
+            statusDiv.className = isError ? 'status-message status-error' : 'status-message status-success';
+            statusDiv.style.display = 'block';
+            setTimeout(() => { statusDiv.style.display = 'none'; }, 4000);
+        }
+
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize Drag and Drop
+            const blockContainers = document.querySelectorAll('.block-player-groups');
+            blockContainers.forEach(container => {
+                const blockId = container.dataset.blockId;
+                const courtLists = container.querySelectorAll('.player-group-list');
+
+                courtLists.forEach(list => {
+                    new Sortable(list, {
+                        group: `block-${blockId}`,
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        dragClass: 'sortable-drag',
+                        onEnd: function (evt) {
+                            const itemEl = evt.item;
+                            const toList = evt.to;
+                            const fromList = evt.from;
+
+                            if (toList && fromList && toList !== fromList) {
+                                const playerId = itemEl.dataset.playerId;
+                                const newCourtId = toList.dataset.courtId;
+                                const currentBlockId = itemEl.closest('.block-player-groups')?.dataset.blockId;
+
+                                if (!playerId || !newCourtId || !currentBlockId) {
+                                    console.error("Missing data for API call:", {playerId, newCourtId, currentBlockId});
+                                    showStatusMessage("Error: Could not get data to save.", true);
+                                    return;
+                                }
+
+                                const dataToSend = {
+                                    player_id: playerId,
+                                    time_block_id: currentBlockId,
+                                    court_number: newCourtId
+                                };
+
+                                fetch(updateApiUrl, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+                                    body: JSON.stringify(dataToSend)
+                                })
+                                .then(response => {
+                                    if (!response.ok) {
+                                        return response.json().then(errData => { throw new Error(errData.message || `HTTP error! Status: ${response.status}`); })
+                                                 .catch(() => { throw new Error(`HTTP error! Status: ${response.status}`); });
+                                    }
+                                    return response.json();
+                                })
+                                .then(data => {
+                                    console.log('Success:', data);
+                                    showStatusMessage(data.message || 'Assignment saved!', false);
+                                    // Reloading is the simplest way to show the change persists
+                                    // Consider adding the 'Clear' button dynamically if needed
+                                    // Or simply inform user reload is needed to see permanent change reflected everywhere
+                                    // For now, we rely on the view logic to show manual on next load.
+                                })
+                                .catch((error) => {
+                                    console.error('Error saving assignment:', error);
+                                    showStatusMessage(`Error: ${error.message}`, true);
+                                    // Revert visual move would go here if desired
+                                });
+                            }
+                        } // End onEnd
+                    }); // End new Sortable
+                }); // End courtLists.forEach
+            }); // End blockContainers.forEach
+
+            // --- Add Event Listeners for Clear Buttons ---
+            const clearButtons = document.querySelectorAll('.clear-assignments-btn');
+            clearButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const blockId = this.dataset.blockId;
+                    if (!blockId) {
+                        showStatusMessage("Error: Could not identify block to clear.", true);
+                        return;
+                    }
+                    if (!confirm("Are you sure you want to clear manual assignments for this block and revert to automatic grouping?")) {
+                        return; // User cancelled
+                    }
+
+                    const clearUrl = `${clearApiUrlBase}${blockId}/`; // Construct the specific URL
+
+                    fetch(clearUrl, {
+                        method: 'POST', // Use POST for actions that modify data
+                        headers: {
+                            'X-CSRFToken': csrftoken,
+                            'Content-Type': 'application/json' // Optional, but good practice
+                        },
+                        // No body needed for this simple clear action
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                             return response.json().then(errData => { throw new Error(errData.message || `HTTP error! Status: ${response.status}`); })
+                                      .catch(() => { throw new Error(`HTTP error! Status: ${response.status}`); });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Clear Success:', data);
+                        showStatusMessage(data.message || 'Manual assignments cleared.', false);
+                        // Reload the page to show the automatic assignments
+                        window.location.reload();
+                    })
+                    .catch(error => {
+                        console.error('Error clearing assignments:', error);
+                        showStatusMessage(`Error: ${error.message}`, true);
+                    });
+                });
+            }); // End clearButtons.forEach
+
+        }); // End DOMContentLoaded
+    </script>
+    {# --- END JavaScript --- #}
+
 </body>
 </html>

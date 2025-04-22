@@ -1,149 +1,264 @@
 <!DOCTYPE html>
-{% load static %}
+{% load static tz %} {# Ensure 'tz' is loaded #}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live: {% if session.school_group %}{{ session.school_group.name }}{% else %}Session{% endif %} {{ session.date }}</title>
+    <title>Live Session: {% if session.school_group %}{{ session.school_group.name }}{% endif %} {{ session.date }}</title>
     <link rel="stylesheet" href="{% static 'planning/style.css' %}">
+    {# Add Tone.js CDN if you want sound later #}
+    {# <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script> #}
     <style>
-        /* Styles from previous steps... */
-        body { background-color: #e9ecef; font-size: 16px; }
-        .live-container { max-width: 95%; margin: 15px auto; }
-        .live-block { background-color: #fff; border: 2px solid #007bff; border-radius: 8px; padding: 20px; margin-bottom: 30px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .live-block.next { border-color: #fd S17e; background-color: #fff S1e5; }
-        .live-block.current h2 { color: #007bff; } .live-block.next h2 { color: #dda S100; }
-        .live-block h2 { font-size: 1.8em; border: none; margin: 0 0 15px 0;}
-        .live-courts-container { display: flex; gap: 25px; margin-top: 15px; flex-wrap: wrap; }
-        .live-court-column { background-color: #f S1f S1f S1; border: 1px solid #dee S1e6; padding: 15px; border-radius: 5px; flex: 1; min-width: 280px; }
-        .live-court-column h4 { font-size: 1.3em; color: #495057; border-bottom: 1px solid #eee; padding-bottom: 5px; margin: 0 0 10px 0;}
-        .player-list, .activity-list { padding-left: 5px; margin-bottom: 15px;}
-        .player-list li, .activity-list li { font-size: 1.1em; margin-bottom: 8px; }
-        .activity-list li { background-color: #e S1f S1f3; padding: 6px 10px; border-radius: 4px; border: 1px solid #cfe2ff;}
-        .no-data { font-style: italic; color: #6c757d; }
-        .time-info { font-size: 1.1em; font-weight: bold; margin-bottom: 10px; color: #5a6268; } /* Reduced margin */
-        .simulated-note { color: #dc3545; font-weight: bold; background-color: #f8d7da; padding: 5px; border-radius: 3px; display:inline-block; margin-left: 10px;}
-        /* Styles for the simulation form */
-        .sim-form { background-color: #f S1f S1f S1; padding: 15px; border-radius: 5px; border: 1px solid #ccc; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;}
-        .sim-form label { font-weight: bold; margin-right: 5px;}
-        .sim-form input[type="datetime-local"] { padding: 5px; border: 1px solid #ccc; border-radius: 3px;}
-        .sim-form button { padding: 5px 10px; font-size: 0.9em; background-color: #6c757d; }
-        .sim-form button:hover { background-color: #5a6268;}
-        .sim-form a { font-size: 0.9em; }
-
-        /* Hide elements not needed in live view */
-        .add-link, .edit-link, .delete-link, .activity-actions { display: none !important; }
+        /* Add specific styles if needed */
+        .rotation-alert-info {
+            font-weight: bold;
+            color: #dc3545; /* Red color for alert */
+            margin-left: 15px;
+            font-size: 1.1em;
+        }
+        body.dark-mode .rotation-alert-info {
+            color: #f1a1b1; /* Lighter red for dark mode */
+        }
+        .time-info {
+            margin-bottom: 15px; /* Add some space below time info */
+        }
+        /* Ensure activity list shows something if empty after filtering */
+        .activity-list:empty::after {
+            content: "(No activities planned)";
+            font-style: italic;
+            color: var(--subheading-color, #666);
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
-<div class="live-container">
-    <h1>Live Session View: {% if session.school_group %}{{ session.school_group.name }}{% else %}Session{% endif %} - {{ session.date|date:"D, d M Y" }}</h1>
+    {# Add hidden spans to pass data to JavaScript #}
+    <span id="is-simulated" data-is-simulated="{{ is_simulated|yesno:'true,false' }}" style="display: none;"></span>
+    <span id="effective-time-iso" data-effective-time-iso="{{ effective_time_iso }}" style="display: none;"></span>
+    <span id="next-rotation-time-iso" data-next-rotation-time-iso="{{ next_rotation_time_iso|default_if_none:'' }}" style="display: none;"></span>
 
-    {# --- SIMULATION FORM --- #}
-    <div class="sim-form">
-        <form method="get" action="" style="display: contents;"> {# Use GET to submit to current URL #}
-            <label for="sim_time_input">Simulate Time:</label>
-            {# Value format MUST be YYYY-MM-DDTHH:MM #}
-            <input type="datetime-local" id="sim_time_input" name="sim_time"
-                   value="{{ sim_time_value }}"> {# Use formatted value from view #}
-            <button type="submit">Set Time</button>
-        </form>
-        {# Link to clear the sim_time parameter and use real time #}
-        <a href="{% url 'planning:live_session' session.id %}">Use Real Time</a>
-    </div>
-    {# --- END SIMULATION FORM --- #}
+    <div class="container">
+        <h1>
+            Live Session: {% if session.school_group %}{{ session.school_group.name }}{% endif %}
+            ({{ session.date|date:"D, d M Y" }})
+        </h1>
 
-    <p class="time-info">
-        Effective Time: {{ effective_time|time:"H:i:s" }}
-        {% if is_simulated %}
-            <span class="simulated-note">(Simulated)</span>
-        {% endif %}
-    </p>
+        {# --- Time Simulation Controls --- #}
+        <div class="sim-form">
+            <form method="get" action="">
+                <label for="sim_time">Simulate Time:</label>
+                {# Use the pre-formatted LOCAL time value for the input #}
+                <input type="datetime-local" id="sim_time" name="sim_time" value="{{ sim_time_input_value }}">
+                <button type="submit">Set Time</button>
+                 {# Link to clear the sim_time parameter #}
+                <a href="{% url 'planning:live_session' session.id %}">Use Real Time</a>
+            </form>
+        </div>
 
+        {# --- Current Effective Time Display --- #}
+        <p class="time-info">
+            {# Display the LOCAL effective time using the 'localtime' filter or pre-converted variable #}
+            Current Effective Time: {{ display_effective_time|date:"H:i:s" }} {{ display_effective_time|date:"e" }} {# 'e' shows timezone name like SAST if available #}
+            {% if is_simulated %}
+                <span class="simulated-note"> (Simulated)</span>
+            {% endif %}
+            {# --- Display Next Rotation Time --- #}
+            {% if display_next_rotation_time %} {# Check the localized datetime object passed from view #}
+                <span class="rotation-alert-info">
+                     Next Rotation At: {{ display_next_rotation_time|time:"H:i" }} {# Use standard time filter #}
+                </span>
+            {% elif current_block_data and current_block_data.block.rotation_interval_minutes %}
+                 <span class="rotation-alert-info">(No further rotations in this block)</span>
+            {% endif %}
+            {# --- End Display Next Rotation Time --- #}
+        </p>
+        <hr>
 
-    {# --- Display Current Block --- #}
-    {% if current_block_data %}
-        {% with block=current_block_data.block assignments=current_block_data.assignments block_activities=current_block_data.block_activities %}
+        {# --- Current/Next Block Display --- #}
+        {% if current_block_data %}
             <div class="live-block current">
-                <h2>Now: {{ block.block_start_datetime|time:"H:i" }} - {{ block.block_end_datetime|time:"H:i" }} ({{ block.duration_minutes }} min) {% if block.block_focus %}- {{ block.block_focus }}{% endif %}</h2>
+                <h2>Current Block: {{ current_block_data.block.block_start_datetime|localtime|time:"H:i" }} - {{ current_block_data.block.block_end_datetime|localtime|time:"H:i" }}</h2>
+                 {% if current_block_data.block.block_focus %} <p><strong>Focus:</strong> {{ current_block_data.block.block_focus }}</p> {% endif %}
+                 {% if current_block_data.block.rotation_interval_minutes %} <p><strong>Rotation Interval:</strong> {{ current_block_data.block.rotation_interval_minutes }} minutes</p> {% endif %}
                 <div class="live-courts-container">
-                    {% for court_num, players in assignments.items|dictsort:0 %}
+                    {% for court_num, players in current_block_data.assignments.items|dictsort:0 %}
                         <div class="live-court-column">
                             <h4>Court {{ court_num }}</h4>
                             <strong>Players:</strong>
                             <ul class="player-list">
-                                {% for player in players %}<li>{{ player.full_name }}</li>{% empty %}<li>--</li>{% endfor %}
+                                {% for player in players %}
+                                    <li><a href="{% url 'planning:player_profile' player.id %}">{{ player.full_name }}</a></li>
+                                {% empty %}
+                                    <li>--</li>
+                                {% endfor %}
                             </ul>
-                            <strong>Activities Now:</strong>
+                            <strong>Activities:</strong>
                             <ul class="activity-list">
-                                {% for activity in block_activities %}
-                                    {% if activity.court_number == court_num %}
+                                {# Loop through activities and display if they match #}
+                                {% for activity in current_block_data.block_activities %}
+                                     {% if activity.court_number == court_num %}
                                         <li>
                                             {% if activity.drill %}{{ activity.drill.name }}{% else %}{{ activity.custom_activity_name }}{% endif %}
                                             ({{ activity.duration_minutes }} min)
-                                            {% if activity.lead_coach %} [{{ activity.lead_coach.name }}] {% endif %}
+                                            {% if activity.lead_coach %} [{{ activity.lead_coach.name }}]{% endif %}
                                         </li>
-                                    {% endif %}
-                                {% empty %}
-                                    <li class="no-data">No activities planned.</li>
+                                     {% endif %}
                                 {% endfor %}
+                                {# Removed invalid filter/set block. Empty list handled by CSS :empty selector #}
                             </ul>
                         </div>
                     {% empty %}
-                        <p class="no-data">No courts defined for this block.</p>
+                         <p class="no-data-msg" style="grid-column: 1 / -1;">No courts defined or players assigned for this block.</p> {# Span full width #}
                     {% endfor %}
                 </div>
             </div>
-        {% endwith %}
-    {% else %}
-        <div class="live-block">
-            <h2>Session Not Started or Already Finished</h2>
-            <p>(Effective time: {{ effective_time|time:"H:i:s" }})</p>
-        </div>
-    {% endif %}
+        {% endif %}
 
-     {# --- Display Next Block --- #}
-    {% if next_block_data %}
-        {% with block=next_block_data.block assignments=next_block_data.assignments block_activities=next_block_data.block_activities %}
+        {% if next_block_data %}
              <div class="live-block next">
-                <h2>Next: {{ block.block_start_datetime|time:"H:i" }} - {{ block.block_end_datetime|time:"H:i" }} ({{ block.duration_minutes }} min) {% if block.block_focus %}- {{ block.block_focus }}{% endif %}</h2>
-                 <div class="live-courts-container">
-                     {% for court_num, players in assignments.items|dictsort:0 %}
-                         <div class="live-court-column">
-                             <h4>Court {{ court_num }}</h4>
-                             <strong>Players:</strong>
-                             <ul class="player-list">
-                                 {% for player in players %}<li>{{ player.full_name }}</li>{% empty %}<li>--</li>{% endfor %}
-                             </ul>
-                              <strong>Activities Next:</strong>
-                             <ul class="activity-list">
-                                 {% for activity in block_activities %}
+                <h2>Next Block: {{ next_block_data.block.block_start_datetime|localtime|time:"H:i" }} - {{ next_block_data.block.block_end_datetime|localtime|time:"H:i" }}</h2>
+                 {% if next_block_data.block.block_focus %} <p><strong>Focus:</strong> {{ next_block_data.block.block_focus }}</p> {% endif %}
+                 <p style="font-style:italic;">(Assignments below show initial placement for the next block)</p>
+                <div class="live-courts-container">
+                     {% for court_num, players in next_block_data.assignments.items|dictsort:0 %}
+                        <div class="live-court-column">
+                            <h4>Court {{ court_num }}</h4>
+                            <strong>Players:</strong>
+                            <ul class="player-list">
+                                {% for player in players %}
+                                    <li><a href="{% url 'planning:player_profile' player.id %}">{{ player.full_name }}</a></li>
+                                {% empty %}
+                                    <li>--</li>
+                                {% endfor %}
+                            </ul>
+                            <strong>Activities:</strong>
+                            <ul class="activity-list">
+                                {# Loop through activities and display if they match #}
+                                {% for activity in next_block_data.block_activities %}
                                      {% if activity.court_number == court_num %}
-                                         <li>
-                                             {% if activity.drill %}{{ activity.drill.name }}{% else %}{{ activity.custom_activity_name }}{% endif %}
-                                             ({{ activity.duration_minutes }} min)
-                                             {% if activity.lead_coach %} [{{ activity.lead_coach.name }}] {% endif %}
-                                         </li>
+                                        <li>
+                                            {% if activity.drill %}{{ activity.drill.name }}{% else %}{{ activity.custom_activity_name }}{% endif %}
+                                            ({{ activity.duration_minutes }} min)
+                                            {% if activity.lead_coach %} [{{ activity.lead_coach.name }}]{% endif %}
+                                        </li>
                                      {% endif %}
-                                 {% empty %}
-                                     <li class="no-data">No activities planned.</li>
-                                 {% endfor %}
-                             </ul>
-                         </div>
-                     {% empty %}
-                        <p class="no-data">No courts defined for this block.</p>
-                     {% endfor %}
+                                {% endfor %}
+                                {# Removed invalid filter/set block. Empty list handled by CSS :empty selector #}
+                            </ul>
+                        </div>
+                    {% empty %}
+                         <p class="no-data-msg" style="grid-column: 1 / -1;">No courts defined or players assigned for the next block.</p> {# Span full width #}
+                    {% endfor %}
                 </div>
-             </div>
-         {% endwith %}
-    {% elif current_block_data %}
-        <div class="live-block next">
-             <h2>End of Session</h2>
-        </div>
-    {% endif %}
+            </div>
+        {% endif %}
 
-    <p style="margin-top: 30px;"><a href="{% url 'planning:session_detail' session.id %}">View/Edit Full Plan</a></p>
+        {% if not current_block_data and not next_block_data %}
+            <p>Session has ended or not started yet according to the effective time.</p>
+        {% endif %}
 
-</div> {# End live-container #}
+         <hr>
+        <p><a href="{% url 'planning:session_detail' session.id %}" class="back-link">Back to Full Session Plan</a></p>
+
+    </div> {# End container #}
+
+    {# --- Rotation Alert JavaScript --- #}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const isSimulatedElement = document.getElementById('is-simulated');
+            const effectiveTimeElement = document.getElementById('effective-time-iso');
+            const nextRotationElement = document.getElementById('next-rotation-time-iso');
+
+            // Ensure elements exist before proceeding
+            if (!isSimulatedElement || !effectiveTimeElement || !nextRotationElement) {
+                console.error("Required time elements not found for rotation alert.");
+                return;
+            }
+
+            const isSimulated = isSimulatedElement.dataset.isSimulated === 'true';
+            const effectiveTimeISO = effectiveTimeElement.dataset.effectiveTimeIso;
+            const nextRotationISO = nextRotationElement.dataset.nextRotationTimeIso;
+
+            // Flag to prevent multiple alerts for the same rotation time
+            // Use sessionStorage to persist flag across page reloads caused by simulation form
+            let alertShownForThisTimestamp = sessionStorage.getItem('alertShownFor_' + nextRotationISO);
+
+            // Only proceed if there's a next rotation time calculated
+            if (nextRotationISO) {
+                const nextRotationTimestamp = Date.parse(nextRotationISO); // Get timestamp (milliseconds since epoch, UTC)
+
+                if (isNaN(nextRotationTimestamp)) {
+                     console.error("Could not parse next rotation time:", nextRotationISO);
+                     return;
+                }
+
+                const checkRotation = () => {
+                    // Re-check flag in case it was set by another check
+                    alertShownForThisTimestamp = sessionStorage.getItem('alertShownFor_' + nextRotationISO);
+                    if (alertShownForThisTimestamp === 'true') {
+                        // If flag is set, clear interval if it exists and stop
+                        if (rotationCheckInterval) clearInterval(rotationCheckInterval);
+                        return;
+                    }
+
+                    let currentTimestamp;
+                    if (isSimulated) {
+                        // For simulation, use the fixed effective time passed from the view
+                        currentTimestamp = Date.parse(effectiveTimeISO);
+                         if (isNaN(currentTimestamp)) {
+                             console.error("Could not parse simulated effective time:", effectiveTimeISO);
+                             if (rotationCheckInterval) clearInterval(rotationCheckInterval); // Stop checking if time is bad
+                             return;
+                         }
+                    } else {
+                        // For real time, use the browser's current time
+                        currentTimestamp = Date.now();
+                    }
+
+                    // Check if current time has reached or passed the next rotation time
+                    if (currentTimestamp >= nextRotationTimestamp) {
+                        console.log("Rotation time reached!");
+                        // --- Trigger Alert ---
+                        alert("Time to rotate courts!");
+                        // --- Optional: Add sound here later using Tone.js ---
+                        // const synth = new Tone.Synth().toDestination();
+                        // synth.triggerAttackRelease("C5", "8n"); // Example sound
+
+                        // Set flag in sessionStorage to persist across reloads
+                        sessionStorage.setItem('alertShownFor_' + nextRotationISO, 'true');
+                        alertShownForThisRotation = 'true'; // Update local flag too
+
+                        // Clear the interval if it exists
+                        if (rotationCheckInterval) {
+                             clearInterval(rotationCheckInterval);
+                             console.log("Rotation alert shown, interval cleared.");
+                        }
+                    }
+                };
+
+                // --- Set up checking ---
+                let rotationCheckInterval = null;
+                if (isSimulated) {
+                    // If simulated, check only once on load
+                    checkRotation();
+                } else {
+                    // If real-time, check periodically (e.g., every 5 seconds)
+                    // Check immediately first
+                    checkRotation();
+                    // Then check every 5 seconds ONLY if alert hasn't been shown
+                    if (alertShownForThisTimestamp !== 'true') {
+                        rotationCheckInterval = setInterval(checkRotation, 5000); // Check every 5000ms (5 seconds)
+                        console.log("Rotation check interval started.");
+                    } else {
+                         console.log("Rotation alert already shown for this time, not starting interval.");
+                    }
+                }
+            } else {
+                 console.log("No upcoming rotation time found for the current block.");
+            }
+        });
+    </script>
+    {# --- END Rotation Alert JavaScript --- #}
+
 </body>
 </html>
