@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent.parent # Adjust if needed
+BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(os.path.join(BASE_DIR, '.env')) # <-- Add this line
 
 
@@ -23,12 +23,24 @@ load_dotenv(os.path.join(BASE_DIR, '.env')) # <-- Add this line
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
+# SECURITY WARNING: don't run with debug turned on in production!
+
 # coach_project/settings.py
-# Add your computer's actual IP address here
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
+# Add your computer's actual IP address
+ALLOWED_HOSTS = ['CharlSquash.pythonanywhere.com']
+
+# --- ADD THIS SETTING ---
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    # Add your computer's local IP if needed
+    # 'http://192.168.x.x:8000',
+    # Add the ngrok domain with the HTTPS scheme
+    'https://*.ngrok-free.app', # Or potentially '*.ngrok.io'
+]
+# --- END ADD ---
 
 
 # Application definition
@@ -108,7 +120,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# coach_project/settings.py
+TIME_ZONE = 'Africa/Johannesburg'
 
 USE_I18N = True
 
@@ -121,14 +134,18 @@ USE_TZ = True
 # coach_project/settings.py
 # ... (other settings) ...
 
-# Static files (STATIC_URL, STATICFILES_DIRS, etc. - already there)
+# Static files (STATIC_URL, STATICFILES_DIRS, etc. - already the
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = '/home/CharlSquash/squash_coach_app/staticfiles'
+STATIC_URL = '/static/'
 # Add STATIC_ROOT if preparing for production later, e.g.
 # STATIC_ROOT = BASE_DIR / 'staticfiles_prod'
 
 # --- Add these lines for Media files ---
+MEDIA_ROOT = '/home/CharlSquash/squash_coach_app/mediafiles'
 MEDIA_URL = '/media/'
+
 MEDIA_ROOT = os.path.join(BASE_DIR, 'mediafiles')
 
 # Default primary key field type
