@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('planning', '0010_alter_activityassignment_options_and_more'),
+        ('planning', '0009_merge_20250423_0827'),
     ]
 
     operations = [
