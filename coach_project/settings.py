@@ -12,40 +12,41 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv()
+# Load environment variables from .env file in the base directory
+load_dotenv(os.path.join(BASE_DIR, '.env')) 
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY')
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+# Get SECRET_KEY from environment variables
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-fallback-key-if-not-set') # Added fallback for safety
 
+# SECURITY WARNING: don't run with debug turned on in production!
+# Get DEBUG from environment variable, default to False if not set. 
+# Ensure your local .env file sets DEBUG=True
+DEBUG = os.environ.get('DEBUG', 'False') == 'True' 
 
-# coach_project/settings.py
-# Add your computer's actual IP address here
+# Define ALLOWED_HOSTS. Add any other hosts needed for local testing (e.g. ngrok)
+# Ideally, the production domain ('CharlSquash.pythonanywhere.com') is added via environment variable 
+# or a separate production settings file, not hardcoded here. Keeping it for now based on previous state.
 ALLOWED_HOSTS = [
-    'localhost',
     '127.0.0.1',
-    '192.168.3.6',
-    # '192.168.x.x',
-    # Add the ngrok wildcard domain
-    '.ngrok-free.app', # Or potentially '.ngrok.io' if you get an older URL format
-    'CharlSquash.pythonanywhere.com',
+    'localhost',
+    'CharlSquash.pythonanywhere.com', 
 ]
 
-# --- ADD THIS SETTING ---
+# Define CSRF_TRUSTED_ORIGINS for secure POST requests
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
-    # Add your computer's local IP if needed
-    # 'http://192.168.x.x:8000',
-    # Add the ngrok domain with the HTTPS scheme
-    'https://*.ngrok-free.app', # Or potentially '*.ngrok.io'
+    'https://*.ngrok-free.app', # If using ngrok (use correct ngrok domain if different)
+    'https://CharlSquash.pythonanywhere.com', # Production domain (HTTPS)
 ]
-# --- END ADD ---
 
 
 # Application definition
@@ -57,7 +58,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'planning.apps.PlanningConfig',
+    'planning.apps.PlanningConfig', # Your app
 ]
 
 MIDDLEWARE = [
@@ -75,10 +76,11 @@ ROOT_URLCONF = 'coach_project.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
+        'DIRS': [], # No project-level templates directory defined
+        'APP_DIRS': True, # Looks for templates inside apps' 'templates' folders
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug', # Often useful for debugging
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -92,7 +94,8 @@ WSGI_APPLICATION = 'coach_project.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
+# This uses SQLite locally. Production (PythonAnywhere) likely uses MySQL or PostgreSQL,
+# which should ideally be configured via environment variables or separate settings.
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -105,18 +108,10 @@ DATABASES = {
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',},
 ]
 
 
@@ -124,31 +119,39 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
-
-# coach_project/settings.py
-TIME_ZONE = 'Africa/Johannesburg'
-
+TIME_ZONE = 'Africa/Johannesburg' # Your specified timezone
 USE_I18N = True
-
-USE_TZ = True
+USE_TZ = True # Important for timezone-aware datetimes
 
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-# coach_project/settings.py
-# ... (other settings) ...
+STATIC_URL = '/static/' # URL prefix for static files
 
-# Static files (STATIC_URL, STATICFILES_DIRS, etc. - already there)
-STATIC_ROOT = '/home/CharlSquash/squash-coach-hub/staticfiles/' # Use correct project name
-STATIC_URL = '/static/'
-# Add STATIC_ROOT if preparing for production later, e.g.
-# STATIC_ROOT = BASE_DIR / 'staticfiles_prod'
+# STATIC_ROOT is the directory where `collectstatic` will gather all static files.
+# It's primarily used for PRODUCTION deployment. Not usually needed for local dev server.
+# Ensure the path below matches your PythonAnywhere setup in the Web tab -> Static Files section.
+# Using the confirmed project name 'squash-coach-hub'. Comment out locally if not needed.
+# STATIC_ROOT = '/home/CharlSquash/squash-coach-hub/staticfiles/'
 
-# --- Add these lines for Media files ---
-MEDIA_ROOT = BASE_DIR / 'mediafiles/' # Works locally if 'mediafiles' exists at project root
-# For PA, ensure the Web Tab mapping points to /home/CharlSquash/squash-coach-hub/mediafiles/
-MEDIA_URL = '/media/'
+# Optional: Define a directory for local static files if needed (if you have project-level static files)
+# STATICFILES_DIRS = [ BASE_DIR / "static" ]
+
+
+# Media files (User Uploads like profile pictures)
+# https://docs.djangoproject.com/en/5.2/topics/files/
+
+MEDIA_URL = '/media/' # URL prefix for user-uploaded files
+
+# MEDIA_ROOT is the absolute filesystem path to the directory for user-uploaded files.
+# This path is for LOCAL development.
+MEDIA_ROOT = BASE_DIR / 'mediafiles/' 
+# --- IMPORTANT FOR PYTHONANYWHERE ---
+# Ensure you have a mapping on the PA Web Tab -> Static Files section:
+# URL: /media/  (Matches MEDIA_URL)
+# Directory: /home/CharlSquash/squash-coach-hub/mediafiles/ (Matches your project structure on PA)
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
