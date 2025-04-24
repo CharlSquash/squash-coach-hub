@@ -16,4 +16,5 @@ urlpatterns = [
 
 # --- Add this block for serving media files during development ---
 if settings.DEBUG:
+    print(f"DEBUG Status Check: {settings.DEBUG}")
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

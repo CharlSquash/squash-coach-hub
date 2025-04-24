@@ -51,7 +51,13 @@
             padding-bottom: 10px;
             margin-bottom: 15px;
             margin-top: 0;
+            display: flex; /* Align icon and text in heading */
+            align-items: center; /* Align icon and text in heading */
         }
+         .card h2 i {
+             margin-right: 8px; /* Space between icon and heading text */
+             font-size: 1em; /* Adjust icon size if needed */
+         }
         .session-list-item {
             display: flex;
             justify-content: space-between;
@@ -63,8 +69,20 @@
         .session-list-item:last-child { border-bottom: none; }
         .session-info strong { display: block; font-size: 1.05em; margin-bottom: 3px; }
         .session-info span { font-size: 0.9em; color: var(--subheading-color, #555); }
-        .session-link a { padding: 5px 10px; background-color: var(--link-color, #007bff); color: white; border-radius: 4px; text-decoration: none; font-size: 0.9em; white-space: nowrap; }
-        .session-link a:hover { background-color: var(--link-hover-color, #0056b3); }
+        /* Applied session-link style directly to the link for consistency */
+        .session-link a, a.session-link { 
+            padding: 8px 15px; /* Adjusted padding */
+            background-color: var(--link-color, #007bff); 
+            color: white; 
+            border-radius: 4px; 
+            text-decoration: none; 
+            font-size: 0.9em; 
+            white-space: nowrap; 
+            display: inline-block; /* Make it behave like a button */
+        }
+        .session-link a:hover, a.session-link:hover { 
+             background-color: var(--link-hover-color, #0056b3); 
+        }
 
         .other-apps-list a {
             display: flex; /* Use flexbox for icon alignment */
@@ -105,7 +123,7 @@
     <div class="homepage-container">
 
         <div class="card upcoming-sessions">
-            <h2>Upcoming Sessions</h2>
+            <h2><i class="bi bi-calendar-event"></i> Upcoming Sessions</h2> {# Added icon #}
             {% if upcoming_sessions %}
                 {% for session in upcoming_sessions %}
                     <div class="session-list-item">
@@ -124,10 +142,22 @@
             <div style="margin-top: 15px;">
                  <a href="{% url 'planning:session_list' %}" style="font-size: 0.9em;">View Full Schedule...</a>
             </div>
-        </div>
+        </div> {# === CORRECTED PLACEMENT FOR PLAYERS CARD === #}
+        <div class="card players-card"> 
+            <h2><i class="bi bi-people-fill"></i> Players</h2> 
+            <p style="margin-bottom: 15px; color: var(--subheading-color, #555);">
+                View player profiles and manage group assignments.
+            </p>
+            <div style="text-align: right; margin-top: 10px;"> 
+                <a href="{% url 'planning:players_list' %}" class="session-link"> {# Applied session-link class directly #}
+                    Go to Players <i class="bi bi-arrow-right-short"></i> 
+                </a>
+            </div>
+        </div> 
+        {# === END OF PLAYERS CARD === #}
 
         <div class="card other-apps">
-            <h2>Tools & Resources</h2>
+            <h2><i class="bi bi-tools"></i> Tools & Resources</h2> {# Added icon #}
             <div class="other-apps-list">
                 {# === UPDATED LINK HERE === #}
                 <a href="https://musical-squirrel-d7b18e.netlify.app/" target="_blank" rel="noopener noreferrer">

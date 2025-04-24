@@ -125,6 +125,68 @@ def session_list(request):
     context = {'sessions_list': all_sessions}
     return render(request, 'planning/session_list.html', context)
 
+# planning/views.py
+from django.shortcuts import render, get_object_or_404 # Import get_object_or_404
+from .models import Player, SchoolGroup 
+
+# ... other views ...
+
+def players_list_view(request):
+    """
+    View to display a list of active players, allowing filtering by 
+    school group and searching by name.
+    """
+    groups = SchoolGroup.objects.all().order_by('name')
+    # Start with base queryset of active players
+    players_qs = Player.objects.filter(is_active=True) # Renamed variable for clarity
+
+    # --- Get Filter/Search Parameters ---
+    selected_group_id = request.GET.get('group', None) 
+    search_query = request.GET.get('search', None) # Get search query param
+    selected_group = None 
+    page_title_suffix = "" # To build dynamic title parts
+
+    # --- Apply Group Filter (if selected) ---
+    if selected_group_id and selected_group_id.isdigit():
+        try:
+            group_id_int = int(selected_group_id)
+            players_qs = players_qs.filter(school_groups__id=group_id_int) # Filter the queryset
+            selected_group = get_object_or_404(SchoolGroup, id=group_id_int)
+            page_title_suffix += f" in {selected_group.name}"
+        except SchoolGroup.DoesNotExist:
+            selected_group_id = None # Reset if invalid group ID
+    else:
+        selected_group_id = None 
+
+    # --- Apply Search Filter (if query exists) ---
+    if search_query:
+        # Filter the *already potentially filtered* queryset further
+        # Use Q objects for case-insensitive OR search on first/last name
+        players_qs = players_qs.filter(
+            Q(first_name__icontains=search_query) | 
+            Q(last_name__icontains=search_query)
+        )
+        page_title_suffix += f" matching '{search_query}'" # Add search info to title
+
+    # --- Finalize Queryset (apply ordering AFTER filtering) ---
+    players = players_qs.order_by('last_name', 'first_name') 
+
+    # --- Determine Page Title ---
+    if not selected_group_id and not search_query:
+        page_title = 'All Active Players'
+    else:
+         page_title = f"Players{page_title_suffix}" # Construct title from applied filters
+
+    # --- Prepare Context ---
+    context = {
+        'page_title': page_title,
+        'players': players, # Pass final ordered list        
+        'groups': groups,            
+        'selected_group_id': selected_group_id, 
+        'search_query': search_query # Pass search query back to template input field
+    }
+    return render(request, 'planning/players_list.html', context)
+    
 # --- Session Detail View ---
 def session_detail(request, session_id):
     session = get_object_or_404(Session, pk=session_id)

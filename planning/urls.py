@@ -23,6 +23,8 @@ urlpatterns = [
     path('player/<int:player_id>/add_volley/', views.add_volley_record, name='add_volley_record'),
     path('player/<int:player_id>/add_drive/', views.add_drive_record, name='add_drive_record'),
     path('player/<int:player_id>/add_match/', views.add_match_result, name='add_match_result'),
+    # planning/urls.py
+    path('players/', views.players_list_view, name='players_list'),
 
     # --- APIs for Manual Assignment ---
     path(

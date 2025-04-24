@@ -9,13 +9,13 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+import os
 from pathlib import Path
-
+from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+load_dotenv()
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -23,8 +23,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY')
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
 # coach_project/settings.py
 # Add your computer's actual IP address here
@@ -142,13 +140,14 @@ USE_TZ = True
 # ... (other settings) ...
 
 # Static files (STATIC_URL, STATICFILES_DIRS, etc. - already there)
-STATIC_ROOT = '/home/CharlSquash/squash_coach_app/staticfiles'
+STATIC_ROOT = '/home/CharlSquash/squash-coach-hub/staticfiles/' # Use correct project name
 STATIC_URL = '/static/'
 # Add STATIC_ROOT if preparing for production later, e.g.
 # STATIC_ROOT = BASE_DIR / 'staticfiles_prod'
 
 # --- Add these lines for Media files ---
-MEDIA_ROOT = '/home/CharlSquash/squash_coach_app/mediafiles'
+MEDIA_ROOT = BASE_DIR / 'mediafiles/' # Works locally if 'mediafiles' exists at project root
+# For PA, ensure the Web Tab mapping points to /home/CharlSquash/squash-coach-hub/mediafiles/
 MEDIA_URL = '/media/'
 
 # Default primary key field type
