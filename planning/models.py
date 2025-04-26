@@ -21,6 +21,16 @@ class SchoolGroup(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
 
+    attendance_form_url = models.URLField(
+        max_length=1024, # Allow long URLs
+        blank=True, 
+        null=True,       # Make it optional
+        verbose_name="Attendance Form URL",
+        help_text="Link to the external Google Form or attendance sheet for this group."
+    )
+
+    
+
     def __str__(self):
         return self.name
 

@@ -86,6 +86,31 @@
         </div>
         <hr>
 
+        {# === ADD ATTENDANCE LINK (Place appropriately near top session details) === #}
+
+{% if session.school_group and session.school_group.attendance_form_url %}
+<div class="attendance-link-section" style="margin: 15px 0; padding: 10px; background-color: #e9f5ff; border: 1px solid #b8d Bff; border-radius: 5px;">
+    <a href="{{ session.school_group.attendance_form_url }}" 
+       target="_blank" 
+       rel="noopener noreferrer" 
+       class="btn btn-info btn-sm"> {# Use appropriate button styling #}
+        <i class="bi bi-box-arrow-up-right"></i> 
+        Open {{ session.school_group.name }} Attendance Form
+    </a>
+    <small style="display: block; margin-top: 5px; color: #555;">(Opens Google Form in new tab)</small>
+</div>
+{# Add basic .btn-info styles if needed, similar to other buttons #}
+<style>
+    .btn-info { color: #fff; background-color: #17a2b8; border-color: #17a2b8; }
+    .btn-info:hover { color: #fff; background-color: #138496; border-color: #117a8b; }
+    .btn-sm { padding: .25rem .5rem; font-size: .875rem; line-height: 1.5; border-radius: .2rem; }
+</style>
+{% endif %}
+
+{# === END ATTENDANCE LINK === #}
+
+{# --- Rest of your session details (Date, Time, Notes, etc.) --- #}
+
         {# --- ATTENDANCE SECTION --- #}
         <div class="attendance-section">
             <h2>Attendance ({{ current_attendees.count }} Player{{ current_attendees.count|pluralize }})</h2>
