@@ -3,6 +3,8 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.forms import widgets # Import widgets for customization
+from .models import CoachFeedback
 # Import the models needed for the forms
 from .models import ( Player, SchoolGroup, Session, ActivityAssignment, Drill,
                       Coach, SessionAssessment, CourtSprintRecord,
@@ -182,3 +184,37 @@ class MatchResultForm(forms.ModelForm):
         self.fields['opponent_name'].required = False
         self.fields['opponent_score_str'].required = False
         self.fields['match_notes'].required = False
+
+class CoachFeedbackForm(forms.ModelForm):
+    class Meta:
+        model = CoachFeedback
+        fields = ['strengths_observed', 'areas_for_development', 'suggested_focus', 'general_notes', 'session'] 
+        # We exclude 'player' and 'date_recorded' as they'll be set automatically/in the view.
+        # We can add 'session' to optionally link feedback to a session.
+
+        widgets = {
+            'strengths_observed': widgets.Textarea(attrs={'rows': 3, 'placeholder': 'What went well? Specific examples...'}),
+            'areas_for_development': widgets.Textarea(attrs={'rows': 3, 'placeholder': 'What needs work? Specific examples...'}),
+            'suggested_focus': widgets.Textarea(attrs={'rows': 3, 'placeholder': 'Key things for the player to focus on next...'}),
+            'general_notes': widgets.Textarea(attrs={'rows': 2, 'placeholder': 'Any other relevant notes...'}),
+            # Optional: Customize session selector if needed, e.g., limit choices
+            # 'session': widgets.Select(...) 
+        }
+        # Optional: Add help text if needed
+        help_texts = {
+             'session': 'Optional: Link this feedback to a specific session.',
+        }
+
+    # Optional: Add __init__ method to filter session choices if desired
+    # def __init__(self, *args, **kwargs):
+    #     player = kwargs.pop('player', None) # Allow passing player to form
+    #     super().__init__(*args, **kwargs)
+    #     if player:
+    #         # Example: Limit session choices to those the player attended recently
+    #         self.fields['session'].queryset = Session.objects.filter(
+    #              attendees=player
+    #         ).order_by('-date')[:10] # Last 10 sessions attended
+    #     else:
+    #         # Clear choices or show all if no player provided initially
+    #         self.fields['session'].queryset = Session.objects.none() 
+

@@ -45,6 +45,34 @@
         </div>
         <hr>
 
+        {# === ADD ACTION BUTTONS (Place appropriately near top) === #}
+<div class="profile-actions" style="padding: 15px 0; border-bottom: 1px solid var(--border-light, #eee); margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
+    <a href="{% url 'planning:add_coach_feedback' player.id %}" class="btn btn-primary"> {# Use your preferred button class/style #}
+        <i class="bi bi-chat-left-text-fill"></i> Add Coach Feedback
+    </a>
+</div>
+
+{# If you don't have button styles like .btn, add some basic ones #}
+{# You can put this in your main style.css or in a <style> tag in this template #}
+<style>
+    .btn { 
+        display: inline-block; 
+        padding: 8px 15px; 
+        border: 1px solid transparent; 
+        border-radius: 5px; 
+        text-decoration: none; 
+        cursor: pointer; 
+        text-align: center; 
+        font-size: 0.9em;
+        line-height: 1.5;
+    }
+    .btn-primary { color: #fff; background-color: var(--link-color, #007bff); border-color: var(--link-color, #007bff); }
+    .btn-primary:hover { background-color: var(--link-hover-color, #0056b3); border-color: var(--link-hover-color, #0056b3); }
+    .btn-secondary { color: #fff; background-color: #6c757d; border-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; border-color: #545b62; }
+</style>
+{# === END ACTION BUTTONS === #}
+
         {# --- Session Attendance History --- #}
         <div class="profile-section">
             <h3>Session Attendance History</h3>
@@ -56,6 +84,42 @@
             <h3>Session Assessments</h3>
              {% if assessments %} <table class="data-table"> <thead><tr><th>Date</th><th>Session</th><th>Effort</th><th>Focus</th><th>Resilience</th><th>Composure</th><th>Decision Making</th><th>Notes</th></tr></thead> <tbody> {% for assessment in assessments %} <tr> <td>{{ assessment.date_recorded|date:"Y-m-d" }}</td> <td><a href="{% url 'planning:session_detail' assessment.session.id %}">{{ assessment.session.date|date:"d M" }}</a></td> <td style="text-align: center;">{{ assessment.get_effort_rating_display|default:"-" }}</td> <td style="text-align: center;">{{ assessment.get_focus_rating_display|default:"-" }}</td> <td style="text-align: center;">{{ assessment.get_resilience_rating_display|default:"-" }}</td> <td style="text-align: center;">{{ assessment.get_composure_rating_display|default:"-" }}</td> <td style="text-align: center;">{{ assessment.get_decision_making_rating_display|default:"-" }}</td> <td class="notes-cell">{{ assessment.coach_notes|default:""|linebreaksbr }}</td> </tr> {% endfor %} </tbody> </table> {% else %} <p class="no-data-msg">No session assessments recorded yet.</p> {% endif %}
         </div>
+
+        {# === ADD COACH FEEDBACK DISPLAY SECTION === #}
+<div class="feedback-section card" style="margin-top: 30px; padding: 15px 20px;"> {# Adjust styling/padding as needed #}
+    <h2><i class="bi bi-clipboard2-check"></i> Coach Feedback</h2>
+
+    {% for feedback in player.feedback_entries.all %} {# Access via related_name #}
+        <div class="feedback-entry" style="border-bottom: 1px dashed var(--border-light, #eee); padding-bottom: 15px; margin-bottom: 15px;">
+            <p style="font-weight: bold; margin-bottom: 8px; font-size: 0.95em; color: var(--subheading-color);">
+                <i class="bi bi-calendar3"></i> {{ feedback.date_recorded|date:"Y-m-d H:i" }}
+                {% if feedback.session %} 
+                    | Linked Session: <a href="{% url 'planning:session_detail' feedback.session.id %}">{{ feedback.session.date|date:"Y-m-d" }}</a>
+                {% endif %}
+                {# Add recorded_by if implemented: | By: {{ feedback.recorded_by }} #}
+            </p>
+            {% if feedback.strengths_observed %}
+                <p><strong>Strengths Observed:</strong><br>{{ feedback.strengths_observed|linebreaksbr }}</p>
+            {% endif %}
+            {% if feedback.areas_for_development %}
+                <p><strong>Areas for Development:</strong><br>{{ feedback.areas_for_development|linebreaksbr }}</p>
+            {% endif %}
+            {% if feedback.suggested_focus %}
+                <p><strong>Suggested Focus / Next Steps:</strong><br>{{ feedback.suggested_focus|linebreaksbr }}</p>
+            {% endif %}
+             {% if feedback.general_notes %}
+                <p><strong>General Notes:</strong><br>{{ feedback.general_notes|linebreaksbr }}</p>
+            {% endif %}
+        </div>
+        {% if forloop.last %} {# Remove bottom border from last item #}
+            <style> .feedback-entry:last-child { border-bottom: none; margin-bottom: 0; } </style>
+        {% endif %}
+    {% empty %}
+        <p>No feedback entries recorded yet.</p>
+    {% endfor %}
+</div>
+{# === END COACH FEEDBACK DISPLAY SECTION === #}
+
 
         {# --- Metric Records & CHARTS --- #}
         <div class="profile-section">

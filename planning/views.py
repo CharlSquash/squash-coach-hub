@@ -10,6 +10,8 @@ import json
 from django.db.models import Q
 from django.http import JsonResponse, HttpResponseForbidden, Http404 # Added Http404
 from django.views.decorators.http import require_POST # To ensure POST requests
+from .models import Player, CoachFeedback 
+from .forms import CoachFeedbackForm 
 # from django.views.decorators.csrf import csrf_exempt # REMOVED
 
 # Import all necessary models and the forms
@@ -634,6 +636,39 @@ def player_profile(request, player_id):
         'drive_chart_data': drive_chart_data,
     }
     return render(request, 'planning/player_profile.html', context)
+
+# Add this view for handling Coach Feedback form
+def add_coach_feedback(request, player_id):
+    """
+    View to add structured coach feedback for a specific player.
+    """
+    player = get_object_or_404(Player, pk=player_id)
+
+    if request.method == 'POST':
+        # Pass player instance if form's __init__ needs it for filtering sessions
+        # form = CoachFeedbackForm(request.POST, player=player) 
+        form = CoachFeedbackForm(request.POST) # Use this if not filtering sessions in form
+        if form.is_valid():
+            feedback = form.save(commit=False) # Don't save to DB yet
+            feedback.player = player # Assign the correct player
+            # TODO: Assign feedback.recorded_by = request.user (or logged-in coach) if auth is implemented
+            feedback.save() # Save the complete feedback entry to DB
+            # Optionally add a success message using django.contrib.messages
+            # messages.success(request, f"Feedback added for {player.full_name}.")
+            return redirect('planning:player_profile', player_id=player.id) # Redirect back to player profile
+    else: # GET request
+        # Pass player instance if form's __init__ needs it for filtering sessions
+        # form = CoachFeedbackForm(player=player) 
+        form = CoachFeedbackForm() # Use this if not filtering sessions in form
+
+    context = {
+        'form': form,
+        'player': player,
+        'page_title': f'Add Feedback for {player.full_name}'
+    }
+    # We need to create this template file next ('add_coach_feedback_form.html')
+    return render(request, 'planning/add_coach_feedback_form.html', context)
+
 
 # --- Session Assessment View ---
 def assess_player_session(request, session_id, player_id):

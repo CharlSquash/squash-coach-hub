@@ -132,6 +132,35 @@ class Coach(models.Model):
     def __str__(self):
         return self.name
 
+# Assuming a Coach model exists like this (or import it)
+# class Coach(models.Model):
+#     name = models.CharField(max_length=100)
+#     # ... other fields ...
+#     def __str__(self):
+#         return self.name
+
+class CoachFeedback(models.Model):
+    """Stores structured feedback given by a coach to a player."""
+    player = models.ForeignKey('Player', on_delete=models.CASCADE, related_name='feedback_entries')
+    session = models.ForeignKey('Session', on_delete=models.SET_NULL, null=True, blank=True, related_name='feedback_entries')
+    # recorded_by = models.ForeignKey(Coach, on_delete=models.SET_NULL, null=True, blank=True) 
+    # Or use settings.AUTH_USER_MODEL if using Django auth for coaches
+    date_recorded = models.DateTimeField(auto_now_add=True)
+    strengths_observed = models.TextField(blank=True, verbose_name="Strengths Observed")
+    areas_for_development = models.TextField(blank=True, verbose_name="Areas for Development")
+    suggested_focus = models.TextField(blank=True, verbose_name="Suggested Focus/Next Steps")
+    general_notes = models.TextField(blank=True, verbose_name="General Notes")
+
+    class Meta:
+        ordering = ['-date_recorded'] # Show newest first
+        verbose_name = "Coach Feedback"
+        verbose_name_plural = "Coach Feedback Entries"
+
+    def __str__(self):
+        session_info = f" re: Session on {self.session.date}" if self.session else ""
+        return f"Feedback for {self.player.full_name} on {self.date_recorded.strftime('%Y-%m-%d')}{session_info}"
+
+
 
 class Drill(models.Model):
     """Represents a reusable drill or activity."""
