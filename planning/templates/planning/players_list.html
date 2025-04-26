@@ -70,7 +70,11 @@
         <a href="{% url 'homepage' %}" class="back-link"><i class="bi bi-arrow-left"></i> Back to Home</a>
 
         <h1><i class="bi bi-people-fill"></i> {{ page_title|default:"Players" }}</h1>
+        <h1><i class="bi bi-people-fill"></i> {{ page_title|default:"Players" }}</h1>
 
+<p style="font-size: 0.9em; color: #777; margin-top: -15px; margin-bottom: 25px;">Manage player details and track performance.</p> 
+
+<div class="filters" ...>
         <div class="filters" style="padding: 15px; background-color: var(--container-light-bg, #f8f9fa); border: 1px solid var(--border-light, #eee); border-radius: 5px; margin-bottom: 25px;">
 
             {# Form now includes both group select and search input #}
