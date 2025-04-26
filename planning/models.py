@@ -4,6 +4,10 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
+from django.core.files.base import ContentFile 
+from PIL import Image
+from PIL import Image, ImageOps 
+import io 
 from django.conf import settings
 import datetime
 
@@ -19,6 +23,8 @@ class SchoolGroup(models.Model):
 
     def __str__(self):
         return self.name
+
+# class SchoolGroup(models.Model): ... (if defined in the same file)
 
 class Player(models.Model):
     """Represents a player."""
@@ -37,7 +43,7 @@ class Player(models.Model):
         blank=True
     )
     school_groups = models.ManyToManyField(
-        SchoolGroup,
+        'SchoolGroup', # Use quotes if SchoolGroup defined later/imported
         related_name='players',
         blank=True
     )
@@ -51,6 +57,66 @@ class Player(models.Model):
 
     def __str__(self):
         return self.full_name
+
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    # +++ ADD THIS SAVE METHOD FOR IMAGE OPTIMIZATION +++
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    # Inside class Player(models.Model):
+
+    def save(self, *args, **kwargs):
+        # Check if the photo field has a file associated with it
+        if self.photo and hasattr(self.photo.file, 'read'):
+            try:
+                # Store the original filename
+                filename = os.path.basename(self.photo.name) # Use basename
+
+                # Open the image using Pillow directly from the field
+                img = Image.open(self.photo)
+
+                # --- FIX ORIENTATION ---
+                img = ImageOps.exif_transpose(img) 
+                # --- END FIX ---
+
+                # Define maximum dimensions
+                max_size = (300, 300)
+
+                # Preserve aspect ratio while resizing down
+                img.thumbnail(max_size, Image.Resampling.LANCZOS)
+
+                # Prepare to save the resized image
+                # Default to JPEG if format is lost after potential conversions
+                img_format = img.format if img.format else 'JPEG' 
+                buffer = io.BytesIO()
+                save_kwargs = {'format': img_format, 'optimize': True}
+
+                # Convert RGBA/P to RGB *before* saving if target format is not PNG
+                # This prevents errors when saving formats like JPEG that don't support transparency
+                if img.mode in ("RGBA", "P") and img_format.upper() != 'PNG':
+                     img = img.convert("RGB")
+                     img_format = 'JPEG' # Force JPEG format after conversion
+                     filename = os.path.splitext(filename)[0] + '.jpg' # Update filename extension
+                     save_kwargs['format'] = 'JPEG'
+
+                # Set quality for JPEG
+                if img_format.upper() == 'JPEG':
+                    save_kwargs['quality'] = 85 # Adjust quality as needed
+
+                # Save resized image to buffer
+                img.save(buffer, **save_kwargs)
+
+                # Create Django ContentFile
+                resized_image = ContentFile(buffer.getvalue())
+
+                # Save back to the ImageField without calling this save() method again
+                self.photo.save(filename, resized_image, save=False)
+
+            except Exception as e:
+                print(f"Error processing player photo for {self.full_name}: {e}")
+                # Decide how to handle error - e.g., clear photo or log more formally
+                pass
+
+        # Call the original model save method
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ['last_name', 'first_name']
