@@ -61,6 +61,39 @@ class SessionAdmin(admin.ModelAdmin):
     # Add the inline class here
     inlines = [TimeBlockInline]
 
+    def save_model(self, request, obj, form, change):
+        """
+        Override save_model to auto-populate attendees based on school_group.
+        'obj' is the Session instance being saved.
+        """
+        # Save the main Session object instance first using the default process
+        super().save_model(request, obj, form, change)
+
+        # Now, handle the attendees based on the selected group
+        if obj.school_group:
+            # Get active players associated with the selected group
+            players_in_group = obj.school_group.players.filter(is_active=True)
+            # Set the attendees relationship to these players. 
+            # This completely replaces any previous attendees or manual selections.
+            obj.attendees.set(players_in_group)
+        else:
+            # If no school group is selected, clear the attendees list
+            # (Alternatively, you could choose to leave manually added attendees if no group is selected)
+            obj.attendees.clear()
+        # Note: We don't need to call obj.save() again here, 
+        # because .set() and .clear() on M2M operate on the relationship directly.
+    # --- END OF OVERRIDE ---
+
+    # Helper method for list_display
+    @admin.display(description='Attendees')
+    def get_attendee_count(self, obj):
+        return obj.attendees.count()
+
+# Ensure other models like SchoolGroup, Player etc. are also registered
+# admin.site.register(SchoolGroup, SchoolGroupAdmin) # Using class from previous step
+# admin.site.register(Player) 
+# ...
+
 
 # Simple registration for ActivityAssignment
 admin.site.register(ActivityAssignment)

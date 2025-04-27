@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Player Profile: {{ player.full_name }}</title>
     <link rel="stylesheet" href="{% static 'planning/style.css' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     {# --- CHART.JS Dependencies (Using date-fns adapter) --- #}
     <script src="https://cdn.jsdelivr.net/npm/date-fns@^2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@^3"></script>
@@ -33,11 +34,14 @@
         .add-data-link:hover { background-color: var(--action-add-hover); }
         .back-link { font-weight: bold; margin-top: 25px; display: inline-block; font-size: 1.1em;}
         details > summary { cursor: pointer; font-size: 0.9em; color: var(--link-color); margin-top: 10px;}
+        
     </style>
 </head>
 <body>
     <div class="container">
-
+        <a href="{% url 'planning:players_list' %}" class="back-link">
+            <i class="bi bi-arrow-left"></i> Back to Players List    
+        </a>   
         {# --- Profile Header --- #}
         <div class="profile-header">
              <div class="profile-photo"> {% if player.photo %} <img src="{{ player.photo.url }}" alt="Photo of {{ player.full_name }}"> {% else %} <img src="{% static 'planning/placeholder.png' %}" alt="Placeholder image" width="150" height="150" style="border-radius: 50%; border: 1px solid var(--border-light);"> {% endif %} </div>

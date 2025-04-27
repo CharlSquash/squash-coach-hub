@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live Session: {% if session.school_group %}{{ session.school_group.name }}{% endif %} {{ session.date }}</title>
     <link rel="stylesheet" href="{% static 'planning/style.css' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"> 
     {# Add Tone.js CDN if you want sound later #}
     {# <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script> #}
     <style>
@@ -36,6 +37,10 @@
     <span id="is-simulated" data-is-simulated="{{ is_simulated|yesno:'true,false' }}" style="display: none;"></span>
     <span id="effective-time-iso" data-effective-time-iso="{{ effective_time_iso }}" style="display: none;"></span>
     <span id="next-rotation-time-iso" data-next-rotation-time-iso="{{ next_rotation_time_iso|default_if_none:'' }}" style="display: none;"></span>
+
+    <a href="{% url 'planning:session_detail' session.id %}" class="back-link">
+        <i class="bi bi-arrow-left"></i> Back to Session Plan
+    </a>
 
     <div class="container">
         <h1>

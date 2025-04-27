@@ -10,8 +10,10 @@ Squash Coach Hub is a Django-based web application designed to assist squash coa
 * **Time Blocks:** Divide sessions into time blocks (duration, courts, rotation interval, focus).
 * **Activity Management:** Define reusable drills (with player counts) or add custom activities, assigning them to courts within time blocks.
 * **Attendance Tracking:** Mark player attendance per session via the Session Detail page.
+* **School Group Attendance Link:** Store an external URL (e.g., Google Form) per School Group for attendance; display a direct link on the associated Session Detail page.
 * **Live Session View:** Dynamic view showing current/next block, player court assignments (with automatic rotation), activities, time simulation, and rotation alerts.
-* **Player Profiles:** Centralized view per player: details, attendance, session assessments, recorded metrics (sprints, volleys, drives), match results, performance charts.
+* **Player Profiles:** Centralized view per player: details, attendance, session assessments, recorded metrics (sprints, volleys, drives), match results, performance charts, coach feedback history.
+* **Coach Feedback:** Ability for coaches to add structured feedback (strengths, development areas, focus, notes) per player, viewable on the profile (optionally linked to a session).
 * **Metric & Match Tracking:** Forms to log results for court sprints, consecutive volleys (FH/BH), consecutive backwall drives (FH/BH), and match outcomes (practice/competitive).
 * **Session Assessments:** Record coach assessments on player attributes (effort, focus, resilience, composure, decision-making).
 * **Player List & Filtering:** Dedicated page listing active players, allowing filtering by School Group and searching by player name (first or last).
@@ -20,7 +22,7 @@ Squash Coach Hub is a Django-based web application designed to assist squash coa
 * **Manual Court Assignment:** Visually drag-and-drop players between courts on Session Detail page; assignments persist and reflect in Live Session view. Option to clear manual assignments per block.
 * **One-Page Session Plan:** Generate a simplified, mobile-friendly, shareable view of a session's schedule and activities (via Web Share API).
 * **Homepage Dashboard:** Displays upcoming sessions, player management card, and links to other resources (including Shot IQ, Admin site).
-* **Django Admin Customization:** Enhanced admin for managing drills, players (group filtering), sessions (inline blocks, attendees).
+* **Django Admin Customization:** Enhanced admin for managing drills, players (group filtering), sessions (inline blocks, attendees), School Groups (including Attendance Form URL).
 
 ## Technology Stack
 
@@ -49,18 +51,22 @@ squash-coach-hub/
 |-- .env                   # Environment variables (local version OR production version - NOT IN GIT)
 |-- coach_project/         # Django project config
 |   |-- settings.py        # Reads settings from environment variables via dotenv
-|   |-- urls.py            # Project URLs
+|   |-- urls.py            # Project-level URL routing (admin, planning app, homepage)
 |   |-- wsgi.py            # WSGI entry point
 |   |-- ...
 |-- planning/              # Main Django app
-|   |-- migrations/
-|   |-- static/planning/
-|   |-- templates/planning/
-|   |-- admin.py
-|   |-- models.py          # Includes Player.save() override for image optimization
-|   |-- views.py           # Includes players_list_view with filtering/search
-|   |-- urls.py
-|   |-- ...
+|   |-- migrations/        # Database migration files (e.g., 0001_initial.py, ...)
+|   |-- static/planning/   # App-specific static files (style.css, vendor libs, etc.)
+|   |-- templates/planning/ # HTML templates (homepage, session_detail, player_profile, forms, etc.)
+|   |-- __init__.py
+|   |-- admin.py           # Django admin config (e.g., SchoolGroupAdmin)
+|   |-- apps.py
+|   |-- forms.py           # CoachFeedbackForm, etc.
+|   |-- models.py          # Player, Session, SchoolGroup, CoachFeedback, etc.
+|   |-- tests.py
+|   |-- urls.py            # App-specific URLs (planning namespace)
+|   |-- views.py           # View functions (player_profile, add_coach_feedback, etc.)
+|
 |-- mediafiles/            # User-uploaded files (e.g., player photos) - GITIGNORED
 |-- staticfiles/           # Target for 'collectstatic' on PA (defined by STATIC_ROOT env var) - GITIGNORED
 |-- venv/                  # Local virtual environment - GITIGNORED
@@ -70,99 +76,83 @@ squash-coach-hub/
 |-- README.md              # This file
 ```
 
+## Key Files Overview
+
+* **`coach_project/settings.py`**: Main project configuration. Reads sensitive/environment-specific settings from environment variables via `python-dotenv`.
+* **`.env`**: File (in project root locally & on PA, **ignored by Git**) storing environment variables (DB URLs, SECRET_KEY, DEBUG status, HOSTS, STATIC_ROOT etc.).
+* **`.gitignore`**: Specifies files/directories Git should ignore (e.g., `.env`, `venv/`, `db.sqlite3`, `mediafiles/`, `__pycache__/`, `staticfiles/`).
+* **`planning/models.py`**: Defines database models (`Player`, `Session`, `SchoolGroup` [with `attendance_form_url`], `CoachFeedback`, etc.). Includes `Player.save()` override for image optimization.
+* **`planning/views.py`**: Contains view functions handling requests, fetching data, processing forms (like `add_coach_feedback`), and rendering templates.
+* **`planning/urls.py`**: Maps URL paths within the `/planning/` namespace to specific view functions. Includes patterns for feedback forms.
+* **`planning/admin.py`**: Configures how models appear in the Django admin site (e.g., making `attendance_form_url` visible in `SchoolGroupAdmin`).
+* **`planning/templates/planning/`**: Contains HTML templates. `session_detail.html` now includes logic to display the attendance link. `player_profile.html` displays feedback and has links to add more.
+* **`requirements.txt`**: Lists required Python packages (`Django`, `python-dotenv`, `dj-database-url`, `Pillow`, `mysqlclient`).
+* **WSGI File (on PA):** `/var/www/..._wsgi.py`. Standard configuration pointing to project and settings module. Does *not* need custom `.env` loading logic.
+
 ## Environment Configuration (`.env`)
 
-This project uses a `.env` file to manage environment-specific settings, keeping `settings.py` consistent across environments (and safe for Git).
+This project relies on a `.env` file in the project root directory for environment-specific settings. **This file MUST be in `.gitignore`.**
 
-* **Mechanism:** The `python-dotenv` package loads variables from a `.env` file located in the project root (`BASE_DIR`). `settings.py` then reads these variables using `os.environ.get()`.
-* **Local `.env`:**
-    * Create this file in your local project root (`C:\...\squash-coach-hub\.env`).
-    * **MUST be listed in `.gitignore`.**
-    * Contains settings for development: `DEBUG=True`, a local `SECRET_KEY`, `ALLOWED_HOSTS='127.0.0.1,localhost'`, `DATABASE_URL='sqlite:///db.sqlite3'`, `STATIC_ROOT=''`, etc.
-* **Production `.env` (PythonAnywhere):**
-    * Create this file in your **project root on PythonAnywhere** (`/home/CharlSquash/squash-coach-hub/.env`).
-    * **MUST be listed in `.gitignore`.**
-    * Contains settings for production: `DEBUG=False`, a unique production `SECRET_KEY`, `ALLOWED_HOSTS='YourUsername.pythonanywhere.com'`, `DATABASE_URL='mysql://...'` (with PA MySQL credentials), `STATIC_ROOT='/home/YourUsername/projectname/staticfiles/'`, `CSRF_TRUSTED_ORIGINS='https://...'`.
-* **WSGI File (PA):** The WSGI file on PythonAnywhere should *not* load `.env` itself; it relies on `settings.py` loading the `.env` file from the project root.
+* **Local `.env`:** Contains `DEBUG=True`, local `SECRET_KEY`, `DATABASE_URL='sqlite:///db.sqlite3'`, `ALLOWED_HOSTS='127.0.0.1,localhost'`, etc.
+* **Production `.env` (on PA):** Contains `DEBUG=False`, production `SECRET_KEY`, `ALLOWED_HOSTS='YourUsername.pythonanywhere.com'`, `DATABASE_URL='mysql://...'`, `STATIC_ROOT='/home/YourUsername/projectname/staticfiles/'`, `CSRF_TRUSTED_ORIGINS='https://...'`, etc.
 
 ## Local Development Setup
 
-1.  **Clone Repository:** `git clone <your_repo_url>`
-2.  **Navigate to Project:** `cd squash-coach-hub`
-3.  **Create & Activate Virtual Environment:**
-    ```bash
-    python -m venv venv
-    venv\Scripts\activate  # Windows
-    # source venv/bin/activate # macOS/Linux
-    ```
-4.  **Install Dependencies:**
-    ```bash
-    pip install -r requirements.txt 
-    # Ensure Pillow, dj-database-url are included
-    ```
-5.  **Create Local `.env` File:** Create `.env` in the root directory. Add local settings (DEBUG=True, local SECRET_KEY, SQLite DATABASE_URL, ALLOWED_HOSTS='127.0.0.1,localhost', etc.). See "Environment Configuration" section.
-6.  **Apply Migrations (Creates local SQLite DB):**
-    ```bash
-    python manage.py migrate
-    ```
-7.  **Create Superuser (for Local Admin):**
-    ```bash
-    python manage.py createsuperuser 
-    ```
-8.  **Run Development Server:**
-    ```bash
-    python manage.py runserver
-    ```
-9.  Access the site at `http://127.0.0.1:8000/`.
+1.  Clone repository.
+2.  Navigate to project directory.
+3.  Create & Activate virtual environment (`venv`).
+4.  Install dependencies: `pip install -r requirements.txt`.
+5.  Create `.env` file in root with local settings (see above).
+6.  Apply migrations: `python manage.py migrate`.
+7.  Create superuser: `python manage.py createsuperuser`.
+8.  Run server: `python manage.py runserver`.
+9.  Access at `http://127.0.0.1:8000/`.
 
 ## Deployment Workflow (PythonAnywhere)
 
-1.  **Local Development:** Make changes locally. Test thoroughly. Run `makemigrations` locally if models change.
-2.  **Version Control (Git):**
-    * `git status`
-    * `git add <changed_files>` (including new migration files, `requirements.txt`, `settings.py`, `.gitignore` if changed)
-    * `git commit -m "Descriptive commit message"`
-    * `git pull origin main` (Recommended: Check for remote changes first)
-    * `git push origin main` (Push local commits to GitHub)
-3.  **PythonAnywhere Deployment:**
-    * Open a **Bash Console**.
-    * Navigate to project directory: `cd ~/squash-coach-hub`
-    * Activate virtualenv: `workon squashapp_venv` (or `source ...`)
-    * Pull latest code: `git pull origin main`
-    * Install/update dependencies: `pip install -r requirements.txt`
-    * Apply database migrations: `python manage.py migrate`
-    * Collect static files: `python manage.py collectstatic --noinput`
-    * Go to the **Web Tab**.
-    * Click the **Reload** button.
-    * Check live site and error/server logs.
+1.  **Local:** Make changes, test, run `makemigrations` if models changed.
+2.  **Git:** `git status`, `git add .`, `git commit -m "..."`, `git pull origin main` (optional check), `git push origin main`.
+3.  **PythonAnywhere:**
+    * Open Bash Console.
+    * `cd ~/squash-coach-hub`
+    * `workon squashapp_venv`
+    * `git pull origin main`
+    * `pip install -r requirements.txt` (To update dependencies)
+    * `python manage.py migrate` (To apply schema changes)
+    * `python manage.py collectstatic --noinput` (To update static files)
+    * Go to **Web Tab** -> Click **Reload**.
+    * Check live site & logs.
 
 ## PythonAnywhere Setup Notes
 
-* **Database:** Create a MySQL database via the PA "Databases" tab. Note the username, password (set one!), hostname, and database name.
-* **Environment Variables (`.env`):** Create `.env` file inside the project root (`~/squash-coach-hub/.env`). Add production settings (see "Environment Configuration"), using the MySQL `DATABASE_URL` format and the absolute path for `STATIC_ROOT`. **Ensure `.env` is in `.gitignore`**.
-* **WSGI Configuration:** Ensure the WSGI file on the Web tab correctly points to your project path and sets `DJANGO_SETTINGS_MODULE`. It does *not* need custom code to load `.env`.
-* **Static Files Mapping:** On the "Web" tab -> "Static files":
-    * URL: `/static/` -> Directory: `/home/CharlSquash/squash-coach-hub/staticfiles/`
-* **Media Files Mapping:** On the "Web" tab -> "Static files":
-    * URL: `/media/` -> Directory: `/home/CharlSquash/squash-coach-hub/mediafiles/`
-* **Virtual Environment:** Ensure the correct virtualenv path is set on the "Web" tab. Install all packages from `requirements.txt` into it.
-* **Initial Setup:** After first deployment or switching to MySQL, run `python manage.py migrate` to create tables and `python manage.py createsuperuser` to create the production admin account.
+* **Database:** Use MySQL via the PA "Databases" tab. Configure `DATABASE_URL` in the PA `.env` file.
+* **Environment Variables:** Create `.env` in the project root (`~/squash-coach-hub/.env`) on PA with production values. Ensure it's gitignored.
+* **WSGI Configuration:** Use the standard WSGI file generated by PA, ensuring it points to your project and `coach_project.settings`.
+* **Static/Media Files Mapping (Web Tab):**
+    * `/static/` -> `/home/CharlSquash/squash-coach-hub/staticfiles/`
+    * `/media/` -> `/home/CharlSquash/squash-coach-hub/mediafiles/`
+* **Virtual Environment:** Set path on Web Tab. Install packages from `requirements.txt`.
+* **Initial Setup:** Run `migrate` and `createsuperuser` after first deployment / setting up MySQL.
+* **Data Entry:** Add School Group Attendance Form URLs via the Django Admin interface on the live site.
 
 ## Future Enhancements (Planned/Ideas)
 
+* Add Edit/Delete functionality for Coach Feedback entries.
 * Add Edit/Delete functionality for metric and match records on player profiles.
 * Implement a user-clickable Dark Mode toggle button.
 * Reliably fix/implement Chart.js time scale axis formatting.
 * Add player court assignments display to `one_page_plan.html`.
 * Add summary statistics/dashboards to player profiles or group views.
 * Implement filtering/sorting options for data tables (e.g., session list).
-* Add tracking for other relevant squash metrics or sport psychology assessments.
+* Add tracking for other relevant squash metrics or sport psychology assessments (Goal Setting, Well-being checks).
 * Implement user authentication/authorization (e.g., coach logins).
 * Create a `base.html` template for a consistent site layout and navigation.
-* Explore advanced image optimization (e.g., `django-imagekit`, different formats like WebP).
+* Optimize disk space usage (e.g., re-process existing media files).
+* Enhance Drill Library (tags, videos).
+* Add Session Templates.
 
 ```
 
 ---
 
-This updated README should provide a much more complete picture of the project's current state and configuration. Remember to commit this updated `README.md` file to your Git repository!
+There you go! This updated README covers the latest features and the refined setup/deployment process. Remember to commit this file to your Git repository.
