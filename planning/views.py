@@ -588,8 +588,35 @@ def delete_activity(request, activity_id):
 
 # --- Player Profile View ---
 def player_profile(request, player_id):
-    player = get_object_or_404(Player, pk=player_id)
-    sessions_attended = player.attended_sessions.order_by('-session_date', '-session_start_time')
+    player = get_object_or_404(Player.objects.prefetch_related('school_groups'), pk=player_id) # Prefetch groups
+
+    # --- Attendance Calculation ---
+    sessions_attended_qs = player.attended_sessions.filter(
+        session_date__lte=timezone.now().date() # Only count past/present attended sessions
+    ).order_by('-session_date', '-session_start_time')
+    attended_sessions_count = sessions_attended_qs.count()
+
+    player_group_ids = player.school_groups.values_list('id', flat=True)
+    total_relevant_sessions_count = 0
+    attendance_percentage = None
+
+    if player_group_ids:
+        total_relevant_sessions_count = Session.objects.filter(
+            school_group_id__in=player_group_ids,
+            session_date__lte=timezone.now().date() # Count only past/present sessions for the groups
+        ).count()
+
+        if total_relevant_sessions_count > 0:
+            attendance_percentage = round((attended_sessions_count / total_relevant_sessions_count) * 100)
+        elif attended_sessions_count == 0:
+             # If no relevant sessions held, but somehow attended 0? Percentage is N/A or 100%? Let's say N/A.
+             attendance_percentage = None # Or consider 100% if 0/0 is desired
+        # Handle case where attended > total (shouldn't happen with correct logic)
+
+    # --- End Attendance Calculation ---
+
+
+    # Fetch other related data
     assessments = player.session_assessments.select_related(
         'session', 'session__school_group'
     ).order_by('-date_recorded', '-session__session_start_time')
@@ -619,6 +646,23 @@ def player_profile(request, player_id):
         if key in drive_chart_data:
             drive_chart_data[key]['labels'].append(drive.date_recorded.isoformat())
             drive_chart_data[key]['data'].append(drive.consecutive_count)
+
+    context = {
+        'player': player,
+        'sessions_attended': sessions_attended_qs, # Pass the queryset
+        'attended_sessions_count': attended_sessions_count, # Pass the count
+        'total_relevant_sessions_count': total_relevant_sessions_count, # Pass total count
+        'attendance_percentage': attendance_percentage, # Pass the calculated percentage
+        'assessments': assessments,
+        'sprints': sprints,
+        'volleys': volleys,
+        'drives': drives,
+        'matches': matches,
+        'sprint_chart_data': sprint_chart_data, # Pass dict directly
+        'volley_chart_data': volley_chart_data, # Pass dict directly
+        'drive_chart_data': drive_chart_data, # Pass dict directly
+    }
+    return render(request, 'planning/player_profile.html', context)
 
     context = {
         'player': player,
