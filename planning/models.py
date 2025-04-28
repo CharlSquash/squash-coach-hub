@@ -1,15 +1,16 @@
 # planning/models.py
 # Added ManualCourtAssignment model
-
+import datetime
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 from django.core.files.base import ContentFile 
 from PIL import Image
 from PIL import Image, ImageOps 
-import io 
+import io
+from datetime import timedelta  
 from django.conf import settings
-import datetime
+
 
 # Consider using settings.AUTH_USER_MODEL if you have a custom user model
 User = settings.AUTH_USER_MODEL
@@ -205,55 +206,96 @@ class Drill(models.Model):
 # --- Session Planning Models ---
 
 class Session(models.Model):
-    """Represents a single training session."""
-    date = models.DateField(default=timezone.now)
-    start_time = models.TimeField(default=datetime.time(15, 0))
-    planned_duration_minutes = models.PositiveIntegerField(default=60)
+    """Represents a training session."""
+
+    # --- FIELD DEFINITIONS ---
+    session_date = models.DateField(default=timezone.now) # Renamed to avoid conflict with datetime.date
+    session_start_time = models.TimeField(default=timezone.now) # Renamed to avoid conflict
+    planned_duration_minutes = models.PositiveIntegerField(default=60, validators=[MinValueValidator(1)])
     school_group = models.ForeignKey(
-        SchoolGroup,
-        on_delete=models.SET_NULL,
+        'SchoolGroup', # Use quotes if SchoolGroup is defined later
+        on_delete=models.SET_NULL, # Allow sessions without a group? Or use CASCADE?
         null=True,
         blank=True,
         related_name='sessions'
     )
-    coaches_attending = models.ManyToManyField(
-        Coach,
-        related_name='sessions_coaching',
-        blank=True
-    )
-    notes = models.TextField(blank=True, help_text="Overall session objectives or notes.")
     attendees = models.ManyToManyField(
-        Player,
-        related_name='sessions_attended',
-        blank=True
+        'Player', # Use quotes if Player is defined later
+        related_name='attended_sessions',
+        blank=True # Important for admin filter_horizontal/attendance form
     )
+    coaches_attending = models.ManyToManyField(
+        'Coach', # Use quotes if Coach is defined later
+        related_name='coached_sessions',
+        blank=True # Important for admin filter_horizontal
+    )
+    notes = models.TextField(blank=True, help_text="Optional objectives or notes for the session.")
+    # --- ADD THIS FIELD ---
+    assessments_complete = models.BooleanField(
+        default=False,
+        help_text="Mark as true once all player assessments for this session are done."
+    )
+    # --- END ADD THIS FIELD ---
+    # --- END OF FIELD DEFINITIONS ---
+
 
     @property
-    def end_time(self):
-        if self.start_time and self.planned_duration_minutes:
-            start_dt = datetime.datetime.combine(self.date, self.start_time)
-            if settings.USE_TZ and timezone.is_naive(start_dt):
-                 start_dt = timezone.make_aware(start_dt, timezone.get_current_timezone())
-            elif not settings.USE_TZ and timezone.is_aware(start_dt):
-                 start_dt = timezone.make_naive(start_dt, timezone.get_current_timezone())
+    def start_datetime(self):
+        """ Returns a timezone-aware datetime object for the session start. """
+        # Uses the actual field names defined above
+        if self.session_date and self.session_start_time:
             try:
-                end_dt = start_dt + datetime.timedelta(minutes=self.planned_duration_minutes)
-                return end_dt.time()
-            except TypeError:
+                # This line requires the 'datetime' module to be imported
+                naive_dt = datetime.datetime.combine(self.session_date, self.session_start_time)
+            except TypeError as e:
+                 print(f"Error combining date/time for Session {self.id}: {e}")
+                 return None
+
+            if settings.USE_TZ:
+                current_tz = timezone.get_current_timezone()
+                try:
+                    return timezone.make_aware(naive_dt, current_tz)
+                except Exception as e:
+                    print(f"Error making datetime aware for Session {self.id}: {e}")
+                    return None
+            else:
+                return naive_dt
+        return None
+
+    @property
+    def end_datetime(self):
+        """ Returns a timezone-aware datetime object for the session end. """
+        start_dt = self.start_datetime
+        if start_dt and self.planned_duration_minutes is not None:
+            try:
+                duration = int(self.planned_duration_minutes)
+                # This line requires 'timedelta' from 'datetime' module (already imported)
+                return start_dt + timedelta(minutes=duration)
+            except (TypeError, ValueError) as e:
+                print(f"Error calculating end_datetime for Session {self.id}: Invalid duration '{self.planned_duration_minutes}'. Error: {e}")
                 return None
         return None
 
+
     def __str__(self):
+        # Uses the actual field names
         group_name = self.school_group.name if self.school_group else "General"
-        return f"{group_name} Session on {self.date.strftime('%Y-%m-%d')} at {self.start_time.strftime('%H:%M')}"
+        start_time_str = self.session_start_time.strftime('%H:%M') if self.session_start_time else '?:??'
+        date_str = self.session_date.strftime('%Y-%m-%d') if self.session_date else '????-??-??'
+        return f"{group_name} Session on {date_str} at {start_time_str}"
 
     class Meta:
-        ordering = ['-date', '-start_time']
+        # Uses the actual field names defined above
+        ordering = ['-session_date', '-session_start_time']
+
+    class Meta:
+        # Uses the actual field names defined above
+        ordering = ['-session_date', '-session_start_time']
 
 
 class TimeBlock(models.Model):
     """Represents a segment of time within a Session."""
-    session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name='time_blocks')
+    session = models.ForeignKey('Session', on_delete=models.CASCADE, related_name='time_blocks') # Use quotes if Session is defined later
     start_offset_minutes = models.PositiveIntegerField(default=0, help_text="Minutes from session start time.")
     duration_minutes = models.PositiveIntegerField(default=15, validators=[MinValueValidator(1)])
     number_of_courts = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
@@ -267,35 +309,84 @@ class TimeBlock(models.Model):
     @property
     def block_start_datetime(self):
         """Calculate the absolute start datetime of the block."""
-        if self.session.start_time:
-            start_dt = datetime.datetime.combine(self.session.date, self.session.start_time)
-            if settings.USE_TZ and timezone.is_naive(start_dt):
-                 start_dt = timezone.make_aware(start_dt, timezone.get_current_timezone())
-            elif not settings.USE_TZ and timezone.is_aware(start_dt):
-                 start_dt = timezone.make_naive(start_dt, timezone.get_current_timezone())
+        # Use the Session's start_datetime property (which should now be correct)
+        session_start_dt = self.session.start_datetime
+        if session_start_dt:
             try:
-                 return start_dt + datetime.timedelta(minutes=int(self.start_offset_minutes))
+                # Add the offset to the session's aware start datetime
+                return session_start_dt + timedelta(minutes=int(self.start_offset_minutes))
             except (TypeError, ValueError):
                 return None
+        # Fallback if session start time isn't available (less ideal)
+        elif self.session.date and self.session.start_time:
+             # Combine date and time into a naive datetime
+             # CORRECTED LINE: Use datetime.datetime.combine
+             naive_dt = datetime.datetime.combine(self.session.date, self.session.start_time)
+             if settings.USE_TZ:
+                 current_tz = timezone.get_current_timezone()
+                 aware_dt = timezone.make_aware(naive_dt, current_tz)
+             else:
+                 aware_dt = naive_dt # Treat as naive if USE_TZ is False
+
+             try:
+                 # Add offset to this calculated start time
+                 return aware_dt + timedelta(minutes=int(self.start_offset_minutes))
+             except (TypeError, ValueError):
+                 return None
         return None
+
 
     @property
     def block_end_datetime(self):
         """Calculate the absolute end datetime of the block."""
-        start = self.block_start_datetime
+        start = self.block_start_datetime # Uses the corrected block_start_datetime
         if start and self.duration_minutes:
             try:
-                return start + datetime.timedelta(minutes=int(self.duration_minutes))
+                return start + timedelta(minutes=int(self.duration_minutes))
             except (TypeError, ValueError):
                 return None
         return None
 
     def __str__(self):
         start_time_str = self.block_start_datetime.strftime('%H:%M') if self.block_start_datetime else '?:??'
-        return f"Block in {self.session} starting ~{start_time_str} ({self.duration_minutes} min)"
+        # Use session's __str__ representation if available
+        session_str = str(self.session) if self.session else "Unknown Session"
+        return f"Block in {session_str} starting ~{start_time_str} ({self.duration_minutes} min)"
 
     class Meta:
         ordering = ['session', 'start_offset_minutes']
+
+# Make sure Coach and Drill models are defined or imported if used below
+# from .models import Coach, Drill
+
+class ActivityAssignment(models.Model):
+    """Assigns a Drill or custom activity to a court within a TimeBlock."""
+    time_block = models.ForeignKey(TimeBlock, on_delete=models.CASCADE, related_name='activities')
+    court_number = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    drill = models.ForeignKey('Drill', on_delete=models.SET_NULL, null=True, blank=True) # Use quotes if Drill defined later
+    custom_activity_name = models.CharField(
+        max_length=150, blank=True,
+        help_text="Use this if not selecting a pre-defined Drill."
+    )
+    duration_minutes = models.PositiveIntegerField(
+        default=10, validators=[MinValueValidator(1)],
+        help_text="Estimated duration for this specific activity."
+    )
+    lead_coach = models.ForeignKey(
+        'Coach', on_delete=models.SET_NULL, null=True, blank=True, # Use quotes if Coach defined later
+        related_name='led_activities'
+    )
+    order = models.PositiveIntegerField(default=0, help_text="Order of activity within the court/block (0 first).")
+    activity_notes = models.TextField(blank=True, help_text="Specific notes for this activity instance.")
+
+    def __str__(self):
+        activity_name = self.drill.name if self.drill else self.custom_activity_name
+        # Use time_block's __str__ representation
+        time_block_str = str(self.time_block) if self.time_block else "Unknown TimeBlock"
+        return f"{activity_name} on Court {self.court_number} in {time_block_str}"
+
+    class Meta:
+        ordering = ['time_block', 'court_number', 'order']
 
 
 class ActivityAssignment(models.Model):

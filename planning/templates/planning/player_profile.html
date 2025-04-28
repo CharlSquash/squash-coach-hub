@@ -1,194 +1,383 @@
-<!DOCTYPE html>
+{% extends 'planning/base.html' %}
 {% load static %}
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Player Profile: {{ player.full_name }}</title>
-    <link rel="stylesheet" href="{% static 'planning/style.css' %}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    {# --- CHART.JS Dependencies (Using date-fns adapter) --- #}
-    <script src="https://cdn.jsdelivr.net/npm/date-fns@^2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@^3"></script>
-    {# Chart.js Library #}
+
+{# Block for setting the page title - THIS SHOULD BE THE ONLY ONE #}
+{% block title %}Player Profile: {{ player.full_name }}{% endblock %}
+
+{# Block for page-specific CSS and JavaScript needed in the <head> #}
+{% block extra_head %}
+    {# --- Chart.js Library (Load this one) --- #}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@^4"></script>
     {# --- END CHART.JS Dependencies --- #}
+
+    {# --- Page-specific styles --- #}
     <style>
-        /* Assuming base styles are in style.css */
-        .chart-container { margin-top: 20px; margin-bottom: 30px; max-width: 800px; margin-left: auto; margin-right: auto; padding: 15px; background-color: var(--court-bg); border: 1px solid var(--court-border); border-radius: 5px;}
-        canvas { max-width: 100%; height: auto; }
-        /* Styles for profile page elements (should match style.css) */
-        .profile-header { display: flex; align-items: flex-start; gap: 20px; margin-bottom: 20px; flex-wrap: wrap;}
-        .profile-photo img { width: 150px; height: 150px; border-radius: 50%; border: 3px solid var(--border-color); object-fit: cover;}
-        .profile-details { flex: 1; } .profile-details h1 { margin-top: 0; }
-        .profile-section { margin-bottom: 30px; padding: 20px; background-color: var(--container-bg); border: 1px solid var(--border-color); border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);}
-        .profile-section h3 { margin-top: 0; color: var(--subheading-color); border-bottom: 1px solid var(--border-light); font-size: 1.3em; padding-bottom: 8px; margin-bottom: 15px;}
-        .profile-section h4 { margin-top: 20px; color: var(--subheading-color); border-bottom: 1px dashed var(--border-light); font-size: 1.1em; padding-bottom: 5px; margin-bottom: 10px;}
-        .history-list li, .data-table td, .data-table th { padding: 8px 5px; border-bottom: 1px dotted var(--border-light); font-size: 0.95em; vertical-align: top;}
-        .history-list li:last-child, .data-table tr:last-child td { border-bottom: none; }
-        .data-table { width: 100%; border-collapse: collapse; margin-top: 10px;}
-        .data-table th { text-align: left; font-weight: bold; color: var(--subheading-color); padding-right: 15px; border-bottom-width: 2px; border-bottom-style: solid;}
-        .no-data-msg { color: var(--subheading-color); font-style: italic;}
-        .notes-cell { font-size: 0.9em; color: #555; } body.dark-mode .notes-cell { color: #bbb; }
-        .add-data-link { display: inline-block; margin: 0 5px 5px 0; font-size: 0.9em; background-color: var(--action-add-bg); color: var(--action-add-text); padding: 4px 10px; border-radius: 4px; text-decoration: none; border: 1px solid var(--action-add-border); }
-        .add-data-link:hover { background-color: var(--action-add-hover); }
-        .back-link { font-weight: bold; margin-top: 25px; display: inline-block; font-size: 1.1em;}
-        details > summary { cursor: pointer; font-size: 0.9em; color: var(--link-color); margin-top: 10px;}
-        
+        /* Styles specific to the player profile page */
+        .chart-container {
+            margin-top: 20px;
+            margin-bottom: 30px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 15px;
+            background-color: var(--court-bg, #f0f0f0);
+            border: 1px solid var(--court-border, #ccc);
+            border-radius: 5px;
+        }
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+        .profile-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .profile-photo img {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 3px solid var(--border-color, #ccc);
+            object-fit: cover;
+        }
+        .profile-details { flex: 1; }
+        .profile-details h1 { margin-top: 0; }
+        .profile-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: var(--container-bg, #fff);
+            border: 1px solid var(--border-color, #ddd);
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .profile-section h3 {
+            margin-top: 0;
+            color: var(--subheading-color, #333);
+            border-bottom: 1px solid var(--border-light, #eee);
+            font-size: 1.3em;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+        }
+         .profile-section h4 {
+             margin-top: 20px;
+             color: var(--subheading-color, #333);
+             border-bottom: 1px dashed var(--border-light, #eee);
+             font-size: 1.1em;
+             padding-bottom: 5px;
+             margin-bottom: 10px;
+         }
+        .data-table td, .data-table th {
+            padding: 8px 5px;
+            border-bottom: 1px dotted var(--border-light, #eee);
+            font-size: 0.95em;
+            vertical-align: top;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .data-table th {
+            text-align: left;
+            font-weight: bold;
+            color: var(--subheading-color, #333);
+            padding-right: 15px;
+            border-bottom-width: 2px;
+            border-bottom-style: solid;
+        }
+        .no-data-msg {
+            color: var(--subheading-color, #666);
+            font-style: italic;
+        }
+        .notes-cell { font-size: 0.9em; color: #555; }
+        html.dark-mode .notes-cell { color: #bbb; }
+
+        .add-data-link {
+            display: inline-block;
+            margin: 0 5px 5px 0;
+            font-size: 0.9em;
+            background-color: var(--action-add-bg, #28a745);
+            color: var(--action-add-text, #fff);
+            padding: 4px 10px;
+            border-radius: 4px;
+            text-decoration: none;
+            border: 1px solid var(--action-add-border, #28a745);
+        }
+        .add-data-link:hover { background-color: var(--action-add-hover, #218838); }
+
+        details > summary {
+            cursor: pointer;
+            font-size: 0.9em;
+            color: var(--link-color, #007bff);
+            margin-top: 10px;
+            display: inline-block;
+        }
+        details > summary:hover {
+             color: var(--link-hover-color);
+        }
+
+        /* Button styles */
+        .btn {
+            display: inline-block; padding: 8px 15px; border: 1px solid transparent;
+            border-radius: 5px; text-decoration: none; cursor: pointer;
+            text-align: center; font-size: 0.9em; line-height: 1.5;
+        }
+        .btn-primary {
+            color: #fff; background-color: var(--link-color, #007bff);
+            border-color: var(--link-color, #007bff);
+        }
+        .btn-primary:hover {
+            background-color: var(--link-hover-color, #0056b3);
+            border-color: var(--link-hover-color, #0056b3);
+        }
+        .btn-secondary {
+             color: #fff; background-color: #6c757d; border-color: #6c757d;
+        }
+        .btn-secondary:hover {
+             background-color: #5a6268; border-color: #545b62;
+        }
+
+        /* Feedback section */
+        .feedback-section {
+            margin-top: 30px; padding: 15px 20px;
+             background-color: var(--container-bg, #fff);
+             border: 1px solid var(--border-color, #ddd);
+             border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+         .feedback-section h2 {
+             margin-top: 0; color: var(--subheading-color, #333);
+             border-bottom: 1px solid var(--border-light, #eee);
+             font-size: 1.3em; padding-bottom: 8px; margin-bottom: 15px;
+         }
+        .feedback-entry {
+            border-bottom: 1px dashed var(--border-light, #eee);
+            padding-bottom: 15px; margin-bottom: 15px;
+        }
+         .feedback-entry:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .feedback-entry p { margin-bottom: 10px; }
+        .feedback-entry p strong { color: var(--text-color); }
+
+        /* Action buttons area */
+        .profile-actions {
+             padding: 15px 0; border-bottom: 1px solid var(--border-light, #eee);
+             margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap;
+        }
+
     </style>
-</head>
-<body>
-    <div class="container">
-        <a href="{% url 'planning:players_list' %}" class="back-link">
-            <i class="bi bi-arrow-left"></i> Back to Players List    
-        </a>   
-        {# --- Profile Header --- #}
-        <div class="profile-header">
-             <div class="profile-photo"> {% if player.photo %} <img src="{{ player.photo.url }}" alt="Photo of {{ player.full_name }}"> {% else %} <img src="{% static 'planning/placeholder.png' %}" alt="Placeholder image" width="150" height="150" style="border-radius: 50%; border: 1px solid var(--border-light);"> {% endif %} </div>
-             <div class="profile-details"> <h1>{{ player.full_name }}</h1> <p><strong>Skill Level:</strong> {{ player.get_skill_level_display }}</p> <p><strong>Status:</strong> {% if player.is_active %}Active{% else %}Inactive{% endif %}</p> <p> <strong>Groups:</strong> {% for group in player.school_groups.all %} {{ group.name }}{% if not forloop.last %}, {% endif %} {% empty %} Not assigned to any groups. {% endfor %} </p> <div style="margin-top: 15px;"> <a href="{% url 'planning:add_sprint_record' player.id %}" class="add-data-link">Add Sprint</a> <a href="{% url 'planning:add_volley_record' player.id %}" class="add-data-link">Add Volley</a> <a href="{% url 'planning:add_drive_record' player.id %}" class="add-data-link">Add Drive</a> <a href="{% url 'planning:add_match_result' player.id %}" class="add-data-link">Add Match</a> </div> </div>
+{% endblock %}
+
+
+{# Block for the main page content #}
+{% block content %}
+    {# --- Profile Header --- #}
+    <div class="profile-header">
+        <div class="profile-photo">
+            {% if player.photo %}
+                <img src="{{ player.photo.url }}" alt="Photo of {{ player.full_name }}">
+            {% else %}
+                <img src="{% static 'planning/images/placeholder_profile.png' %}" alt="Placeholder image" style="border-radius: 50%; border: 1px solid var(--border-light);">
+            {% endif %}
         </div>
-        <hr>
-
-        {# === ADD ACTION BUTTONS (Place appropriately near top) === #}
-<div class="profile-actions" style="padding: 15px 0; border-bottom: 1px solid var(--border-light, #eee); margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
-    <a href="{% url 'planning:add_coach_feedback' player.id %}" class="btn btn-primary"> {# Use your preferred button class/style #}
-        <i class="bi bi-chat-left-text-fill"></i> Add Coach Feedback
-    </a>
-</div>
-
-{# If you don't have button styles like .btn, add some basic ones #}
-{# You can put this in your main style.css or in a <style> tag in this template #}
-<style>
-    .btn { 
-        display: inline-block; 
-        padding: 8px 15px; 
-        border: 1px solid transparent; 
-        border-radius: 5px; 
-        text-decoration: none; 
-        cursor: pointer; 
-        text-align: center; 
-        font-size: 0.9em;
-        line-height: 1.5;
-    }
-    .btn-primary { color: #fff; background-color: var(--link-color, #007bff); border-color: var(--link-color, #007bff); }
-    .btn-primary:hover { background-color: var(--link-hover-color, #0056b3); border-color: var(--link-hover-color, #0056b3); }
-    .btn-secondary { color: #fff; background-color: #6c757d; border-color: #6c757d; }
-    .btn-secondary:hover { background-color: #5a6268; border-color: #545b62; }
-</style>
-{# === END ACTION BUTTONS === #}
-
-        {# --- Session Attendance History --- #}
-        <div class="profile-section">
-            <h3>Session Attendance History</h3>
-             {% if sessions_attended %} <table class="data-table"> <thead><tr><th>Date</th><th>Session</th><th>Time</th></tr></thead> <tbody> {% for session in sessions_attended %} <tr> <td>{{ session.date|date:"D, d M Y" }}</td> <td><a href="{% url 'planning:session_detail' session.id %}">{% if session.school_group %}{{ session.school_group.name }}{% else %}Session{% endif %}</a></td> <td>{{ session.start_time|time:"H:i" }}</td> </tr> {% endfor %} </tbody> </table> {% else %} <p class="no-data-msg">No session attendance recorded yet.</p> {% endif %}
-        </div>
-
-        {# --- Session Assessments --- #}
-        <div class="profile-section">
-            <h3>Session Assessments</h3>
-             {% if assessments %} <table class="data-table"> <thead><tr><th>Date</th><th>Session</th><th>Effort</th><th>Focus</th><th>Resilience</th><th>Composure</th><th>Decision Making</th><th>Notes</th></tr></thead> <tbody> {% for assessment in assessments %} <tr> <td>{{ assessment.date_recorded|date:"Y-m-d" }}</td> <td><a href="{% url 'planning:session_detail' assessment.session.id %}">{{ assessment.session.date|date:"d M" }}</a></td> <td style="text-align: center;">{{ assessment.get_effort_rating_display|default:"-" }}</td> <td style="text-align: center;">{{ assessment.get_focus_rating_display|default:"-" }}</td> <td style="text-align: center;">{{ assessment.get_resilience_rating_display|default:"-" }}</td> <td style="text-align: center;">{{ assessment.get_composure_rating_display|default:"-" }}</td> <td style="text-align: center;">{{ assessment.get_decision_making_rating_display|default:"-" }}</td> <td class="notes-cell">{{ assessment.coach_notes|default:""|linebreaksbr }}</td> </tr> {% endfor %} </tbody> </table> {% else %} <p class="no-data-msg">No session assessments recorded yet.</p> {% endif %}
-        </div>
-
-        {# === ADD COACH FEEDBACK DISPLAY SECTION === #}
-<div class="feedback-section card" style="margin-top: 30px; padding: 15px 20px;"> {# Adjust styling/padding as needed #}
-    <h2><i class="bi bi-clipboard2-check"></i> Coach Feedback</h2>
-
-    {% for feedback in player.feedback_entries.all %} {# Access via related_name #}
-        <div class="feedback-entry" style="border-bottom: 1px dashed var(--border-light, #eee); padding-bottom: 15px; margin-bottom: 15px;">
-            <p style="font-weight: bold; margin-bottom: 8px; font-size: 0.95em; color: var(--subheading-color);">
-                <i class="bi bi-calendar3"></i> {{ feedback.date_recorded|date:"Y-m-d H:i" }}
-                {% if feedback.session %} 
-                    | Linked Session: <a href="{% url 'planning:session_detail' feedback.session.id %}">{{ feedback.session.date|date:"Y-m-d" }}</a>
-                {% endif %}
-                {# Add recorded_by if implemented: | By: {{ feedback.recorded_by }} #}
+        <div class="profile-details">
+            <h1>{{ player.full_name }}</h1>
+            <p><strong>Skill Level:</strong> {{ player.get_skill_level_display }}</p>
+            <p><strong>Status:</strong> {% if player.is_active %}Active{% else %}Inactive{% endif %}</p>
+            <p>
+                <strong>Groups:</strong>
+                {% for group in player.school_groups.all %}
+                    {{ group.name }}{% if not forloop.last %}, {% endif %}
+                {% empty %}
+                    Not assigned to any groups.
+                {% endfor %}
             </p>
-            {% if feedback.strengths_observed %}
-                <p><strong>Strengths Observed:</strong><br>{{ feedback.strengths_observed|linebreaksbr }}</p>
-            {% endif %}
-            {% if feedback.areas_for_development %}
-                <p><strong>Areas for Development:</strong><br>{{ feedback.areas_for_development|linebreaksbr }}</p>
-            {% endif %}
-            {% if feedback.suggested_focus %}
-                <p><strong>Suggested Focus / Next Steps:</strong><br>{{ feedback.suggested_focus|linebreaksbr }}</p>
-            {% endif %}
-             {% if feedback.general_notes %}
-                <p><strong>General Notes:</strong><br>{{ feedback.general_notes|linebreaksbr }}</p>
-            {% endif %}
+            <div style="margin-top: 15px;">
+                <a href="{% url 'planning:add_sprint_record' player.id %}" class="add-data-link">Add Sprint</a>
+                <a href="{% url 'planning:add_volley_record' player.id %}" class="add-data-link">Add Volley</a>
+                <a href="{% url 'planning:add_drive_record' player.id %}" class="add-data-link">Add Drive</a>
+                <a href="{% url 'planning:add_match_result' player.id %}" class="add-data-link">Add Match</a>
+            </div>
         </div>
-        {% if forloop.last %} {# Remove bottom border from last item #}
-            <style> .feedback-entry:last-child { border-bottom: none; margin-bottom: 0; } </style>
+    </div>
+    <hr>
+
+    {# --- Action Buttons --- #}
+    <div class="profile-actions">
+        <a href="{% url 'planning:add_coach_feedback' player.id %}" class="btn btn-primary">
+            <i class="bi bi-chat-left-text-fill"></i> Add Coach Feedback
+        </a>
+        <a href="{% url 'planning:assess_latest_session' player.id %}" class="btn btn-secondary">
+             <i class="bi bi-clipboard-check"></i> Assess Latest Session
+        </a>
+    </div>
+
+    {# --- Session Attendance History --- #}
+    <div class="profile-section">
+        <h3>Session Attendance History</h3>
+        {% if sessions_attended %}
+            <table class="data-table">
+                <thead><tr><th>Date</th><th>Session</th><th>Time</th></tr></thead>
+                <tbody>
+                    {% for session in sessions_attended %}
+                    <tr>
+                        <td>{{ session.session_date|date:"D, d M Y" }}</td>
+                        <td><a href="{% url 'planning:session_detail' session.id %}">{% if session.school_group %}{{ session.school_group.name }}{% else %}Session{% endif %}</a></td>
+                        <td>{{ session.session_start_time|time:"H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="no-data-msg">No session attendance recorded yet.</p>
         {% endif %}
-    {% empty %}
-        <p>No feedback entries recorded yet.</p>
-    {% endfor %}
-</div>
-{# === END COACH FEEDBACK DISPLAY SECTION === #}
+    </div>
+
+    {# --- Session Assessments --- #}
+    <div class="profile-section">
+        <h3>Session Assessments</h3>
+        {% if assessments %}
+            <table class="data-table">
+                <thead><tr><th>Date</th><th>Session</th><th>Effort</th><th>Focus</th><th>Resilience</th><th>Composure</th><th>Decision Making</th><th>Notes</th></tr></thead>
+                <tbody>
+                    {% for assessment in assessments %}
+                    <tr>
+                        <td>{{ assessment.date_recorded|date:"Y-m-d" }}</td>
+                        <td><a href="{% url 'planning:session_detail' assessment.session.id %}">{{ assessment.session.session_date|date:"d M" }}</a></td>
+                        <td style="text-align: center;">{{ assessment.get_effort_rating_display|default:"-" }}</td>
+                        <td style="text-align: center;">{{ assessment.get_focus_rating_display|default:"-" }}</td>
+                        <td style="text-align: center;">{{ assessment.get_resilience_rating_display|default:"-" }}</td>
+                        <td style="text-align: center;">{{ assessment.get_composure_rating_display|default:"-" }}</td>
+                        <td style="text-align: center;">{{ assessment.get_decision_making_rating_display|default:"-" }}</td>
+                        <td class="notes-cell">{{ assessment.coach_notes|default:""|linebreaksbr }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="no-data-msg">No session assessments recorded yet.</p>
+        {% endif %}
+    </div>
+
+    {# --- Coach Feedback Display Section --- #}
+    <div class="feedback-section">
+        <h2><i class="bi bi-clipboard2-check"></i> Coach Feedback</h2>
+        {% for feedback in player.feedback_entries.all %}
+            <div class="feedback-entry">
+                <p style="font-weight: bold; margin-bottom: 8px; font-size: 0.95em; color: var(--subheading-color);">
+                    <i class="bi bi-calendar3"></i> {{ feedback.date_recorded|date:"Y-m-d H:i" }}
+                    {% if feedback.session %}
+                        | Linked Session: <a href="{% url 'planning:session_detail' feedback.session.id %}">{{ feedback.session.session_date|date:"Y-m-d" }}</a>
+                    {% endif %}
+                </p>
+                {% if feedback.strengths_observed %}
+                    <p><strong>Strengths Observed:</strong><br>{{ feedback.strengths_observed|linebreaksbr }}</p>
+                {% endif %}
+                {% if feedback.areas_for_development %}
+                    <p><strong>Areas for Development:</strong><br>{{ feedback.areas_for_development|linebreaksbr }}</p>
+                {% endif %}
+                {% if feedback.suggested_focus %}
+                    <p><strong>Suggested Focus / Next Steps:</strong><br>{{ feedback.suggested_focus|linebreaksbr }}</p>
+                {% endif %}
+                 {% if feedback.general_notes %}
+                    <p><strong>General Notes:</strong><br>{{ feedback.general_notes|linebreaksbr }}</p>
+                {% endif %}
+            </div>
+        {% empty %}
+            <p class="no-data-msg">No feedback entries recorded yet.</p>
+        {% endfor %}
+    </div>
+
+    {# --- Metric Records & CHARTS --- #}
+    <div class="profile-section">
+        <h3>Metric Records</h3>
+
+        {# === Court Sprints === #}
+        <h4>Court Sprints <a href="{% url 'planning:add_sprint_record' player.id %}" class="add-data-link" style="font-size: 0.8em; margin-left: 10px;">+ Add</a></h4>
+        {% if sprints %}
+            <div class="chart-container"><canvas id="sprintChart"></canvas></div>
+            <details><summary>View Sprint Data Table</summary><table class="data-table"><thead><tr><th>Date</th><th>Duration</th><th>Score (Laps)</th><th>Session</th></tr></thead><tbody>{% for sprint in sprints %}<tr><td>{{ sprint.date_recorded|date:"Y-m-d" }}</td><td>{{ sprint.get_duration_choice_display }}</td><td>{{ sprint.score }}</td><td>{% if sprint.session %}<a href="{% url 'planning:session_detail' sprint.session.id %}">Session</a>{% else %}-{% endif %}</td></tr>{% endfor %}</tbody></table></details>
+        {% else %} <p class="no-data-msg">No court sprint records found.</p> {% endif %}
 
 
-        {# --- Metric Records & CHARTS --- #}
-        <div class="profile-section">
-            <h3>Metric Records</h3>
-
-            {# === Court Sprints === #}
-            <h4>Court Sprints <a href="{% url 'planning:add_sprint_record' player.id %}" class="add-data-link" style="font-size: 0.8em; margin-left: 10px;">+ Add</a></h4>
-            {% if sprints %}
-                <div class="chart-container"><canvas id="sprintChart"></canvas></div>
-                <details><summary>View Sprint Data Table</summary><table class="data-table"><thead><tr><th>Date</th><th>Duration</th><th>Score (Laps)</th><th>Session</th></tr></thead><tbody>{% for sprint in sprints %}<tr><td>{{ sprint.date_recorded|date:"Y-m-d" }}</td><td>{{ sprint.get_duration_choice_display }}</td><td>{{ sprint.score }}</td><td>{% if sprint.session %}<a href="{% url 'planning:session_detail' sprint.session.id %}">Session</a>{% else %}-{% endif %}</td></tr>{% endfor %}</tbody></table></details>
-            {% else %} <p class="no-data-msg">No court sprint records found.</p> {% endif %}
+        {# === Volleys === #}
+        <h4 style="margin-top: 25px;">Volleys (Consecutive) <a href="{% url 'planning:add_volley_record' player.id %}" class="add-data-link" style="font-size: 0.8em; margin-left: 10px;">+ Add</a></h4>
+        {% if volleys %}
+            <div class="chart-container"><canvas id="volleyChart"></canvas></div>
+            <details><summary>View Volley Data Table</summary><table class="data-table"><thead><tr><th>Date</th><th>Type</th><th>Count</th><th>Session</th></tr></thead><tbody>{% for volley in volleys %}<tr><td>{{ volley.date_recorded|date:"Y-m-d" }}</td><td>{{ volley.get_shot_type_display }}</td><td>{{ volley.consecutive_count }}</td><td>{% if volley.session %}<a href="{% url 'planning:session_detail' volley.session.id %}">Session</a>{% else %}-{% endif %}</td></tr>{% endfor %}</tbody></table></details>
+        {% else %} <p class="no-data-msg">No volley records found.</p> {% endif %}
 
 
-             {# === Volleys === #}
-            <h4 style="margin-top: 25px;">Volleys (Consecutive) <a href="{% url 'planning:add_volley_record' player.id %}" class="add-data-link" style="font-size: 0.8em; margin-left: 10px;">+ Add</a></h4>
-             {% if volleys %}
-                <div class="chart-container"><canvas id="volleyChart"></canvas></div>
-                 <details><summary>View Volley Data Table</summary><table class="data-table"><thead><tr><th>Date</th><th>Type</th><th>Count</th><th>Session</th></tr></thead><tbody>{% for volley in volleys %}<tr><td>{{ volley.date_recorded|date:"Y-m-d" }}</td><td>{{ volley.get_shot_type_display }}</td><td>{{ volley.consecutive_count }}</td><td>{% if volley.session %}<a href="{% url 'planning:session_detail' volley.session.id %}">Session</a>{% else %}-{% endif %}</td></tr>{% endfor %}</tbody></table></details>
-             {% else %} <p class="no-data-msg">No volley records found.</p> {% endif %}
+        {# === Backwall Drives === #}
+        <h4 style="margin-top: 25px;">Backwall Drives (Consecutive) <a href="{% url 'planning:add_drive_record' player.id %}" class="add-data-link" style="font-size: 0.8em; margin-left: 10px;">+ Add</a></h4>
+        {% if drives %}
+            <div class="chart-container"><canvas id="driveChart"></canvas></div>
+            <details><summary>View Drive Data Table</summary><table class="data-table"><thead><tr><th>Date</th><th>Type</th><th>Count</th><th>Session</th></tr></thead><tbody>{% for drive in drives %}<tr><td>{{ drive.date_recorded|date:"Y-m-d" }}</td><td>{{ drive.get_shot_type_display }}</td><td>{{ drive.consecutive_count }}</td><td>{% if drive.session %}<a href="{% url 'planning:session_detail' drive.session.id %}">Session</a>{% else %}-{% endif %}</td></tr>{% endfor %}</tbody></table></details>
+        {% else %} <p class="no-data-msg">No backwall drive records found.</p> {% endif %}
+    </div>
+
+    {# --- Match History --- #}
+    <div class="profile-section">
+        <h3>Match History <a href="{% url 'planning:add_match_result' player.id %}" class="add-data-link" style="font-size: 0.8em; margin-left: 10px;">+ Add</a></h3>
+        {% if matches %}
+            <table class="data-table">
+                <thead> <tr> <th>Date</th> <th>Type</th> <th>Opponent</th> <th>Score</th> <th>Notes</th> <th>Session</th> </tr> </thead>
+                <tbody>
+                    {% for match in matches %}
+                    <tr>
+                        <td>{{ match.date|date:"Y-m-d" }}</td>
+                        <td>{% if match.is_competitive %}Competitive{% else %}Practice{% endif %}</td>
+                        <td>{{ match.opponent_name|default:"N/A" }}</td>
+                        <td>{{ match.player_score_str }}{% if match.opponent_score_str %} / {{ match.opponent_score_str }}{% endif %}</td>
+                        <td class="notes-cell">{{ match.match_notes|default:""|linebreaksbr }}</td>
+                        <td>{% if match.session %}<a href="{% url 'planning:session_detail' match.session.id %}">Session</a>{% else %}-{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="no-data-msg">No match results recorded yet.</p>
+        {% endif %}
+    </div>
+
+{% endblock %}
 
 
-             {# === Backwall Drives === #}
-            <h4 style="margin-top: 25px;">Backwall Drives (Consecutive) <a href="{% url 'planning:add_drive_record' player.id %}" class="add-data-link" style="font-size: 0.8em; margin-left: 10px;">+ Add</a></h4>
-             {% if drives %}
-                 <div class="chart-container"><canvas id="driveChart"></canvas></div>
-                 <details><summary>View Drive Data Table</summary><table class="data-table"><thead><tr><th>Date</th><th>Type</th><th>Count</th><th>Session</th></tr></thead><tbody>{% for drive in drives %}<tr><td>{{ drive.date_recorded|date:"Y-m-d" }}</td><td>{{ drive.get_shot_type_display }}</td><td>{{ drive.consecutive_count }}</td><td>{% if drive.session %}<a href="{% url 'planning:session_detail' drive.session.id %}">Session</a>{% else %}-{% endif %}</td></tr>{% endfor %}</tbody></table></details>
-             {% else %} <p class="no-data-msg">No backwall drive records found.</p> {% endif %}
-       </div>
-
-       {# --- Match History --- #}
-       <div class="profile-section">
-            <h3>Match History <a href="{% url 'planning:add_match_result' player.id %}" class="add-data-link" style="font-size: 0.8em; margin-left: 10px;">+ Add</a></h3>
-             {% if matches %} <table class="data-table"> <thead> <tr> <th>Date</th> <th>Type</th> <th>Opponent</th> <th>Score</th> <th>Notes</th> <th>Session</th> </tr> </thead> <tbody> {% for match in matches %} <tr> <td>{{ match.date|date:"Y-m-d" }}</td> <td>{% if match.is_competitive %}Competitive{% else %}Practice{% endif %}</td> <td>{{ match.opponent_name|default:"N/A" }}</td> <td>{{ match.player_score_str }}{% if match.opponent_score_str %} / {{ match.opponent_score_str }}{% endif %}</td> <td class="notes-cell">{{ match.match_notes|default:""|linebreaksbr }}</td> <td>{% if match.session %}<a href="{% url 'planning:session_detail' match.session.id %}">Session</a>{% else %}-{% endif %}</td> </tr> {% endfor %} </tbody> </table> {% else %} <p class="no-data-msg">No match results recorded yet.</p> {% endif %}
-        </div>
-
-        <hr>
-        <p><a href="{% url 'planning:session_list' %}" class="back-link">Back to Session List</a></p>
-
-    </div> {# End container #}
-
+{# Block for page-specific JavaScript (runs after common JS in base.html) #}
+{% block extra_scripts %}
     {# --- Embed JSON Chart Data --- #}
     {{ sprint_chart_data|json_script:"sprint-chart-data" }}
     {{ volley_chart_data|json_script:"volley-chart-data" }}
     {{ drive_chart_data|json_script:"drive-chart-data" }}
 
-    {# --- JavaScript for Charts (Time Scale Disabled, Cleaned Logging) --- #}
+    {# --- JavaScript for Charts --- #}
     <script>
         // Helper to get data safely
         function getChartData(jsonScriptId) {
             const scriptElement = document.getElementById(jsonScriptId);
-            if (!scriptElement || !scriptElement.textContent) { console.error(`ERROR: Script element ${jsonScriptId} not found or empty.`); return null; }
+            if (!scriptElement || !scriptElement.textContent) {
+                console.error(`Chart Error: Script element #${jsonScriptId} not found or empty.`);
+                return null;
+            }
             try {
                 const jsonData = JSON.parse(scriptElement.textContent);
-                if (typeof jsonData === 'object' && jsonData !== null) { return jsonData; }
-                 else { console.warn(`Parsed data for ${jsonScriptId} is not an object.`); return null; }
-            } catch (e) { console.error(`ERROR parsing JSON for ${jsonScriptId}:`, e); return null; }
+                 console.log(`[${jsonScriptId}] Parsed data:`, jsonData); // Log parsed data
+                 return jsonData;
+            } catch (e) {
+                console.error(`Chart Error: Failed parsing JSON for #${jsonScriptId}:`, e, "\nRaw content:", scriptElement.textContent);
+                return null;
+            }
         }
 
         // Function to create a chart
         function createLineChart(canvasId, chartData, chartTitle, yAxisLabel) {
             const canvasElement = document.getElementById(canvasId);
-            if (!canvasElement) { console.error(`ERROR: Canvas ${canvasId} not found.`); return; }
+            if (!canvasElement) { console.error(`Chart Error: Canvas #${canvasId} not found.`); return; }
             const ctx = canvasElement.getContext('2d');
+
             if (!chartData || typeof chartData !== 'object' || Object.keys(chartData).length === 0) {
-                console.warn(`WARN: No data for chart ${canvasId}`);
+                console.warn(`Chart Warning: No valid data provided for chart ${canvasId}`);
                 ctx.font = "16px sans-serif"; ctx.fillStyle = "grey"; ctx.textAlign = "center";
                 ctx.fillText("No data available for chart.", canvasElement.width / 2, canvasElement.height / 2);
                 return;
@@ -198,62 +387,68 @@
             const colors = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6c757d'];
             let colorIndex = 0;
             const dataKeys = Object.keys(chartData);
+
             let allLabels = new Set();
-            dataKeys.forEach(key => { if(chartData[key] && Array.isArray(chartData[key].labels)){ chartData[key].labels.forEach(label => allLabels.add(label));}});
+            dataKeys.forEach(key => {
+                if(chartData[key] && Array.isArray(chartData[key].labels)){
+                    chartData[key].labels.forEach(label => allLabels.add(label));
+                } else {
+                     console.warn(`Chart Warning: Invalid labels structure for key "${key}" in chart ${canvasId}`);
+                }
+            });
             const sortedLabels = Array.from(allLabels).sort();
 
             dataKeys.forEach(key => {
-                const datasetData = chartData[key];
-                if (datasetData && typeof datasetData === 'object' && Array.isArray(datasetData.labels) && Array.isArray(datasetData.data) && datasetData.data.length > 0) {
+                const datasetInfo = chartData[key];
+                if (datasetInfo && typeof datasetInfo === 'object' && Array.isArray(datasetInfo.labels) && Array.isArray(datasetInfo.data) && datasetInfo.data.length > 0) {
                     const alignedData = sortedLabels.map(label => {
-                        const index = datasetData.labels.indexOf(label);
-                        return index !== -1 ? datasetData.data[index] : null;
+                        const index = datasetInfo.labels.indexOf(label);
+                        return index !== -1 ? datasetInfo.data[index] : null;
                     });
+
                     if (alignedData.some(point => point !== null)) {
                         datasets.push({
                             label: key.replace('m', ' Min').replace('FH','Forehand').replace('BH','Backhand'),
                             data: alignedData,
                             borderColor: colors[colorIndex % colors.length],
-                            tension: 0.1, spanGaps: false
+                            tension: 0.1,
+                            spanGaps: true // CHANGED TO TRUE to connect points
                         });
                         colorIndex++;
                     }
+                } else {
+                     console.warn(`Chart Warning: Invalid or empty data structure for key "${key}" in chart ${canvasId}`);
                 }
             });
 
-            if (datasets.length === 0) {
-                console.warn(`WARN: No valid datasets constructed for ${canvasId}.`);
-                ctx.font = "16px sans-serif"; ctx.fillStyle = "grey"; ctx.textAlign = "center";
-                ctx.fillText("Not enough data points for chart.", canvasElement.width / 2, canvasElement.height / 2);
-                return;
-            }
+             if (datasets.length === 0) {
+                 console.warn(`Chart Warning: No valid datasets constructed for ${canvasId}. Cannot create chart.`);
+                 ctx.font = "16px sans-serif"; ctx.fillStyle = "grey"; ctx.textAlign = "center";
+                 ctx.fillText("Not enough data points for chart.", canvasElement.width / 2, canvasElement.height / 2);
+                 return;
+             }
 
             try {
                 new Chart(ctx, {
                     type: 'line',
                     data: { labels: sortedLabels, datasets: datasets },
                     options: {
-                         responsive: true, maintainAspectRatio: true,
-                         plugins: { title: { display: true, text: chartTitle, font: { size: 16 } }, legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false } },
-                         scales: {
-                            // --- Use Default Category Scale for X-Axis ---
+                        responsive: true, maintainAspectRatio: true,
+                        plugins: { title: { display: true, text: chartTitle, font: { size: 16 } }, legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false } },
+                        scales: {
                             x: {
-                                title: { display: true, text: 'Date Recorded' }
-                                // type: 'time', // Time scale is disabled
-                                // time: { ... }
+                                title: { display: true, text: 'Date Recorded' },
+                                type: 'category', // Use category scale for date strings
+                                labels: sortedLabels // Explicitly provide labels
                             },
-                            // --- End Change ---
-                            y: {
-                                beginAtZero: true,
-                                title: { display: true, text: yAxisLabel }
-                            }
-                         },
-                         interaction: { mode: 'nearest', axis: 'x', intersect: false }
-                     }
+                            y: { beginAtZero: true, title: { display: true, text: yAxisLabel } }
+                        },
+                        interaction: { mode: 'nearest', axis: 'x', intersect: false }
+                    }
                 });
-                 // console.log(`Chart created successfully for ${canvasId}`);
+                 console.log(`Chart Info: Chart created successfully for ${canvasId}`); // INFO Log
             } catch(e) {
-                 console.error(`*** ERROR creating Chart.js instance for ${canvasId}:`, e);
+                 console.error(`*** Chart Error: Failed creating Chart.js instance for ${canvasId}:`, e);
                  ctx.font = "16px sans-serif"; ctx.fillStyle = "red"; ctx.textAlign = "center";
                  ctx.fillText("Error creating chart instance.", canvasElement.width / 2, canvasElement.height / 2);
             }
@@ -261,17 +456,17 @@
 
         // Create the charts when the DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM Loaded, attempting to create charts..."); // DEBUG Log
             const sprintData = getChartData('sprint-chart-data');
-            createLineChart('sprintChart', sprintData, 'Court Sprint Progress', 'Score (Laps)');
+            if (sprintData) createLineChart('sprintChart', sprintData, 'Court Sprint Progress', 'Score (Laps)');
 
             const volleyData = getChartData('volley-chart-data');
-            createLineChart('volleyChart', volleyData, 'Volley Consistency Progress', 'Consecutive Count');
+            if (volleyData) createLineChart('volleyChart', volleyData, 'Volley Consistency Progress', 'Consecutive Count');
 
             const driveData = getChartData('drive-chart-data');
-            createLineChart('driveChart', driveData, 'Backwall Drive Progress', 'Consecutive Count');
+            if (driveData) createLineChart('driveChart', driveData, 'Backwall Drive Progress', 'Consecutive Count');
+            console.log("Chart creation process finished."); // DEBUG Log
         });
     </script>
     {# --- END JavaScript --- #}
-
-</body>
-</html>
+{% endblock %}

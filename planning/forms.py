@@ -4,11 +4,12 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.forms import widgets # Import widgets for customization
-from .models import CoachFeedback
 # Import the models needed for the forms
-from .models import ( Player, SchoolGroup, Session, ActivityAssignment, Drill,
-                      Coach, SessionAssessment, CourtSprintRecord,
-                      VolleyRecord, BackwallDriveRecord, MatchResult ) # Added MatchResult
+from .models import (
+    Player, SchoolGroup, Session, ActivityAssignment, Drill,
+    Coach, SessionAssessment, CourtSprintRecord,
+    VolleyRecord, BackwallDriveRecord, MatchResult, CoachFeedback # Added CoachFeedback
+)
 
 # --- Activity Assignment Form ---
 class ActivityAssignmentForm(forms.ModelForm):
@@ -112,23 +113,33 @@ class CourtSprintRecordForm(forms.ModelForm):
         self.fields['session'].required = False
 
 
-# --- Volley Record Form ---
-class VolleyRecordForm(forms.ModelForm):
-    date_recorded = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}), initial=timezone.now().date())
+# --- Volley Record Form (CORRECTED INDENTATION) ---
+class VolleyRecordForm(forms.ModelForm): # <-- Fixed indentation
+    # Keep the DateField definition
+    date_recorded = forms.DateField( # <-- Fixed indentation
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        initial=timezone.now().date()
+    )
 
-    class Meta:
+    class Meta: # <-- Fixed indentation
         model = VolleyRecord
         fields = ['date_recorded', 'shot_type', 'consecutive_count', 'session']
         labels = {
-            'date_recorded': 'Date Tested', 'shot_type': 'Shot Type (FH/BH)',
-            'consecutive_count': 'Consecutive Count', 'session': 'Associated Session (Optional)'
+            'date_recorded': 'Date Tested',
+            'shot_type': 'Shot Type (FH/BH)',
+            'consecutive_count': 'Consecutive Count',
+            'session': 'Associated Session (Optional)'
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs): # <-- Fixed indentation
         super().__init__(*args, **kwargs)
         self.fields['session'].required = False
+        # Explicitly set the widget AND choices
         self.fields['shot_type'].widget = forms.RadioSelect()
-
+        # Force choices from the model's TextChoices definition
+        self.fields['shot_type'].choices = VolleyRecord.ShotType.choices
+        # Ensure the initial empty choice isn't added by default if not desired
+        # self.fields['shot_type'].empty_label = None # Uncomment if you DON'T want the '---------' option
 
 # --- Backwall Drive Record Form ---
 class BackwallDriveRecordForm(forms.ModelForm):
@@ -188,7 +199,7 @@ class MatchResultForm(forms.ModelForm):
 class CoachFeedbackForm(forms.ModelForm):
     class Meta:
         model = CoachFeedback
-        fields = ['strengths_observed', 'areas_for_development', 'suggested_focus', 'general_notes', 'session'] 
+        fields = ['strengths_observed', 'areas_for_development', 'suggested_focus', 'general_notes', 'session']
         # We exclude 'player' and 'date_recorded' as they'll be set automatically/in the view.
         # We can add 'session' to optionally link feedback to a session.
 
@@ -198,7 +209,7 @@ class CoachFeedbackForm(forms.ModelForm):
             'suggested_focus': widgets.Textarea(attrs={'rows': 3, 'placeholder': 'Key things for the player to focus on next...'}),
             'general_notes': widgets.Textarea(attrs={'rows': 2, 'placeholder': 'Any other relevant notes...'}),
             # Optional: Customize session selector if needed, e.g., limit choices
-            # 'session': widgets.Select(...) 
+            # 'session': widgets.Select(...)
         }
         # Optional: Add help text if needed
         help_texts = {
@@ -212,9 +223,8 @@ class CoachFeedbackForm(forms.ModelForm):
     #     if player:
     #         # Example: Limit session choices to those the player attended recently
     #         self.fields['session'].queryset = Session.objects.filter(
-    #              attendees=player
+    #               attendees=player
     #         ).order_by('-date')[:10] # Last 10 sessions attended
     #     else:
     #         # Clear choices or show all if no player provided initially
-    #         self.fields['session'].queryset = Session.objects.none() 
-
+    #         self.fields['session'].queryset = Session.objects.none()

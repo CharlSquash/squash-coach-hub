@@ -53,10 +53,10 @@ class TimeBlockInline(admin.TabularInline): # Or use admin.StackedInline for a d
 # --- Custom Admin for Session (Now defined AFTER TimeBlockInline) ---
 @admin.register(Session)
 class SessionAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'date', 'start_time', 'school_group', 'planned_duration_minutes')
-    list_filter = ('date', 'school_group', 'coaches_attending')
+    list_display = ('__str__', 'session_date', 'session_start_time', 'school_group', 'planned_duration_minutes')
+    list_filter = ('session_date', 'school_group', 'coaches_attending')
     search_fields = ('notes', 'school_group__name', 'coaches_attending__name')
-    date_hierarchy = 'date'
+    date_hierarchy = 'session_date'
     filter_horizontal = ('coaches_attending', 'attendees',)
     # Add the inline class here
     inlines = [TimeBlockInline]

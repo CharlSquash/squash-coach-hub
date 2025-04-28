@@ -1,0 +1,257 @@
+{% extends 'planning/base.html' %}
+{% load static %}
+{% load tz %} {# Load timezone filters if needed #}
+
+{# Block for setting the page title #}
+{% block title %}{{ page_title|default:"Pending Assessments" }} - SquashSync{% endblock %}
+
+{# Block for page-specific CSS #}
+{% block extra_head %}
+    <style>
+        .content-wrapper {
+            padding: 25px;
+            background-color: var(--container-bg, white);
+            border: 1px solid var(--border-color, #ddd);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        .content-wrapper h1 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--heading-color, #004085);
+            padding-bottom: 10px;
+            color: var(--heading-color, #004085);
+            font-size: 1.6em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+         /* Styling for date groups */
+        .date-group {
+            margin-bottom: 30px;
+        }
+        .date-group h2 {
+            font-size: 1.3em;
+            color: var(--subheading-color);
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--border-light);
+        }
+        /* Styling for each session card within a date group */
+        .session-assessment-card {
+            background-color: var(--container-light-bg, #f8f9fa);
+            border: 1px solid var(--border-color, #ddd);
+            border-left: 4px solid var(--border-accent, #17a2b8); /* Accent border */
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex; /* Use flex for layout */
+            flex-wrap: wrap; /* Allow wrapping */
+            gap: 15px; /* Space between checkbox/info and player list */
+        }
+        .session-info-and-checkbox {
+             flex-basis: 200px; /* Minimum width for info/checkbox */
+             flex-grow: 1;
+        }
+         .session-info-and-checkbox h3 {
+             font-size: 1.1em;
+             margin-top: 0;
+             margin-bottom: 8px;
+             padding-bottom: 0;
+             border-bottom: none;
+             color: var(--heading-color);
+         }
+         .session-info-and-checkbox p {
+             font-size: 0.9em;
+             color: var(--subheading-color);
+             margin-bottom: 10px;
+         }
+        .session-attendee-list {
+            flex-basis: 300px; /* Minimum width for player list */
+            flex-grow: 2;
+        }
+        .session-attendee-list strong {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.95em;
+        }
+        .session-attendee-list ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            columns: 2; /* Display players in columns if space allows */
+            gap: 10px;
+        }
+        .session-attendee-list li {
+            margin-bottom: 4px;
+            font-size: 0.9em;
+            break-inside: avoid-column; /* Prevent items breaking across columns */
+        }
+        .session-attendee-list a {
+             color: var(--link-color);
+             text-decoration: none;
+        }
+         .session-attendee-list a:hover {
+              color: var(--link-hover-color);
+              text-decoration: underline;
+         }
+
+        /* Checkbox styling */
+        .complete-checkbox-field {
+             margin-top: 15px;
+             padding-top: 10px;
+             border-top: 1px dashed var(--border-light);
+        }
+        .complete-checkbox-field label {
+             font-weight: bold;
+             cursor: pointer;
+             display: flex;
+             align-items: center;
+             gap: 8px;
+             color: var(--action-add-text); /* Greenish text */
+        }
+        .complete-checkbox-field input[type="checkbox"] {
+             width: 1.2em;
+             height: 1.2em;
+             cursor: pointer;
+        }
+
+        /* Submit button */
+        .submit-button {
+            display: inline-block;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: var(--link-color, #007bff);
+            color: white;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        .submit-button:hover {
+            background-color: var(--link-hover-color, #0056b3);
+        }
+        .no-pending-msg {
+             color: var(--subheading-color);
+             font-style: italic;
+             text-align: center;
+             padding: 30px;
+             background-color: var(--container-light-bg);
+             border: 1px dashed var(--border-light);
+             border-radius: 5px;
+        }
+
+        /* Dark Mode Adjustments */
+        html.dark-mode .session-assessment-card {
+             background-color: var(--container-light-bg);
+             border-color: var(--border-color);
+             border-left-color: var(--border-accent);
+        }
+        html.dark-mode .complete-checkbox-field label {
+             color: var(--action-add-text);
+        }
+         html.dark-mode .no-pending-msg {
+              background-color: var(--container-light-bg);
+              border-color: var(--border-light);
+              color: var(--subheading-color);
+         }
+
+    </style>
+{% endblock %}
+
+{# Block for the main page content #}
+{% block content %}
+    <div class="content-wrapper"> {# Wrapper for specific page styling #}
+        <h1><i class="bi bi-clipboard-check"></i> {{ page_title|default:"Pending Assessments" }}</h1>
+        <p>Review players who attended recent sessions and require assessment. Mark sessions complete once all assessments are done.</p>
+
+        {% if grouped_pending_sessions %}
+            <form method="post">
+                {% csrf_token %}
+
+                {% for date, sessions_on_date in grouped_pending_sessions.items %}
+                    <div class="date-group">
+                        <h2>{{ date|date:"l, d F Y" }}</h2> {# Display full date as group header #}
+
+                        {% for session in sessions_on_date %}
+                            <div class="session-assessment-card">
+                                <div class="session-info-and-checkbox">
+                                    <h3>
+                                        {% if session.school_group %}
+                                            {{ session.school_group.name }}
+                                        {% else %}
+                                            General Session
+                                        {% endif %}
+                                    </h3>
+                                    <p>
+                                        <i class="bi bi-clock"></i> {{ session.session_start_time|time:"H:i" }}
+                                        ({{ session.planned_duration_minutes }} min)
+                                    </p>
+                                    <div class="complete-checkbox-field">
+                                        <label for="session-{{ session.id }}">
+                                            <input type="checkbox" name="sessions_to_complete" value="{{ session.id }}" id="session-{{ session.id }}">
+                                            Mark Assessment Complete
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="session-attendee-list">
+                                    <strong>Attendees ({{ session.attendees.all.count }}):</strong>
+                                    {% if session.attendees.all %}
+                                        <ul>
+                                            {% for player in session.attendees.all %}
+                                                <li>
+                                                    {# Link directly to player profile #}
+                                                    <a href="{% url 'planning:player_profile' player.id %}" title="Go to {{ player.full_name }}'s profile">
+                                                        <i class="bi bi-person-circle"></i> {{ player.full_name }}
+                                                    </a>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <p style="font-size: 0.9em; font-style: italic;">No attendees recorded for this session.</p>
+                                    {% endif %}
+                                </div>
+                            </div> {# End session-assessment-card #}
+                        {% endfor %}
+                    </div> {# End date-group #}
+                {% endfor %}
+
+                <button type="submit" class="submit-button">Update Completed Assessments</button>
+
+            </form>
+        {% else %}
+            <p class="no-pending-msg">No recent sessions are currently pending assessment.</p>
+        {% endif %}
+
+    </div> {# End content-wrapper #}
+{% endblock %}
+
+{# Block for page-specific JavaScript (if needed) #}
+{% block extra_scripts %}
+{% endblock %}
+```
+
+**Explanation:**
+
+1.  **Extends & Blocks:** Standard setup extending `base.html` with title, CSS (`extra_head`), and content blocks.
+2.  **CSS:** Added styles for grouping (`.date-group`), session cards (`.session-assessment-card`), the layout within cards (using flexbox), the attendee list (using columns), and the checkbox area.
+3.  **Form:** The main content is wrapped in a `<form method="post">`.
+4.  **Grouping:** It loops through `grouped_pending_sessions.items` (the dictionary created in the view). The outer loop gets the `date` and the `sessions_on_date` list. An `<h2>` displays the date.
+5.  **Session Card:** The inner loop iterates through `sessions_on_date`. For each `session`, it creates a `.session-assessment-card`.
+6.  **Info & Checkbox:** Inside the card, one section displays the group name and time. Below that, the checkbox (`<input type="checkbox" name="sessions_to_complete" value="{{ session.id }}">`) allows selection. The `name` attribute is crucial for the POST handling in the view.
+7.  **Attendee List:** Another section lists the attendees (`session.attendees.all`). Each player's name is a link to their profile page (`{% url 'planning:player_profile' player.id %}`).
+8.  **Submit Button:** A single submit button at the end allows submitting the checked sessions.
+9.  **Empty State:** If `grouped_pending_sessions` is empty, a message is displayed.
+
+**Action Steps for You:**
+
+1.  **Create File:** Create a new file named `pending_assessments.html` inside your `planning/templates/planning/` directory.
+2.  **Paste Code:** Copy the entire code block from the Canvas document above and paste it into the new file.
+3.  **Save:** Save the file.
+4.  **Restart Server:** Stop and restart the development server.
+5.  **Test:** Navigate to the URL you defined for this page (e.g., `http://127.0.0.1:8000/planning/assessments/pending/`). You should see the list of recent, uncompleted sessions grouped by date, with player names linking to their profiles and checkboxes to mark sessions complete.
+
+Let me know how it loo

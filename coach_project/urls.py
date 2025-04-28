@@ -8,13 +8,19 @@ from planning import views as planning_views
 
 urlpatterns = [
     # Map the root URL ('') to the new homepage_view
-    path('', planning_views.homepage_view, name='homepage'),
-    # Keep the existing admin and planning app paths
+    path('', planning_views.homepage_view, name='homepage'), # Correctly named homepage
+
+    # Keep the existing admin path
     path('admin/', admin.site.urls),
-    path('planning/', include('planning.urls')), # App-specific URLs
+
+    # Include planning app URLs under '/planning/' prefix WITH namespace
+    # The 'namespace' argument is crucial for {% url 'planning:...' %} tags
+    path('planning/', include('planning.urls', namespace='planning')), # <--- ADDED namespace='planning' HERE
+
 ]
 
 # --- Add this block for serving media files during development ---
 if settings.DEBUG:
-    print(f"DEBUG Status Check: {settings.DEBUG}")
+    # print(f"DEBUG Status Check: {settings.DEBUG}") # You can keep or remove this print statement
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+

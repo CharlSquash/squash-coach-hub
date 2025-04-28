@@ -1,0 +1,138 @@
+{% load static %} {# Load the static tag library first #}
+<!DOCTYPE html>
+{# Add class immediately based on localStorage to prevent FOUC #}
+<html lang="en" class=""> {# Class added by script below #}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    {# Block for the page title - Defaults to SquashSync if not overridden #}
+    <title>{% block title %}SquashSync{% endblock %}</title>
+
+    {# *** SCRIPT TO PREVENT FOUC *** #}
+    <script>
+      (function() {
+        try {
+          const theme = localStorage.getItem('theme');
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark-mode');
+          } else {
+            document.documentElement.classList.remove('dark-mode');
+          }
+        } catch (e) {
+          console.error('Error applying initial theme:', e);
+        }
+      })();
+    </script>
+    {# *** END SCRIPT TO PREVENT FOUC *** #}
+
+
+    {# Common CSS links #}
+    <link rel="stylesheet" href="{% static 'planning/style.css' %}"> {# Link to your main stylesheet #}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"> {# Bootstrap Icons CDN #}
+
+    {# --- ADD FAVICON LINK --- #}
+    {# Ensure you have 'favicon.png' (or your chosen name/type) in 'planning/static/planning/images/' #}
+    <link rel="icon" type="image/png" href="{% static 'planning/images/favicon.png' %}">
+    {# Optional: Add different sizes or an .ico fallback if needed #}
+    {# <link rel="shortcut icon" href="{% static 'planning/images/favicon.ico' %}" type="image/x-icon"> #}
+    {# --- END FAVICON LINK --- #}
+
+
+    {# --- STYLES MOVED TO style.css --- #}
+    <style>
+        /* Base styles that *don't* belong in style.css could potentially go here, */
+        /* but usually it's better to keep all styles external. */
+    </style>
+    {# --- END MOVED STYLES --- #}
+
+    {# Block for any page-specific head elements (extra CSS, meta tags, inline styles) #}
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}"> {# <-- Includes body_class BLOCK #}
+
+    {# --- Main Navigation Header --- #}
+    {# Assumes .main-header is styled in style.css now #}
+    <header class="main-header">
+        <nav>
+            <ul style="list-style: none; padding: 0; margin: 0; display: flex; gap: 20px; align-items: center;">
+                {# Use CSS variables defined in style.css for colors #}
+                <li><strong style="font-size: 1.2em;"><a href="{% url 'homepage' %}" style="text-decoration: none; color: var(--heading-color);">SquashSync</a></strong></li>
+                <li><a href="{% url 'homepage' %}" style="color: var(--link-color);"><i class="bi bi-house-door-fill"></i> Home</a></li>
+                <li><a href="{% url 'planning:session_list' %}" style="color: var(--link-color);"><i class="bi bi-calendar-event"></i> Sessions</a></li>
+                <li><a href="{% url 'planning:players_list' %}" style="color: var(--link-color);"><i class="bi bi-people-fill"></i> Players</a></li>
+                <li style="margin-left: auto;">
+                    <button id="theme-toggle" title="Toggle theme">
+                        <i class="bi bi-sun-fill"></i> {# Icon updated by JS #}
+                    </button>
+                </li>
+            </ul>
+        </nav>
+    </header>
+    {# --- End Main Navigation Header --- #}
+
+    {# --- Main Content Area --- #}
+    <div class="container"> {# Main container from base template #}
+        {% block content %}
+        {# Page-specific content will be injected here by child templates #}
+        {% endblock %}
+    </div>
+    {# --- End Main Content Area --- #}
+
+
+    {# --- Footer --- #}
+     {# Assumes .main-footer is styled in style.css now #}
+    <footer class="main-footer">
+        {% block footer %}
+            <p>&copy; {% now "Y" %} SquashSync. Designed for Squash Coaches.</p>
+        {% endblock %}
+    </footer>
+    {# --- End Footer --- #}
+
+
+    {# --- Common JavaScript links --- #}
+    {# <script src="{% static 'planning/global.js' %}"></script> #}
+
+    {# --- Block for any page-specific JavaScript files or inline scripts --- #}
+    {% block extra_scripts %}
+    {% endblock %}
+
+    {# --- DARK MODE JAVASCRIPT (Button Handler) --- #}
+    <script>
+        const themeToggleButton = document.getElementById('theme-toggle');
+        const htmlElement = document.documentElement; // Target the <html> element
+        const sunIconClass = 'bi-sun-fill';
+        const moonIconClass = 'bi-moon-stars-fill';
+
+        // Function to update button icon based on current theme
+        function updateButtonIcon() {
+            if (htmlElement.classList.contains('dark-mode')) {
+                themeToggleButton.innerHTML = `<i class="bi ${moonIconClass}"></i>`;
+            } else {
+                themeToggleButton.innerHTML = `<i class="bi ${sunIconClass}"></i>`;
+            }
+        }
+
+        // Initialize button icon on load
+        updateButtonIcon();
+
+        // Add event listener for the toggle button
+        themeToggleButton.addEventListener('click', () => {
+            // Toggle the class on the <html> element
+            htmlElement.classList.toggle('dark-mode');
+
+            // Update localStorage
+            if (htmlElement.classList.contains('dark-mode')) {
+                localStorage.setItem('theme', 'dark');
+            } else {
+                localStorage.setItem('theme', 'light');
+            }
+
+            // Update the button icon
+            updateButtonIcon();
+        });
+    </script>
+    {# --- END DARK MODE JAVASCRIPT --- #}
+
+</body>
+</html>

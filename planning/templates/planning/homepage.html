@@ -1,63 +1,104 @@
-<!DOCTYPE html>
+{% extends 'planning/base.html' %}
 {% load static %}
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Squash Coach Hub</title>
-    {# Link main stylesheet #}
-    <link rel="stylesheet" href="{% static 'planning/style.css' %}">
-    {# --- ADD BOOTSTRAP ICONS CDN --- #}
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    {# --- END BOOTSTRAP ICONS CDN --- #}
+
+{# Set a specific title for this page #}
+{% block title %}SquashSync - Home{% endblock %}
+
+{# Add a specific class to the body tag for this page only #}
+{% block body_class %}homepage-body{% endblock %}
+
+{# Add page-specific CSS, including the homepage banner #}
+{% block extra_head %}
     <style>
-        /* Homepage specific styles */
-        body {
-            margin: 0;
-            padding: 0;
-        }
+        /* Styles for the banner header - UPDATED */
         .homepage-header {
-            background-color: var(--heading-color, #004085);
-            color: white;
-            padding: 30px 20px;
-            text-align: center;
+            padding: 50px 5%; /* Adjusted padding (Top/Bottom 50px, Left/Right 5%) */
+            background-image: url("{% static 'planning/images/squash_banner.png' %}"); /* Banner Image */
+            background-size: cover;
+            background-position: center;
+            text-align: left; /* Align text to the left */
             margin-bottom: 30px;
+            border-radius: 8px;
+            color: #fff;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.7); /* Ensure text is readable */
+            position: relative; /* Needed if adding overlays */
+            overflow: hidden; /* Ensure pseudo-elements don't overflow */
         }
+        /* Optional: Add a subtle overlay if needed for contrast */
+        /* .homepage-header::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.3); /* Adjust darkness */
+        /* z-index: 1;
+        /* } */
+
+        .homepage-header h1, .homepage-header p {
+             position: relative; /* Ensure text is above potential overlay */
+             z-index: 2;
+        }
+
         .homepage-header h1 {
-            margin: 0;
-            font-size: 2.5em;
-            border: none;
-            color: white;
+            font-size: 2.8em; /* Larger title */
+            margin: 0 0 10px 0;
+            font-weight: 600;
         }
-        .homepage-container {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 0 15px;
+        .homepage-header p {
+            font-size: 1.2em;
+            margin: 0;
+            opacity: 0.95;
+            max-width: 60%; /* Prevent tagline from stretching too far */
+        }
+
+        /* Card grid and card styles (merged from previous versions) */
+        .card-grid {
             display: grid;
-            gap: 30px;
+            gap: 25px;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            margin-top: 20px;
         }
         .card {
             background-color: var(--container-bg, white);
             border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Slightly stronger shadow */
             padding: 20px;
             border: 1px solid var(--border-color, #ddd);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s ease-in-out; /* Add hover effect */
+        }
+        .card:hover {
+             transform: translateY(-5px); /* Lift card slightly on hover */
         }
         .card h2 {
             font-size: 1.4em;
-            color: var(--subheading-color, #343a40);
+            color: var(--heading-color, #343a40);
             border-bottom: 1px solid var(--border-light, #eee);
             padding-bottom: 10px;
             margin-bottom: 15px;
             margin-top: 0;
-            display: flex; /* Align icon and text in heading */
-            align-items: center; /* Align icon and text in heading */
+            display: flex;
+            align-items: center;
         }
-         .card h2 i {
-             margin-right: 8px; /* Space between icon and heading text */
-             font-size: 1em; /* Adjust icon size if needed */
+        .card h2 i {
+            margin-right: 8px;
+            font-size: 1em;
+            opacity: 0.8;
+        }
+        .card p {
+            margin-bottom: 15px;
+            color: var(--text-color);
+            line-height: 1.5;
+            flex-grow: 1; /* Allow paragraphs to push button down */
+        }
+         .card ul {
+             list-style: none;
+             padding: 0;
+             margin: 0;
+             flex-grow: 1; /* Allow lists to push button down */
          }
+
+        /* Session list item styling within card */
         .session-list-item {
             display: flex;
             justify-content: space-between;
@@ -69,114 +110,173 @@
         .session-list-item:last-child { border-bottom: none; }
         .session-info strong { display: block; font-size: 1.05em; margin-bottom: 3px; }
         .session-info span { font-size: 0.9em; color: var(--subheading-color, #555); }
-        /* Applied session-link style directly to the link for consistency */
-        .session-link a, a.session-link { 
-            padding: 8px 15px; /* Adjusted padding */
-            background-color: var(--link-color, #007bff); 
-            color: white; 
-            border-radius: 4px; 
-            text-decoration: none; 
-            font-size: 0.9em; 
-            white-space: nowrap; 
-            display: inline-block; /* Make it behave like a button */
-        }
-        .session-link a:hover, a.session-link:hover { 
-             background-color: var(--link-hover-color, #0056b3); 
-        }
 
+        /* Link/Button styling within card */
+        .session-link a, a.session-link, .card .btn { /* Target buttons too */
+            padding: 8px 15px;
+            background-color: var(--link-color, #007bff);
+            color: white !important;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.9em;
+            white-space: nowrap;
+            display: inline-block;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+        }
+        .session-link a:hover, a.session-link:hover, .card .btn:hover {
+            background-color: var(--link-hover-color, #0056b3);
+            text-decoration: none;
+        }
+        .card .session-link, .card .card-actions { /* Container for links/buttons */
+             margin-top: auto; /* Push link to bottom if card uses flex */
+             padding-top: 15px; /* Space above the button */
+             text-align: right; /* Align button to right */
+        }
+         .card .card-actions { text-align: left; } /* Align player button left */
+
+        /* Tools list styling */
         .other-apps-list a {
-            display: flex; /* Use flexbox for icon alignment */
-            align-items: center; /* Vertically align icon and text */
+            display: flex;
+            align-items: center;
             padding: 10px 0;
             border-bottom: 1px dotted var(--border-light, #eee);
             text-decoration: none;
             color: var(--link-color);
-            font-weight: bold;
+            font-weight: normal;
         }
-         .other-apps-list a:last-child { border-bottom: none; }
-         .other-apps-list a:hover { color: var(--link-hover-color); }
-         /* Style for the icon */
-         .other-apps-list a i {
-             margin-right: 8px; /* Space between icon and text */
-             font-size: 1.1em; /* Slightly larger icon */
-             vertical-align: middle; /* Helps alignment */
-         }
+        .other-apps-list a:last-child { border-bottom: none; }
+        .other-apps-list a:hover { color: var(--link-hover-color); }
+        .other-apps-list a i {
+            margin-right: 8px;
+            font-size: 1.1em;
+            width: 20px;
+            text-align: center;
+        }
 
-        .no-sessions { color: var(--subheading-color, #666); font-style: italic; }
+        .no-data-msg {
+            color: var(--subheading-color, #666);
+            font-style: italic;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
 
-        /* Dark Mode Compatibility */
-        body.dark-mode .card { background-color: var(--container-bg); border-color: var(--border-color); }
-        body.dark-mode .session-info span { color: var(--subheading-color); }
-        body.dark-mode .other-apps-list a { color: var(--link-color); }
-        body.dark-mode .other-apps-list a:hover { color: var(--link-hover-color); }
+        /* Dark Mode Compatibility for specific homepage elements */
+        html.dark-mode .session-info span { color: var(--subheading-color); } /* Use html.dark-mode */
+        html.dark-mode .other-apps-list a { color: var(--link-color); } /* Use html.dark-mode */
+        html.dark-mode .other-apps-list a:hover { color: var(--link-hover-color); } /* Use html.dark-mode */
 
     </style>
-</head>
-<body>
+{% endblock %}
 
+{# Block for the main page content #}
+{% block content %}
     <div class="homepage-header">
-        <h1>Squash Coach Hub</h1>
-        <p>Your central point for planning and tracking.</p>
-         <p><a href="{% url 'planning:session_list' %}" style="color: #eee;">View All Sessions</a></p>
+        <h1>Squash-Sync</h1> {# Used original title #}
+        <p>Mind and movement in perfect sync</p> {# Added tagline back #}
     </div>
 
-    <div class="homepage-container">
+    <div class="card-grid">
 
+        {# --- Upcoming Sessions Card --- #}
         <div class="card upcoming-sessions">
-            <h2><i class="bi bi-calendar-event"></i> Upcoming Sessions</h2> {# Added icon #}
+            <h2><i class="bi bi-calendar-check"></i> Upcoming Sessions</h2>
             {% if upcoming_sessions %}
-                {% for session in upcoming_sessions %}
-                    <div class="session-list-item">
-                        <div class="session-info">
-                            <strong>{% if session.school_group %}{{ session.school_group.name }}{% else %}General Session{% endif %}</strong>
-                            <span>{{ session.date|date:"D, M j" }} at {{ session.start_time|time:"H:i" }}</span>
-                        </div>
-                        <div class="session-link">
-                            <a href="{% url 'planning:session_detail' session.id %}">View Plan</a>
-                        </div>
-                    </div>
-                {% endfor %}
+                 {% for session in upcoming_sessions %}
+                     <div class="session-list-item">
+                         <div class="session-info">
+                             <strong>{% if session.school_group %}{{ session.school_group.name }}{% else %}General Session{% endif %}</strong>
+                             <span>{{ session.session_date|date:"D, M j" }} at {{ session.session_start_time|time:"H:i" }}</span>
+                         </div>
+                         <div class="session-link"> {# Use div container for alignment #}
+                             <a href="{% url 'planning:session_detail' session.id %}">View Plan</a>
+                         </div>
+                     </div>
+                 {% endfor %}
             {% else %}
-                <p class="no-sessions">No upcoming sessions found.</p>
+                <p class="no-data-msg">No upcoming sessions found.</p>
             {% endif %}
             <div style="margin-top: 15px;">
                  <a href="{% url 'planning:session_list' %}" style="font-size: 0.9em;">View Full Schedule...</a>
             </div>
-        </div> {# === CORRECTED PLACEMENT FOR PLAYERS CARD === #}
-        <div class="card players-card"> 
-            <h2><i class="bi bi-people-fill"></i> Players</h2> 
-            <p style="margin-bottom: 15px; color: var(--subheading-color, #555);">
-                View player profiles and manage group assignments.
-            </p>
-            <div style="text-align: right; margin-top: 10px;"> 
-                <a href="{% url 'planning:players_list' %}" class="session-link"> {# Applied session-link class directly #}
-                    Go to Players <i class="bi bi-arrow-right-short"></i> 
-                </a>
-            </div>
-        </div> 
-        {# === END OF PLAYERS CARD === #}
+        </div>
 
+        {# --- Feedback Reminders Card --- #}
+        <div class="card feedback-reminders">
+            <h2><i class="bi bi-journal-check"></i> Feedback Reminders</h2>
+            <p style="font-size: 0.9em; color: var(--subheading-color); margin-top: -10px; margin-bottom: 15px;">
+                Sessions recently completed that may need assessment:
+            </p>
+            {% if recent_sessions_for_feedback %}
+                {% for session in recent_sessions_for_feedback %}
+                    <div class="session-list-item">
+                        <div class="session-info">
+                            <strong>{% if session.school_group %}{{ session.school_group.name }}{% else %}General Session{% endif %}</strong>
+                            {# UPDATED: Use end_datetime property for completed time #}
+                            <span>Finished: {{ session.end_datetime|date:"D, M j H:i" }}</span>
+                        </div>
+                        <div class="session-link">
+                             {# UPDATED LINK: Points to the new pending assessments page #}
+                            <a href="{% url 'planning:pending_assessments' %}" title="Go to Pending Assessments Page">
+                                Review Assessments
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
+                 {# Optional: Add a single link to the page at the bottom if list is long #}
+                 {% if recent_sessions_for_feedback|length > 2 %} {# Example condition #}
+                     <div style="margin-top: 15px; text-align: right;">
+                         <a href="{% url 'planning:pending_assessments' %}" style="font-size: 0.9em;">View All Pending...</a>
+                     </div>
+                 {% endif %}
+            {% else %}
+                <p class="no-data-msg">No recent sessions pending assessment.</p>
+            {% endif %}
+        </div>
+
+        {# --- Player Management Card --- #}
+        <div class="card players-card">
+            <h2><i class="bi bi-person-lines-fill"></i> Players</h2>
+            <p>View player profiles, track progress, manage group assignments, and record metrics.</p>
+             <div class="card-actions"> {# Changed class for clarity #}
+                 <a href="{% url 'planning:players_list' %}" class="btn"> {# Use button class #}
+                    Go to Players <i class="bi bi-arrow-right-short"></i>
+                 </a>
+             </div>
+        </div>
+
+        {# --- Tools & Resources Card --- #}
         <div class="card other-apps">
-            <h2><i class="bi bi-tools"></i> Tools & Resources</h2> {# Added icon #}
+            <h2><i class="bi bi-tools"></i> Tools & Resources</h2>
             <div class="other-apps-list">
-                {# === UPDATED LINK HERE === #}
                 <a href="https://musical-squirrel-d7b18e.netlify.app/" target="_blank" rel="noopener noreferrer">
-                    <i class="bi bi-box-arrow-up-right"></i> {# Bootstrap Icon for external link #}
+                    <i class="bi bi-box-arrow-up-right"></i>
                     Shot IQ
                 </a>
-                {# === END UPDATE === #}
                 <a href="{% url 'admin:index' %}">
-                     <i class="bi bi-gear-fill"></i> {# Example icon #}
-                     Admin Site
-                </a>
-                <a href="#">
-                    <i class="bi bi-link-45deg"></i> {# Example icon #}
-                    Future Link Placeholder
+                    <i class="bi bi-gear-fill"></i>
+                    Admin Site
                 </a>
             </div>
         </div>
 
-    </div> {# End homepage-container #}
+    </div> {# End card-grid #}
+{% endblock %}
 
-</body>
-</html>
+{# Block for page-specific JavaScript #}
+{% block extra_scripts %}
+{% endblock %}
+```
+
+**Action Steps:**
+
+1.  **Replace Code:** Replace the content of your `planning/templates/planning/homepage.html` file with the code from the Canvas document above.
+2.  **Save:** Save the file.
+3.  **Restart Server:** Stop and restart the development server.
+4.  **Test:**
+    * Load the homepage.
+    * Click the "Review Assessments" link in the "Feedback Reminders" card.
+    * It should now take you to the `/planning/assessments/pending/` page.
+
+This completes the setup for the new assessment workfl

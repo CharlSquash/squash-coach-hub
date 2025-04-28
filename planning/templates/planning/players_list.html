@@ -1,29 +1,24 @@
-<!DOCTYPE html>
+{% extends 'planning/base.html' %} {# MUST be the very first line #}
 {% load static %}
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    {# Use the page_title variable passed from the view #}
-    <title>{{ page_title|default:"Players" }} - Squash Coach Hub</title> 
-    {# Link main stylesheet #}
-    <link rel="stylesheet" href="{% static 'planning/style.css' %}">
-    {# --- ADD BOOTSTRAP ICONS CDN --- #}
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    {# --- END BOOTSTRAP ICONS CDN --- #}
+
+{# Block for setting the page title #}
+{% block title %}{{ page_title|default:"Players" }} - SquashSync{% endblock %}
+
+{# Block for page-specific CSS #}
+{% block extra_head %}
     <style>
         /* Basic container and styling for this page */
-        body {
-            background-color: var(--body-bg, #f8f9fa); /* Match potential main background */
-        }
+        /* body { background-color: var(--body-bg, #f8f9fa); } /* Inherited from base or style.css */
+
         .content-wrapper {
-            max-width: 900px; 
-            margin: 30px auto;
-            padding: 25px;
+            /* max-width: 900px; /* Let base.html container handle max-width */
+            /* margin: 30px auto; */ /* Spacing handled by base.html container */
+            padding: 25px; /* Keep padding */
             background-color: var(--container-bg, white);
             border: 1px solid var(--border-color, #ddd);
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-top: 20px; /* Add some top margin below header */
         }
         .content-wrapper h1 {
             margin-top: 0;
@@ -34,20 +29,12 @@
             display: flex;
             align-items: center;
         }
-         .content-wrapper h1 i {
-             margin-right: 10px;
-         }
-        .back-link {
-             display: inline-block; /* Changed to inline-block */
-             margin-bottom: 25px;
-             color: var(--link-color);
-             text-decoration: none;
-             font-size: 0.95em;
+        .content-wrapper h1 i {
+            margin-right: 10px;
         }
-        .back-link:hover {
-             color: var(--link-hover-color);
-             text-decoration: underline;
-        }
+
+        /* Removed .back-link styles as element is removed */
+
         .placeholder-text {
             color: var(--subheading-color, #666);
             font-style: italic;
@@ -57,34 +44,112 @@
             border: 1px dashed var(--border-light, #ccc);
             border-radius: 5px;
         }
+
+        /* Filter section styling */
+        .filters {
+            padding: 15px;
+            background-color: var(--container-light-bg, #f8f9fa);
+            border: 1px solid var(--border-light, #eee);
+            border-radius: 5px;
+            margin-bottom: 25px;
+        }
+        .filters form {
+            display: flex;
+            align-items: center; /* Vertically align items */
+            gap: 15px; /* Space between filter elements */
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+        }
+        .filters label {
+            margin-right: 5px;
+            font-weight: bold;
+            color: var(--subheading-color, #333);
+        }
+        .filters select, .filters input[type="text"] {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color, #ccc);
+        }
+         .filters select { min-width: 180px; } /* Give select some width */
+        .filters button {
+            padding: 8px 15px;
+            border-radius: 4px;
+            background-color: var(--link-color, #007bff); /* Use theme color */
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .filters button:hover {
+             background-color: var(--link-hover-color, #0056b3);
+        }
+
+        /* Player list styling */
+        .player-list ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            border: 1px solid var(--border-light, #eee);
+            border-radius: 5px;
+            overflow: hidden; /* Contain background colors */
+        }
+        .player-list li {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border-light, #eee);
+        }
+        .player-list li:last-child { border-bottom: none; } /* Remove last border */
+        .player-list li:nth-child(odd) { /* Alternating rows */
+             background-color: var(--container-bg, white); /* Match container */
+        }
+        .player-list li:nth-child(even) {
+             background-color: var(--container-light-bg, #f8f9fa); /* Lighter bg */
+        }
+        .player-list a {
+            text-decoration: none;
+            color: var(--link-color);
+            font-weight: 500;
+        }
+        .player-list a:hover {
+             color: var(--link-hover-color);
+             text-decoration: underline;
+        }
+        .player-list .player-groups {
+            font-size: 0.9em;
+            color: var(--subheading-color, #666);
+            margin-left: 15px;
+            font-style: italic;
+        }
+
         /* Dark Mode Compatibility */
         body.dark-mode .content-wrapper { background-color: var(--container-bg); border-color: var(--border-color); }
-        body.dark-mode .back-link { color: var(--link-color); }
-        body.dark-mode .back-link:hover { color: var(--link-hover-color); }
         body.dark-mode .placeholder-text { background-color: var(--container-light-bg); border-color: var(--border-light); color: var(--subheading-color); }
+        body.dark-mode .filters { background-color: var(--container-light-bg); border-color: var(--border-light); }
+        body.dark-mode .filters label { color: var(--subheading-color); }
+        body.dark-mode .filters select, body.dark-mode .filters input[type="text"] { border-color: var(--border-color); background-color: var(--input-bg, #333); color: var(--text-color); }
+        body.dark-mode .player-list ul { border-color: var(--border-light); }
+        body.dark-mode .player-list li { border-bottom-color: var(--border-light); }
+        body.dark-mode .player-list li:nth-child(odd) { background-color: var(--container-bg); }
+        body.dark-mode .player-list li:nth-child(even) { background-color: var(--container-light-bg); }
+        body.dark-mode .player-list .player-groups { color: var(--subheading-color); }
 
     </style>
-</head>
-<body>
-    <div class="content-wrapper">
-        <a href="{% url 'homepage' %}" class="back-link"><i class="bi bi-arrow-left"></i> Back to Home</a>
+{% endblock %}
 
+{# Block for the main page content #}
+{% block content %}
+    {# Removed the outer .content-wrapper as base.html provides .container #}
+    {# Removed Back to Home link as it's in the header #}
+
+    <div class="content-wrapper"> {# Added back wrapper for background/border/padding specific to this page content area #}
         <h1><i class="bi bi-people-fill"></i> {{ page_title|default:"Players" }}</h1>
-        
+        <p style="font-size: 0.9em; color: #777; margin-top: -15px; margin-bottom: 25px;">Manage player details and track performance.</p>
 
-<p style="font-size: 0.9em; color: #777; margin-top: -15px; margin-bottom: 25px;">Manage player details and track performance.</p> 
-
-<div class="filters" ...>
-        <div class="filters" style="padding: 15px; background-color: var(--container-light-bg, #f8f9fa); border: 1px solid var(--border-light, #eee); border-radius: 5px; margin-bottom: 25px;">
-
-            {# Form now includes both group select and search input #}
-            {# Using flex display for better alignment #}
-            <form method="GET" action="{% url 'planning:players_list' %}" style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;"> 
-    
+        {# --- Filters Section --- #}
+        <div class="filters">
+            <form method="GET" action="{% url 'planning:players_list' %}">
                 {# Group Filter Element #}
-                <div> 
-                    <label for="group_filter" style="margin-right: 5px; font-weight: bold; color: var(--subheading-color, #333);">Group:</label>
-                    <select name="group" id="group_filter" onchange="this.form.submit()" style="padding: 8px; border-radius: 4px; border: 1px solid var(--border-color, #ccc); min-width: 180px;"> 
+                <div>
+                    <label for="group_filter">Group:</label>
+                    <select name="group" id="group_filter" onchange="this.form.submit()">
                         <option value="" {% if not selected_group_id %}selected{% endif %}>--- All Groups ---</option>
                         {% for group in groups %}
                             <option value="{{ group.id }}" {% if selected_group_id == group.id|stringformat:"s" %}selected{% endif %}>
@@ -93,42 +158,30 @@
                         {% endfor %}
                     </select>
                 </div>
-    
-                {# NEW Search Input Element #}
-                <div> 
-                    <label for="search_filter" style="margin-right: 5px; font-weight: bold; color: var(--subheading-color, #333);">Search:</label>
-                    {# Input field for search query. 'name="search"' sets the GET parameter key #}
-                    {# 'value' retains the previous search term #}
-                    <input type="text" name="search" id="search_filter" value="{{ search_query|default:'' }}" placeholder="Enter name..." style="padding: 8px; border-radius: 4px; border: 1px solid var(--border-color, #ccc);">
+
+                {# Search Input Element #}
+                <div>
+                    <label for="search_filter">Search:</label>
+                    <input type="text" name="search" id="search_filter" value="{{ search_query|default:'' }}" placeholder="Enter name...">
                 </div>
-    
+
                 {# Combined Submit Button #}
-                <button type="submit" style="padding: 8px 15px; border-radius: 4px; background-color: var(--link-color); color: white; border: none; cursor: pointer;">Apply Filters</button> 
-    
+                <button type="submit">Apply Filters</button>
             </form>
-        </div>```
+        </div>
 
+        {# --- Player List --- #}
         <div class="player-list">
-            {# Remove or comment out the old placeholder paragraph if it's still there #}
-            {# <p class="placeholder-text">Player list will be displayed here.</p> #}
-
-            {% if players %} {# Check if the 'players' list is not empty #}
-                <ul style="list-style: none; padding: 0; margin: 0; border: 1px solid var(--border-light, #eee); border-radius: 5px;">
+            {% if players %}
+                <ul>
                     {% for player in players %}
-                        {# Add alternating row background for readability #}
-                        <li style="padding: 12px 15px; 
-                                   border-bottom: 1px solid var(--border-light, #eee); 
-                                   {% if forloop.counter|divisibleby:2 %}background-color: var(--container-light-bg, #f8f9fa);{% endif %}"> 
-
-                            {# Link to the player's profile page #}
-                            <a href="{% url 'planning:player_profile' player.id %}" style="text-decoration: none; color: var(--link-color); font-weight: 500;">
+                        <li>
+                            <a href="{% url 'planning:player_profile' player.id %}">
                                 <i class="bi bi-person" style="margin-right: 5px;"></i> {{ player.first_name }} {{ player.last_name }}
                             </a>
-
-                            {# Display associated school groups if any exist #}
-                            {% if player.school_groups.exists %} 
-                                <span style="font-size: 0.9em; color: var(--subheading-color, #666); margin-left: 15px; font-style: italic;">
-                                    (Groups: 
+                            {% if player.school_groups.exists %}
+                                <span class="player-groups">
+                                    (Groups:
                                     {% for group in player.school_groups.all %}
                                         {{ group.name }}{% if not forloop.last %}, {% endif %}
                                     {% endfor %}
@@ -136,22 +189,37 @@
                                 </span>
                             {% endif %}
                         </li>
-                    {% empty %} {# Handles the case where the 'players' list is empty #}
-                        <li style="list-style: none;">
-                            <p class="placeholder-text" style="padding: 20px; margin: 0; border: none; background: none;">No active players found in the database.</p> 
-                        </li>
                     {% endfor %}
-                      {# Remove final border from the last item #}
-                     <style> .player-list ul li:last-child { border-bottom: none; } </style>
+                     {# Removed inline style for last-child border, handled by CSS above #}
                 </ul>
-            {% else %} 
-                {# Fallback if 'players' variable wasn't passed or is None #}
-                <p class="placeholder-text" style="padding: 20px;">Could not load player data.</p> 
+            {% else %}
+                 {# Display message if no players match filters or none exist #}
+                 <p class="placeholder-text" style="padding: 20px; border: none; background: none;">
+                     {% if search_query or selected_group_id %}
+                         No players found matching your filters.
+                     {% else %}
+                         No active players found in the database.
+                     {% endif %}
+                 </p>
             {% endif %}
-
-        </div>```
-
+        </div>
     </div> {# End content-wrapper #}
 
-</body>
-</html>
+{% endblock %}
+
+
+{# Block for page-specific JavaScript #}
+{% block extra_scripts %}
+    {# Add any JS needed specifically for the player list page here #}
+    {# e.g., client-side sorting/filtering if implemented later #}
+{% endblock %}
+```
+
+**Action Steps:**
+
+1.  **Replace Code:** Copy the entire code block above and use it to replace the existing content in your `planning/templates/planning/players_list.html` file.
+2.  **Save:** Save the file.
+3.  **Restart Server:** Stop (`Ctrl+C`) and restart (`python manage.py runserver`) the development server.
+4.  **Test:** Refresh the players list page (`http://127.0.0.1:8000/planning/players/`) in your browser.
+
+This should resolve the `TemplateSyntaxError`. Let me know if the page loads correctly this ti

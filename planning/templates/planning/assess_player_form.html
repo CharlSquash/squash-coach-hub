@@ -1,58 +1,383 @@
-<!DOCTYPE html>
+{% extends 'planning/base.html' %}
 {% load static %}
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>{% if assessment_instance %}Edit{% else %}Add{% endif %} Assessment for {{ player.full_name }}</title>
-    <link rel="stylesheet" href="{% static 'planning/style.css' %}">
-    {# Re-use styles from other forms if needed #}
+
+{# Block for setting the page title #}
+{% block title %}{% if assessment_instance %}Edit{% else %}Add{% endif %} Assessment for {{ player.full_name }} - SquashSync{% endblock %}
+
+{# Block for page-specific CSS #}
+{% block extra_head %}
     <style>
-        .form-container { max-width: 700px; }
-        .form-field { margin-bottom: 20px; }
-        .form-field ul { list-style: none; padding-left: 0; margin-top: 5px;} /* RadioSelect list */
-        .form-field ul li { display: inline-block; margin-right: 15px; } /* RadioSelect items inline */
-        .form-field label { display: block; font-weight: bold; margin-bottom: 8px; } /* Main field label */
-        .form-field ul label { margin-left: 3px; font-weight: normal;} /* Radio button label */
-        textarea { padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; width: 95%; max-width: 600px; box-sizing: border-box;}
-        .errorlist { color: #cc0000; list-style: none; padding-left: 0; margin: 5px 0 0 0; font-weight: bold; font-size: 0.9em;}
-        button { padding: 10px 15px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1em;}
-        button:hover { background-color: #218838; }
-        .cancel-link { color: #0066cc; margin-left: 15px; text-decoration: none; }
+        /* Basic styling for the form page - adapted from previous forms */
+        .content-wrapper {
+            max-width: 700px; /* Limit form width */
+            margin: 20px auto;
+            padding: 25px;
+            background-color: var(--container-bg, white);
+            border: 1px solid var(--border-color, #ddd);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .content-wrapper h1 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--heading-color, #004085);
+            padding-bottom: 10px;
+            color: var(--heading-color, #004085);
+            font-size: 1.5em;
+        }
+         .content-wrapper p strong { /* Style the Player/Session name display */
+            color: var(--subheading-color);
+            display: inline-block; /* Ensure proper spacing */
+            min-width: 60px; /* Align labels slightly */
+         }
+         .content-wrapper p { line-height: 1.6; } /* Improve readability of session info */
+
+        .form-back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: var(--link-color);
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+        .form-back-link:hover {
+            color: var(--link-hover-color);
+            text-decoration: underline;
+        }
+        .form-field { margin-bottom: 25px; } /* Increased spacing */
+        .form-field label { /* Main field label */
+            display: block;
+            margin-bottom: 8px; /* Increased spacing */
+            font-weight: bold;
+            font-size: 0.95em;
+            color: var(--subheading-color, #333);
+        }
+        /* General input styling */
+        .form-field textarea { /* Only style textarea generally now */
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color, #ccc);
+            border-radius: 4px;
+            font-size: 1em;
+            box-sizing: border-box;
+            background-color: var(--input-bg, white);
+            color: var(--text-color, #333);
+            min-height: 100px;
+        }
+
+        /* --- Star Rating Styles --- */
+        .star-rating-widget {
+            display: flex;
+            /* justify-content: space-between; Use space-around or start */
+            justify-content: space-around; /* Distribute stars evenly */
+            align-items: center;
+            padding: 6px 5px; /* Reduced vertical padding */
+            cursor: pointer;
+            border: 1px solid var(--border-light, #eee);
+            border-radius: 5px;
+            background-color: var(--container-light-bg, #f8f9fa);
+        }
+        .star-rating-widget .star-label {
+            display: inline-block;
+            color: var(--subheading-color);
+            font-size: 1.5em; /* Further reduced star size */
+            padding: 0 2px; /* Further reduced horizontal spacing */
+            transition: color 0.1s ease, transform 0.1s ease; /* Faster transition */
+            user-select: none; /* Prevent text selection cursor */
+            -webkit-user-select: none; /* Safari */
+            -ms-user-select: none; /* IE 10+ */
+            cursor: pointer; /* Explicitly set pointer */
+        }
+        .star-rating-widget .star-label input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+            pointer-events: none;
+        }
+        /* Filled star style */
+        .star-rating-widget .star-label.filled i::before,
+        .star-rating-widget .star-label.hover i::before {
+             content: "\f586"; /* Bootstrap Icons filled star unicode */
+             font-family: "bootstrap-icons";
+             color: #ffc107; /* Gold color for filled */
+             font-weight: normal; /* Ensure icon isn't bold */
+        }
+         /* Empty star style */
+         .star-rating-widget .star-label i::before {
+             content: "\f588"; /* Bootstrap Icons empty star unicode */
+             font-family: "bootstrap-icons";
+             font-weight: normal; /* Ensure icon isn't bold */
+         }
+
+        /* Hover effect */
+        .star-rating-widget:hover .star-label {
+             /* color: #ffc107; */ /* Let JS handle hover fill */
+             transform: scale(1.1);
+        }
+        .star-rating-widget .star-label:hover ~ .star-label {
+             /* color: var(--subheading-color); */ /* Let JS handle hover fill */
+             transform: scale(1);
+        }
+         .star-rating-widget .star-label:has(~ .star-label:hover) {
+              /* color: #ffc107; */ /* Let JS handle hover fill */
+              transform: scale(1.1);
+         }
+
+        .form-field .helptext {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 4px;
+            display: block;
+        }
+        .errorlist { /* Style for field-specific errors */
+            color: #cc0000;
+            list-style: none;
+            padding-left: 0;
+            margin: 5px 0 0 0;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+         .error-summary { /* Style for non-field errors */
+             background-color: #f8d7da;
+             border: 1px solid #f5c6cb;
+             color: #721c24;
+             padding: 10px 15px;
+             border-radius: 4px;
+             margin-bottom: 15px;
+             font-size: 0.9em;
+         }
+         .error-summary ul { list-style: none; padding: 0; margin: 0; }
+         .error-summary strong { display: block; margin-bottom: 5px; }
+
+        .form-actions { /* Container for buttons */
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .submit-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: var(--link-color, #007bff);
+            color: white;
+            font-size: 1em;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .submit-button:hover { background-color: var(--link-hover-color, #0056b3); }
+
+        .cancel-link {
+            color: var(--link-color);
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+        .cancel-link:hover { text-decoration: underline; }
+
+        /* Dark Mode */
+        html.dark-mode .content-wrapper { background-color: var(--container-bg); border-color: var(--border-color); }
+        html.dark-mode .form-back-link { color: var(--link-color); }
+        html.dark-mode .form-back-link:hover { color: var(--link-hover-color); }
+        html.dark-mode .form-field label { color: var(--subheading-color); }
+        html.dark-mode .form-field textarea {
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+        html.dark-mode .star-rating-widget {
+             border-color: var(--border-light);
+             background-color: var(--container-light-bg);
+        }
+        html.dark-mode .star-rating-widget .star-label {
+             color: var(--subheading-color);
+        }
+        html.dark-mode .star-rating-widget .star-label.filled i::before,
+        html.dark-mode .star-rating-widget .star-label.hover i::before {
+             color: #ffc107;
+        }
+        html.dark-mode .star-rating-widget:hover .star-label {
+             /* color: #ffc107; */ /* Let JS handle hover fill */
+        }
+        html.dark-mode .star-rating-widget .star-label:hover ~ .star-label {
+             /* color: var(--subheading-color); */ /* Let JS handle hover fill */
+        }
+         html.dark-mode .star-rating-widget .star-label:has(~ .star-label:hover) {
+              /* color: #ffc107; */ /* Let JS handle hover fill */
+         }
+        html.dark-mode .form-field .helptext { color: #aaa; }
+        html.dark-mode .error-summary { background-color: #721c24; color: #f8d7da; border-color: #b82d3a; }
+        html.dark-mode .cancel-link { color: var(--link-color); }
+        html.dark-mode .cancel-link:hover { color: var(--link-hover-color); }
+
     </style>
-</head>
-<body>
-    <div class="container">
-        {# Title changes based on adding new or editing existing #}
+{% endblock %}
+
+
+{# Block for the main page content #}
+{% block content %}
+    <div class="content-wrapper"> {# Wrapper for specific page styling #}
+        {# UPDATED Back link to point to pending assessments page #}
+        <a href="{% url 'planning:pending_assessments' %}" class="form-back-link"><i class="bi bi-arrow-left"></i> Back to Pending Assessments</a>
+
         <h1>{% if assessment_instance %}Edit{% else %}Add{% endif %} Session Assessment</h1>
         <p>
             <strong>Player:</strong> {{ player.full_name }}<br>
-            <strong>Session:</strong> {{ session.date|date:"D, d M Y" }} {% if session.school_group %}({{ session.school_group.name }}){% endif %} at {{ session.start_time|time:"H:i" }}
+            {# Use correct field names for session date/time #}
+            <strong>Session:</strong> {{ session.session_date|date:"D, d M Y" }} {% if session.school_group %}({{ session.school_group.name }}){% endif %} at {{ session.session_start_time|time:"H:i" }}
         </p>
-        <hr>
+        <hr style="margin: 15px 0;">
 
-        <form method="post" class="form-container" novalidate>
+        <form method="post" novalidate>
             {% csrf_token %}
 
             {% if form.non_field_errors %}
-                <div class="errorlist error-summary"> {# Style as needed #}
+                <div class="error-summary">
                     {{ form.non_field_errors }}
                 </div>
             {% endif %}
 
-            {# Render fields using loop or individually #}
-             {% for field in form %}
-                <div class="form-field">
-                    {{ field.label_tag }}
-                    {% if field.errors %}<div class="errorlist">{{ field.errors }}</div>{% endif %}
-                    {{ field }} {# Renders widget (RadioSelect for ratings, Textarea for notes) #}
-                    {% if field.help_text %}<small class="helptext">{{ field.help_text|safe }}</small>{% endif %}
-                </div>
+            {# --- MODIFIED FORM RENDERING --- #}
+            {# First, render only the rating fields #}
+            {% for field in form %}
+                {% if field.name in 'effort_rating,focus_rating,resilience_rating,composure_rating,decision_making_rating' %}
+                    <div class="form-field">
+                        {{ field.label_tag }}
+                        {% if field.errors %}<div class="errorlist">{{ field.errors }}</div>{% endif %}
+                        <div class="star-rating-widget" id="widget-{{ field.auto_id }}">
+                            {# Loop through choices, skipping the empty one #}
+                            {% for choice in field %}
+                                {% if choice.data.value != "" %} {# Check if the value is not empty #}
+                                <label class="star-label" for="{{ choice.id_for_label }}" title="{{ choice.choice_label }}">
+                                    {{ choice.tag }} {# Hidden radio button #}
+                                    <i class="bi bi-star"></i> {# Default empty star icon #}
+                                </label>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% if field.help_text %}<small class="helptext">{{ field.help_text|safe }}</small>{% endif %}
+                    </div>
+                {% endif %}
             {% endfor %}
 
-            <button type="submit">Save Assessment</button>
-            <a href="{% url 'planning:session_detail' session.id %}" class="cancel-link">Cancel</a>
+            {# Second, render the non-rating fields (like notes) #}
+             {% for field in form %}
+                {% if field.name not in 'effort_rating,focus_rating,resilience_rating,composure_rating,decision_making_rating' %}
+                    <div class="form-field">
+                        {{ field.label_tag }}
+                        {% if field.errors %}<div class="errorlist">{{ field.errors }}</div>{% endif %}
+                        {{ field }} {# Render standard widget #}
+                        {% if field.help_text %}<small class="helptext">{{ field.help_text|safe }}</small>{% endif %}
+                    </div>
+                {% endif %}
+             {% endfor %}
+            {# --- END MODIFIED FORM RENDERING --- #}
+
+
+            <div class="form-actions">
+                <button type="submit" class="submit-button">Save Assessment</button>
+                 {# UPDATED Cancel link to point to pending assessments page #}
+                <a href="{% url 'planning:pending_assessments' %}" class="cancel-link">Cancel</a>
+            </div>
 
         </form>
-    </div>
-</body>
-</html>
+    </div> {# End content-wrapper #}
+{% endblock %}
+
+{# Block for page-specific JavaScript #}
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const starWidgets = document.querySelectorAll('.star-rating-widget');
+
+    starWidgets.forEach(widget => {
+        // Select only labels that were actually rendered (skipped empty choice)
+        const labels = widget.querySelectorAll('.star-label');
+        // Select radios within the rendered labels
+        const radios = widget.querySelectorAll('.star-label input[type="radio"]');
+        const fieldName = radios.length > 0 ? radios[0].name : 'unknown'; // Get field name for logging
+
+        // Function to update stars visual state based on selected radio
+        const updateStars = (debugOrigin = 'load') => {
+            let selectedValue = null;
+            radios.forEach(radio => {
+                if (radio.checked) {
+                    // Ensure the value is parsed as an integer
+                    selectedValue = parseInt(radio.value, 10);
+                }
+            });
+            // console.log(`[${fieldName} - ${debugOrigin}] Selected value:`, selectedValue); // DEBUG LOG
+
+            labels.forEach((label) => {
+                const starIcon = label.querySelector('i');
+                const radio = label.querySelector('input');
+                const radioValue = parseInt(radio.value, 10); // Ensure this value is parsed
+
+                // console.log(`[${fieldName} - ${debugOrigin}] Checking star value: ${radioValue}`); // DEBUG LOG
+
+                // Clear previous state first
+                label.classList.remove('filled');
+                starIcon.classList.remove('bi-star-fill');
+                starIcon.classList.add('bi-star');
+
+                // Apply filled state if applicable
+                if (selectedValue !== null && !isNaN(radioValue) && radioValue <= selectedValue) {
+                    // console.log(`[${fieldName} - ${debugOrigin}] Filling star ${radioValue}`); // DEBUG LOG
+                    label.classList.add('filled');
+                    starIcon.classList.remove('bi-star');
+                    starIcon.classList.add('bi-star-fill');
+                }
+            });
+        };
+
+        // Add click listener to each label/star
+        labels.forEach(label => {
+            label.addEventListener('click', (e) => {
+                const radio = label.querySelector('input[type="radio"]');
+                if (radio) {
+                    // console.log(`[${fieldName} - click] Clicked star value: ${radio.value}`); // DEBUG LOG
+                    radio.checked = true;
+                    updateStars('click'); // Update visuals immediately on click
+                }
+            });
+
+            // Add hover effects using JS
+            label.addEventListener('mouseenter', () => {
+                const currentVal = parseInt(label.querySelector('input').value, 10);
+                if (isNaN(currentVal)) return;
+                // console.log(`[${fieldName} - hover] Hover enter star value: ${currentVal}`); // DEBUG LOG
+
+                labels.forEach((lbl) => {
+                    const val = parseInt(lbl.querySelector('input').value, 10);
+                    const icn = lbl.querySelector('i');
+                    if (!isNaN(val) && val <= currentVal) {
+                        lbl.classList.add('hover'); // Add hover class
+                        icn.classList.remove('bi-star');
+                        icn.classList.add('bi-star-fill'); // Preview fill
+                    } else {
+                         lbl.classList.remove('hover');
+                         // Only reset if not currently filled based on selection
+                         if (!lbl.classList.contains('filled')) {
+                             icn.classList.add('bi-star');
+                             icn.classList.remove('bi-star-fill');
+                         }
+                    }
+                });
+            });
+        });
+
+         // Remove hover effect when mouse leaves the entire widget
+         widget.addEventListener('mouseleave', () => {
+             // console.log(`[${fieldName} - hover] Hover leave widget`); // DEBUG LOG
+             labels.forEach(label => {
+                 label.classList.remove('hover'); // Remove hover class
+             });
+             // Revert stars based on actual selected state (call updateStars)
+             updateStars('leave');
+         });
+
+        // Initialize stars on page load
+        updateStars('init');
+    });
+});
+</script>
+{% endblock %}

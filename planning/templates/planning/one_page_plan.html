@@ -1,133 +1,195 @@
-<!DOCTYPE html>
-{% load static %}
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Session Plan: {% if session.school_group %}{{ session.school_group.name }}{% endif %} {{ session.date|date:"d M Y" }}</title>
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"> 
+{% extends 'planning/base.html' %} {# MUST be the very first line #}
+{% load static tz %} {# Load static and timezone filters #}
+
+{# Block for setting the page title - Use correct field name #}
+{% block title %}Session Plan: {% if session.school_group %}{{ session.school_group.name }}{% endif %} {{ session.session_date|date:"d M Y" }}{% endblock %}
+
+{# Block for page-specific CSS #}
+{% block extra_head %}
+    {# Link to Bootstrap Icons if not already in base.html or needed specifically #}
+    {# <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"> #}
+
     <style>
+        /* Styles specifically for the one-page plan */
+        /* Override base styles if necessary for simplified view */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f7f6;
-            color: #333;
+            /* Inherit from base */
             line-height: 1.5;
         }
         .plan-container {
-            max-width: 800px; /* Max width for readability */
-            margin: 15px auto;
-            padding: 15px;
-            background-color: #ffffff;
-            border: 1px solid #ddd;
+            /* max-width: 800px; */ /* Let base container handle width */
+            margin: 15px auto; /* Keep vertical margin */
+            padding: 20px; /* Adjusted padding */
+            /* UPDATED: Use CSS Variable */
+            background-color: var(--container-bg, #ffffff);
+            border: 1px solid var(--border-color, #ddd); /* Use variable */
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            position: relative; /* Needed for absolute positioning of button if desired */
-            padding-bottom: 60px; /* Add padding at bottom if using fixed button */
+            position: relative;
+            padding-bottom: 60px; /* Space for share button */
         }
-        h1, h2, h3 {
+        .plan-container h1,
+        .plan-container h2,
+        .plan-container h3 {
             margin-top: 0;
             margin-bottom: 0.75em;
-            color: #004085; /* Dark blue heading */
-            border-bottom: 1px solid #eee;
+            /* UPDATED: Use CSS Variable */
+            color: var(--heading-color, #004085);
+            border-bottom: 1px solid var(--border-light, #eee); /* Use variable */
             padding-bottom: 0.3em;
         }
-        h1 { font-size: 1.6em; }
-        h2 { font-size: 1.3em; margin-top: 1.5em; }
-        h3 { font-size: 1.1em; margin-top: 1em; color: #17a2b8; border-bottom-style: dashed;} /* Teal for block focus */
-        p, ul { margin-bottom: 1em; }
-        ul { padding-left: 20px; list-style: disc; }
-        li { margin-bottom: 0.5em; }
-        strong { font-weight: bold; }
+        .plan-container h1 { font-size: 1.6em; }
+        .plan-container h2 { font-size: 1.3em; margin-top: 1.5em; }
+        .plan-container h3 { font-size: 1.1em; margin-top: 1em; color: var(--border-accent, #17a2b8); border-bottom-style: dashed;} /* Use variable */
+
+        .plan-container p, .plan-container ul { margin-bottom: 1em; }
+        .plan-container ul { padding-left: 20px; list-style: disc; }
+        .plan-container li { margin-bottom: 0.5em; }
+        .plan-container strong { font-weight: bold; }
+
         .session-header p { margin-bottom: 0.5em; font-size: 0.95em; }
+
         .time-block-card {
-            border: 1px solid #ccc;
+            border: 1px solid var(--border-color, #ccc); /* Use variable */
             border-radius: 5px;
             margin-bottom: 1.5em;
             padding: 15px;
-            background-color: #fdfdfd;
+             /* UPDATED: Use CSS Variable */
+            background-color: var(--container-light-bg, #fdfdfd);
         }
         .block-header {
             font-weight: bold;
             font-size: 1.1em;
             margin-bottom: 10px;
             padding-bottom: 5px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-light, #eee); /* Use variable */
+             /* UPDATED: Use CSS Variable */
+             color: var(--subheading-color);
         }
         .courts-grid {
             display: grid;
             gap: 15px;
+             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         }
         .court-section {
-            border: 1px dashed #ddd;
+            border: 1px dashed var(--border-color, #ddd); /* Use variable */
             padding: 10px;
             border-radius: 4px;
-            background-color: #f9f9f9;
+             /* UPDATED: Use CSS Variable */
+            background-color: var(--court-bg, #f9f9f9);
         }
         .court-title {
             font-weight: bold;
             margin-bottom: 8px;
             display: block;
-            color: #495057; /* Dark grey */
+             /* UPDATED: Use CSS Variable */
+            color: var(--court-header-color, #495057);
         }
         .court-section ul {
             padding-left: 15px;
             margin-bottom: 0;
+            min-height: 1em; /* Ensure UL takes up space even if empty */
         }
         .court-section li {
             font-size: 0.9em;
             margin-bottom: 3px;
+             /* UPDATED: Use CSS Variable */
+             color: var(--text-color);
         }
+         /* Style for empty activity list */
+         .court-section ul:empty::after {
+             content: "(No activities)";
+             font-style: italic;
+             color: var(--subheading-color);
+             font-size: 0.9em;
+         }
+
         /* Share Button Style */
         #shareButton {
             display: none; /* Hidden by default, shown by JS if API supported */
-            position: fixed; /* Or absolute relative to .plan-container */
-            bottom: 15px;
-            right: 15px;
+            position: fixed; /* Fixed position relative to viewport */
+            bottom: 20px; /* Adjust position */
+            right: 20px;  /* Adjust position */
             padding: 10px 15px;
             font-size: 1em;
             font-weight: bold;
             color: white;
-            background-color: #007bff; /* Blue */
+            background-color: var(--link-color, #007bff); /* Use variable */
             border: none;
             border-radius: 50px; /* Pill shape */
             cursor: pointer;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 100;
+            z-index: 100; /* Ensure it's above other content */
         }
          #shareButton:hover {
-            background-color: #0056b3;
-        }
+             background-color: var(--link-hover-color, #0056b3); /* Use variable */
+         }
+         #shareButton i { /* Style icon inside button */
+             margin-right: 6px;
+         }
 
-        /* Basic responsiveness */
-        @media (min-width: 600px) {
-            .courts-grid {
-                 grid-template-columns: repeat(var(--court-count, 1), 1fr);
-            }
-        }
+        /* Back link specific to this page */
+         .one-page-back-link {
+             display: inline-block;
+             margin-bottom: 15px;
+             color: var(--link-color);
+             text-decoration: none;
+             font-size: 0.9em;
+         }
+         .one-page-back-link:hover {
+              color: var(--link-hover-color);
+              text-decoration: underline;
+          }
+
+
+        /* Print styles */
         @media print {
-            body { background-color: #fff; }
-            .plan-container { border: none; box-shadow: none; margin: 0; padding: 0; max-width: 100%; padding-bottom: 0;}
-            h1, h2, h3 { color: #000; border-color: #ccc;}
-            .court-section { border-style: solid; }
-            a { text-decoration: none; color: #000;}
-            #shareButton { display: none !important; } /* Hide button when printing */
+            /* Hide base template header/footer */
+            body > header.main-header, body > footer.main-footer {
+                 display: none !important;
+             }
+             /* Ensure main content takes full width */
+             body > div.container {
+                 max-width: none !important;
+                 padding: 0 !important;
+                 margin: 0 !important;
+             }
+
+            body { background-color: #fff !important; background-image: none !important; } /* Force white background, remove image */
+            .plan-container { border: none !important; box-shadow: none !important; margin: 0 !important; padding: 0 !important; max-width: 100% !important; padding-bottom: 0 !important; background-color: #fff !important;}
+            .time-block-card, .court-section { background-color: #fff !important; }
+            h1, h2, h3 { color: #000 !important; border-color: #ccc !important;}
+            .court-section { border-style: solid !important; }
+            a { text-decoration: none !important; color: #000 !important;}
+            #shareButton, .one-page-back-link { display: none !important; } /* Hide button and back link */
+            /* Ensure grid works reasonably for print */
+            .courts-grid {
+                 grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important; /* Adjust minmax for print */
+            }
+            /* Hide empty message on print */
+            .court-section ul:empty::after {
+                 content: "";
+            }
         }
 
     </style>
-</head>
-<body>
+{% endblock %}
 
-    <a href="{% url 'planning:session_detail' session.id %}" class="back-link">
+
+{# Block for the main page content #}
+{% block content %}
+    {# Removed outer container as base.html provides one #}
+
+    <a href="{% url 'planning:session_detail' session.id %}" class="one-page-back-link">
         <i class="bi bi-arrow-left"></i> Back to Full Session Plan
-    </a>    
-    <div class="plan-container">
+    </a>
+    <div class="plan-container"> {# Wrapper for specific page styling/print #}
         <h1>
             Session Plan: {% if session.school_group %}{{ session.school_group.name }}{% endif %}
         </h1>
         <div class="session-header">
-            <p><strong>Date:</strong> {{ session.date|date:"D, d M Y" }}</p>
-            <p><strong>Time:</strong> {{ session.start_time|time:"H:i" }} ({{ session.planned_duration_minutes }} min)</p>
+            {# Use correct field names #}
+            <p><strong>Date:</strong> {{ session.session_date|date:"D, d M Y" }}</p>
+            <p><strong>Time:</strong> {{ session.session_start_time|time:"H:i" }} ({{ session.planned_duration_minutes }} min)</p>
             {% if coaches %}
                 <p><strong>Coaches:</strong>
                     {% for coach in coaches %}
@@ -143,14 +205,14 @@
         {% for block in time_blocks %}
             <div class="time-block-card">
                 <div class="block-header">
-                    {{ block.block_start_datetime|time:"H:i" }} - {{ block.block_end_datetime|time:"H:i" }}
+                    {{ block.block_start_datetime|localtime|time:"H:i" }} - {{ block.block_end_datetime|localtime|time:"H:i" }}
                     ({{ block.duration_minutes }} min)
                     {% if block.block_focus %}| Focus: {{ block.block_focus }} {% endif %}
                     | {{ block.number_of_courts }} Court{{ block.number_of_courts|pluralize }}
                 </div>
 
-                {# Set CSS variable for grid columns #}
-                <div class="courts-grid" style="--court-count: {{ block.number_of_courts|default:1 }};">
+                {# Set CSS variable for grid columns - Note: Might not work in all browsers/print #}
+                <div class="courts-grid" style="--court-count: {{ block.number_of_courts|default:1 }}; grid-template-columns: repeat(var(--court-count), 1fr);">
                     {% for i in ""|ljust:block.number_of_courts %}
                         {% with court_num=forloop.counter %}
                         <div class="court-section">
@@ -173,7 +235,8 @@
                                         </li>
                                     {% endif %}
                                 {% endfor %}
-                                {# Removed the invalid check for empty activities #}
+                                {# REMOVED the {% set %} logic and the conditional (No activities) message #}
+                                {# CSS :empty::after selector will handle the message #}
                             </ul>
                         </div>
                         {% endwith %}
@@ -185,16 +248,21 @@
         {% endfor %}
 
         {# --- ADD SHARE BUTTON --- #}
-        <button id="shareButton">Share Plan</button>
+        <button id="shareButton"><i class="bi bi-share-fill"></i> Share Plan</button>
         {# --- END SHARE BUTTON --- #}
 
     </div> {# End plan-container #}
+{% endblock %}
 
+
+{# Block for page-specific JavaScript #}
+{% block extra_scripts %}
     {# --- JavaScript for Share Button --- #}
     <script>
         const shareButton = document.getElementById('shareButton');
         const sessionTitle = document.title; // Use the page title
-        const sessionText = "Check out this squash session plan for {{ session.date|date:"D, M d" }}";
+        // Use correct field name for date
+        const sessionText = "Check out this squash session plan for {{ session.session_date|date:"D, M d" }}";
 
         // Check if Web Share API is supported
         if (navigator.share) {
@@ -224,6 +292,14 @@
         }
     </script>
     {# --- END JavaScript --- #}
+{% endblock %}
+```
 
-</body>
-</html>
+**Action Steps:**
+
+1.  **Replace Code:** Copy the code above and replace the content of `planning/templates/planning/one_page_plan.html`.
+2.  **Save:** Save the file.
+3.  **Restart Server:** Stop (`Ctrl+C`) and restart (`python manage.py runserver`) the development server.
+4.  **Test:** Refresh the "One-Page Plan" page.
+
+The `TemplateSyntaxError` should now be gone. Let me know if it loads correct

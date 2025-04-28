@@ -1,52 +1,245 @@
-<!DOCTYPE html>
+{% extends 'planning/base.html' %} {# MUST be the very first line #}
 {% load static %}
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Add Volley Record for {{ player.full_name }}</title>
-    <link rel="stylesheet" href="{% static 'planning/style.css' %}">
-    {# Copy styles from add_sprint_form.html or rely on main style.css #}
+
+{# Block for setting the page title #}
+{% block title %}Add Volley Record for {{ player.full_name }} - SquashSync{% endblock %}
+
+{# Block for page-specific CSS #}
+{% block extra_head %}
     <style>
-        body { font-family: sans-serif; margin: 20px; line-height: 1.5; }
-        .container { max-width: 600px; margin: 20px auto; padding: 20px; background: #fff; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid var(--border-color);}
+        /* Basic styling for the form page - adapted from previous forms */
+        .content-wrapper {
+            max-width: 700px; /* Limit form width */
+            margin: 20px auto;
+            padding: 25px;
+            background-color: var(--container-bg, white);
+            border: 1px solid var(--border-color, #ddd);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .content-wrapper h1 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--heading-color, #004085);
+            padding-bottom: 10px;
+            color: var(--heading-color, #004085);
+            font-size: 1.5em;
+        }
+         .content-wrapper p strong { /* Style the Player name display */
+            color: var(--subheading-color);
+         }
+
+        .form-back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: var(--link-color);
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+        .form-back-link:hover {
+            color: var(--link-hover-color);
+            text-decoration: underline;
+        }
         .form-field { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; }
-         /* Style radio select inline */
-        .form-field ul { list-style: none; padding: 0; margin: 0;}
-        .form-field ul li { display: inline-block; margin-right: 15px; }
-        .form-field ul label { margin-left: 3px; font-weight: normal;}
-        input[type="text"], input[type="number"], input[type="date"], select { padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; width: 95%; max-width: 400px; box-sizing: border-box; background-color: var(--container-bg); color: var(--text-color); }
-        .helptext { font-size: 0.9em; color: #666; margin-top: 3px; display: block; }
-        .errorlist { color: #cc0000; list-style: none; padding-left: 0; margin: 5px 0 0 0; font-weight: bold; font-size: 0.9em;}
-        button { padding: 10px 15px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1em;}
-        button:hover { background-color: #218838; }
-        .cancel-link { color: var(--link-color); margin-left: 15px; text-decoration: none; }
-        h1 { border-bottom: 1px solid var(--border-light); padding-bottom: 5px; margin-bottom: 20px;}
-        body.dark-mode input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+        .form-field label { /* Main field label */
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 0.95em;
+            color: var(--subheading-color, #333);
+        }
+        /* General input styling */
+        .form-field input[type="text"],
+        .form-field input[type="number"],
+        .form-field input[type="date"],
+        .form-field select,
+        .form-field textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color, #ccc);
+            border-radius: 4px;
+            font-size: 1em;
+            box-sizing: border-box;
+            background-color: var(--input-bg, white);
+            color: var(--text-color, #333);
+        }
+
+        /* --- Radio Select Styling (Re-applied) --- */
+        /* Container for radio options */
+        .radio-options-container {
+             display: flex;
+             flex-wrap: wrap;
+             gap: 20px; /* Space between options */
+             align-items: center;
+             margin-top: 5px; /* Space below label */
+             padding: 5px 0; /* Add slight padding */
+        }
+        /* Individual radio option */
+        .radio-option {
+             display: inline-flex; /* Align input and label */
+             align-items: center;
+             margin: 0;
+             padding: 0;
+        }
+        /* Ensure radio button itself is visible */
+        .radio-option input[type="radio"] {
+             width: auto;
+             height: auto;
+             opacity: 1;
+             position: static;
+             pointer-events: auto;
+             margin-right: 5px; /* Space before label */
+             vertical-align: middle;
+             cursor: pointer;
+             accent-color: var(--link-color);
+        }
+        /* Ensure label is visible and next to radio */
+        .radio-option label {
+             font-weight: normal;
+             display: inline;
+             margin-bottom: 0;
+             cursor: pointer;
+             color: var(--text-color);
+        }
+        /* --- END Radio Select Styling --- */
+
+
+        /* Basic dropdown arrow styling */
+        .form-field select {
+            appearance: none;
+            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236c757d%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 10px;
+            padding-right: 30px;
+        }
+        .form-field .helptext {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 4px;
+            display: block;
+        }
+        .errorlist { /* Style for field-specific errors */
+            color: #cc0000;
+            list-style: none;
+            padding-left: 0;
+            margin: 5px 0 0 0;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+         .error-summary { /* Style for non-field errors */
+             background-color: #f8d7da;
+             border: 1px solid #f5c6cb;
+             color: #721c24;
+             padding: 10px 15px;
+             border-radius: 4px;
+             margin-bottom: 15px;
+             font-size: 0.9em;
+         }
+         .error-summary ul { list-style: none; padding: 0; margin: 0; }
+         .error-summary strong { display: block; margin-bottom: 5px; }
+
+        .form-actions { /* Container for buttons */
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .submit-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: var(--link-color, #007bff);
+            color: white;
+            font-size: 1em;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .submit-button:hover { background-color: var(--link-hover-color, #0056b3); }
+
+        .cancel-link {
+            color: var(--link-color);
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+        .cancel-link:hover { text-decoration: underline; }
+
+        /* Dark Mode */
+        html.dark-mode .content-wrapper { background-color: var(--container-bg); border-color: var(--border-color); }
+        html.dark-mode .form-back-link { color: var(--link-color); }
+        html.dark-mode .form-back-link:hover { color: var(--link-hover-color); }
+        html.dark-mode .form-field label { color: var(--subheading-color); }
+        html.dark-mode .form-field input[type="text"],
+        html.dark-mode .form-field input[type="number"],
+        html.dark-mode .form-field input[type="date"],
+        html.dark-mode .form-field select,
+        html.dark-mode .form-field textarea {
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+        html.dark-mode .radio-option label { /* Ensure label color is readable */
+             color: var(--text-color);
+        }
+        html.dark-mode .form-field select {
+             background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23cccccc%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); /* Lighter arrow */
+        }
+        html.dark-mode .form-field .helptext { color: #aaa; }
+        html.dark-mode .error-summary { background-color: #721c24; color: #f8d7da; border-color: #b82d3a; }
+        html.dark-mode .cancel-link { color: var(--link-color); }
+        html.dark-mode .cancel-link:hover { color: var(--link-hover-color); }
+        html.dark-mode input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); } /* Dark mode date picker icon */
+
     </style>
-</head>
-<body>
-    <div class="container">
+{% endblock %}
+
+
+{# Block for the main page content #}
+{% block content %}
+    <div class="content-wrapper"> {# Wrapper for specific page styling #}
+        <a href="{% url 'planning:player_profile' player.id %}" class="form-back-link"><i class="bi bi-arrow-left"></i> Back to {{ player.full_name }}'s Profile</a>
+
         <h1>Add Volley Record</h1>
         <p><strong>Player:</strong> {{ player.full_name }}</p>
-        <hr>
+        <hr style="margin: 15px 0;">
 
         <form method="post" novalidate>
             {% csrf_token %}
-            {% if form.non_field_errors %}<div class="errorlist error-summary">{{ form.non_field_errors }}</div>{% endif %}
+            {% if form.non_field_errors %}<div class="error-summary">{{ form.non_field_errors }}</div>{% endif %}
 
             {% for field in form %}
                 <div class="form-field">
                     {{ field.label_tag }}
                     {% if field.errors %}<div class="errorlist">{{ field.errors }}</div>{% endif %}
-                    {{ field }} {# Renders widget (RadioSelect for shot_type) #}
+
+                    {# --- Explicit Rendering for Radio Buttons --- #}
+                    {% if field.name == 'shot_type' %}
+                        <div class="radio-options-container"> {# Apply styling to this container #}
+                            {% for choice in field %}
+                                <div class="radio-option"> {# Apply styling to each option #}
+                                    {{ choice.tag }} {# Render the <input type="radio"> #}
+                                    <label for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label> {# Render the label #}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {# --- Render other fields normally --- #}
+                    {% else %}
+                        {{ field }} {# Renders standard widget #}
+                    {% endif %}
+                    {# --- End Explicit Rendering --- #}
+
                     {% if field.help_text %}<small class="helptext">{{ field.help_text|safe }}</small>{% endif %}
                 </div>
             {% endfor %}
 
-            <button type="submit">Save Volley Record</button>
-            <a href="{% url 'planning:player_profile' player.id %}" class="cancel-link">Cancel</a>
+            <div class="form-actions">
+                <button type="submit" class="submit-button">Save Volley Record</button>
+                <a href="{% url 'planning:player_profile' player.id %}" class="cancel-link">Cancel</a>
+            </div>
         </form>
-    </div>
-</body>
-</html>
+    </div> {# End content-wrapper #}
+{% endblock %}
+
+{# Block for page-specific JavaScript (if needed) #}
+{% block extra_scripts %}
+{% endblock %}

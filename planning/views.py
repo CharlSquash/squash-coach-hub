@@ -11,7 +11,12 @@ from django.db.models import Q
 from django.http import JsonResponse, HttpResponseForbidden, Http404 # Added Http404
 from django.views.decorators.http import require_POST # To ensure POST requests
 from .models import Player, CoachFeedback 
+from datetime import timedelta, datetime, time
 from .forms import CoachFeedbackForm 
+from .models import Session
+from django.db.models import Q, Prefetch
+from collections import defaultdict
+from django.contrib import messages
 # from django.views.decorators.csrf import csrf_exempt # REMOVED
 
 # Import all necessary models and the forms
@@ -123,7 +128,8 @@ def _calculate_skill_priority_groups(attendees_queryset, num_courts):
 
 # --- Session List View ---
 def session_list(request):
-    all_sessions = Session.objects.all().order_by('-date', '-start_time')
+    # Use the corrected field names 'session_date' and 'session_start_time'
+    all_sessions = Session.objects.select_related('school_group').order_by('-session_date', '-session_start_time') # <-- CORRECTED
     context = {'sessions_list': all_sessions}
     return render(request, 'planning/session_list.html', context)
 
@@ -583,44 +589,35 @@ def delete_activity(request, activity_id):
 # --- Player Profile View ---
 def player_profile(request, player_id):
     player = get_object_or_404(Player, pk=player_id)
-    sessions_attended = player.sessions_attended.order_by('-date', '-start_time')
+    sessions_attended = player.attended_sessions.order_by('-session_date', '-session_start_time')
     assessments = player.session_assessments.select_related(
         'session', 'session__school_group'
-    ).order_by('-date_recorded', '-session__start_time')
+    ).order_by('-date_recorded', '-session__session_start_time')
     sprints = player.sprint_records.select_related('session').order_by('date_recorded')
     volleys = player.volley_records.select_related('session').order_by('date_recorded')
     drives = player.drive_records.select_related('session').order_by('date_recorded')
     matches = player.match_results.select_related('session').order_by('-date')
 
-    sprint_chart_data = {
-        '3m': {'labels': [], 'data': []},
-        '5m': {'labels': [], 'data': []},
-        '10m': {'labels': [], 'data': []}
-    }
+    # Chart data preparation...
+    sprint_chart_data = { '3m': {'labels': [], 'data': []}, '5m': {'labels': [], 'data': []}, '10m': {'labels': [], 'data': []} }
     for sprint in sprints:
         key = sprint.duration_choice
         if key in sprint_chart_data:
-            sprint_chart_data[key]['labels'].append(sprint.date_recorded)
+            sprint_chart_data[key]['labels'].append(sprint.date_recorded.isoformat())
             sprint_chart_data[key]['data'].append(sprint.score)
 
-    volley_chart_data = {
-        'FH': {'labels': [], 'data': []},
-        'BH': {'labels': [], 'data': []}
-    }
+    volley_chart_data = { 'FH': {'labels': [], 'data': []}, 'BH': {'labels': [], 'data': []} }
     for volley in volleys:
         key = volley.shot_type
         if key in volley_chart_data:
-            volley_chart_data[key]['labels'].append(volley.date_recorded)
+            volley_chart_data[key]['labels'].append(volley.date_recorded.isoformat())
             volley_chart_data[key]['data'].append(volley.consecutive_count)
 
-    drive_chart_data = {
-        'FH': {'labels': [], 'data': []},
-        'BH': {'labels': [], 'data': []}
-    }
+    drive_chart_data = { 'FH': {'labels': [], 'data': []}, 'BH': {'labels': [], 'data': []} }
     for drive in drives:
         key = drive.shot_type
         if key in drive_chart_data:
-            drive_chart_data[key]['labels'].append(drive.date_recorded)
+            drive_chart_data[key]['labels'].append(drive.date_recorded.isoformat())
             drive_chart_data[key]['data'].append(drive.consecutive_count)
 
     context = {
@@ -631,11 +628,44 @@ def player_profile(request, player_id):
         'volleys': volleys,
         'drives': drives,
         'matches': matches,
+        # CORRECTED: Pass Python dictionaries directly to context
         'sprint_chart_data': sprint_chart_data,
         'volley_chart_data': volley_chart_data,
         'drive_chart_data': drive_chart_data,
     }
     return render(request, 'planning/player_profile.html', context)
+
+
+# --- Assess Player Session View ---
+# (Keep existing assess_player_session view code as corrected previously)
+def assess_player_session(request, session_id, player_id):
+    session = get_object_or_404(Session, pk=session_id)
+    player = get_object_or_404(Player, pk=player_id)
+    assessment_instance = SessionAssessment.objects.filter(session=session, player=player).first()
+
+    if request.method == 'POST':
+        form = SessionAssessmentForm(request.POST, instance=assessment_instance)
+        if form.is_valid():
+            assessment = form.save(commit=False)
+            assessment.session = session
+            assessment.player = player
+            if not assessment.pk and not form.cleaned_data.get('date_recorded'):
+                 assessment.date_recorded = session.session_date
+            assessment.save()
+            messages.success(request, f"Assessment saved for {player.full_name} in session on {session.session_date}.")
+            return redirect('planning:pending_assessments')
+    else:
+        form = SessionAssessmentForm(instance=assessment_instance)
+
+    context = {
+        'form': form,
+        'session': session,
+        'player': player,
+        'assessment_instance': assessment_instance,
+        'page_title': f"{'Edit' if assessment_instance else 'Add'} Assessment"
+    }
+    return render(request, 'planning/assess_player_form.html', context)
+
 
 # Add this view for handling Coach Feedback form
 def add_coach_feedback(request, player_id):
@@ -674,10 +704,8 @@ def add_coach_feedback(request, player_id):
 def assess_player_session(request, session_id, player_id):
     session = get_object_or_404(Session, pk=session_id)
     player = get_object_or_404(Player, pk=player_id)
-    if not session.attendees.filter(pk=player.id).exists():
-        return redirect('planning:session_detail', session_id=session.id)
+    # Try to get an existing assessment or create a new one
     assessment_instance = SessionAssessment.objects.filter(session=session, player=player).first()
-    form = SessionAssessmentForm(instance=assessment_instance)
 
     if request.method == 'POST':
         form = SessionAssessmentForm(request.POST, instance=assessment_instance)
@@ -685,17 +713,95 @@ def assess_player_session(request, session_id, player_id):
             assessment = form.save(commit=False)
             assessment.session = session
             assessment.player = player
-            assessment.date_recorded = session.date
+            # Ensure date is set if creating new (form might handle this)
+            # If date_recorded is not part of the form, set it from the session's date
+            if not assessment.pk and not form.cleaned_data.get('date_recorded'): # Check if form includes date_recorded
+                 # CORRECTED: Use session.session_date
+                 assessment.date_recorded = session.session_date
             assessment.save()
-            return redirect('planning:session_detail', session_id=session.id)
+            messages.success(request, f"Assessment saved for {player.full_name} in session on {session.session_date}.")
+            # Redirect back to pending assessments page after saving
+            return redirect('planning:pending_assessments') # Changed redirect
+    else: # GET request
+        form = SessionAssessmentForm(instance=assessment_instance)
 
     context = {
         'form': form,
-        'player': player,
         'session': session,
-        'assessment_instance': assessment_instance
+        'player': player,
+        'assessment_instance': assessment_instance, # Pass instance to template
+        'page_title': f"{'Edit' if assessment_instance else 'Add'} Assessment" # Dynamic title
     }
     return render(request, 'planning/assess_player_form.html', context)
+
+def assess_latest_session_redirect(request, player_id):
+    """
+    Finds the most recent session the player attended and redirects
+    to the assessment form for that session and player.
+    """
+    player = get_object_or_404(Player, pk=player_id)
+
+    # Find the latest session this player attended
+    # Uses the 'attended_sessions' related name from Session.attendees M2M
+    latest_session = player.attended_sessions.order_by('-session_date', '-session_start_time').first()
+
+    if latest_session:
+        # Redirect to the existing assessment view, passing both IDs
+        return redirect('planning:assess_player_session', session_id=latest_session.id, player_id=player.id)
+    else:
+        # Handle case where player hasn't attended any sessions
+        messages.warning(request, f"{player.full_name} has no recorded session attendance to assess.")
+        # Redirect back to the player's profile page
+        return redirect('planning:player_profile', player_id=player.id)
+
+
+def pending_assessments_view(request):
+    """
+    Displays sessions needing assessment and handles marking them complete.
+    """
+    if request.method == 'POST':
+        # Handle marking sessions as complete
+        session_ids_to_complete = request.POST.getlist('sessions_to_complete')
+        if session_ids_to_complete:
+            sessions_updated = Session.objects.filter(
+                id__in=session_ids_to_complete,
+                assessments_complete=False # Only update those not already marked
+            ).update(assessments_complete=True)
+
+            if sessions_updated > 0:
+                messages.success(request, f"{sessions_updated} session(s) marked as assessment complete.")
+            else:
+                messages.info(request, "No sessions were updated (they might have already been marked complete).")
+        else:
+            messages.warning(request, "No sessions selected to mark as complete.")
+
+        # Redirect back to the same page to show updated list
+        return redirect('planning:pending_assessments')
+
+    # --- Handle GET request ---
+    # Calculate the date 14 days ago
+    two_weeks_ago = timezone.now().date() - timedelta(days=14)
+
+    # Fetch sessions within the last 14 days that are NOT marked complete
+    # Prefetch attendees for efficiency
+    pending_sessions_qs = Session.objects.filter(
+        session_date__gte=two_weeks_ago,
+        assessments_complete=False
+    ).select_related('school_group').prefetch_related(
+        Prefetch('attendees', queryset=Player.objects.order_by('last_name', 'first_name'))
+    ).order_by('-session_date', '-session_start_time') # Show most recent first
+
+    # Group sessions by date for display
+    grouped_sessions = defaultdict(list)
+    for session in pending_sessions_qs:
+        grouped_sessions[session.session_date].append(session)
+
+    context = {
+        'grouped_pending_sessions': dict(grouped_sessions), # Convert back to dict for template
+        'page_title': "Pending Assessments"
+    }
+    # We will create this template in the next step
+    return render(request, 'planning/pending_assessments.html', context)
 
 
 # --- Add Metric/Match Views ---
@@ -793,16 +899,57 @@ def one_page_plan_view(request, session_id):
     }
     return render(request, 'planning/one_page_plan.html', context)
 
+# planning/views.py
+
 # --- Homepage View ---
 def homepage_view(request):
-    """Displays the main homepage / dashboard."""
+    """
+    Displays the main homepage / dashboard.
+    Includes upcoming sessions and recently completed sessions for feedback reminders.
+    """
     now = timezone.now()
+
+    # --- Upcoming Sessions (Using CORRECTED field names) ---
     upcoming_sessions = Session.objects.filter(
-        Q(date__gt=now.date()) | Q(date=now.date(), start_time__gte=now.time())
-    ).select_related('school_group').order_by('date', 'start_time')[:5]
+        Q(session_date__gt=now.date()) | Q(session_date=now.date(), session_start_time__gte=now.time())
+    ).select_related('school_group').order_by('session_date', 'session_start_time')[:5] # Use session_date, session_start_time
+
+    # --- Recently Finished Sessions for Feedback Reminder (Updated Window & Filtered) ---
+    feedback_window_start = now - timedelta(days=14)
+    fifteen_days_ago = now.date() - timedelta(days=15)
+
+    potential_sessions = Session.objects.filter(
+        session_date__gte=fifteen_days_ago,
+        session_date__lte=now.date(),
+        assessments_complete=False # <-- ADDED: Only show if not marked complete
+    ).select_related('school_group').order_by('-session_date', '-session_start_time')
+
+    # Iterate in Python and check the calculated end_datetime property
+    recent_sessions_for_feedback = []
+    for session in potential_sessions:
+        # Check if the session has an end time calculated
+        if session.end_datetime:
+            # Check if the end time falls within our desired window (past 14 days, but before now)
+            # Note: The assessments_complete=False filter is already applied in the DB query
+            if feedback_window_start <= session.end_datetime < now:
+                recent_sessions_for_feedback.append(session)
+
+        # Limit the list
+        if len(recent_sessions_for_feedback) >= 5:
+            break
+    # --- End Recently Finished Sessions ---
 
     context = {
-        'upcoming_sessions': upcoming_sessions
+        'upcoming_sessions': upcoming_sessions,
+        'recent_sessions_for_feedback': recent_sessions_for_feedback, # Pass updated list to context
+    }
+    return render(request, 'planning/homepage.html', context)
+ 
+    # --- End Recently Finished Sessions ---
+
+    context = {
+        'upcoming_sessions': upcoming_sessions,
+        'recent_sessions_for_feedback': recent_sessions_for_feedback, # Add new list to context
     }
     return render(request, 'planning/homepage.html', context)
 
@@ -870,5 +1017,53 @@ def clear_manual_assignments_api(request, time_block_id):
     except Exception as e:
         print(f"Error in clear_manual_assignments_api: {e}") # Basic logging
         return JsonResponse({'status': 'error', 'message': 'An unexpected error occurred'}, status=500)
+
+def pending_assessments_view(request):
+    """
+    Displays sessions needing assessment and handles marking them complete.
+    """
+    if request.method == 'POST':
+        # Handle marking sessions as complete
+        session_ids_to_complete = request.POST.getlist('sessions_to_complete')
+        if session_ids_to_complete:
+            sessions_updated = Session.objects.filter(
+                id__in=session_ids_to_complete,
+                assessments_complete=False # Only update those not already marked
+            ).update(assessments_complete=True)
+
+            if sessions_updated > 0:
+                messages.success(request, f"{sessions_updated} session(s) marked as assessment complete.")
+            else:
+                messages.info(request, "No sessions were updated (they might have already been marked complete).")
+        else:
+            messages.warning(request, "No sessions selected to mark as complete.")
+
+        # Redirect back to the same page to show updated list
+        return redirect('planning:pending_assessments')
+
+    # --- Handle GET request ---
+    # Calculate the date 14 days ago
+    two_weeks_ago = timezone.now().date() - timedelta(days=14)
+
+    # Fetch sessions within the last 14 days that are NOT marked complete
+    # Prefetch attendees for efficiency
+    pending_sessions_qs = Session.objects.filter(
+        session_date__gte=two_weeks_ago,
+        assessments_complete=False
+    ).select_related('school_group').prefetch_related(
+        Prefetch('attendees', queryset=Player.objects.order_by('last_name', 'first_name'))
+    ).order_by('-session_date', '-session_start_time') # Show most recent first
+
+    # Group sessions by date for display
+    grouped_sessions = defaultdict(list)
+    for session in pending_sessions_qs:
+        grouped_sessions[session.session_date].append(session)
+
+    context = {
+        'grouped_pending_sessions': dict(grouped_sessions), # Convert back to dict for template
+        'page_title': "Pending Assessments"
+    }
+    # We will create this template in the next step
+    return render(request, 'planning/pending_assessments.html', context)
 
 # End of file
