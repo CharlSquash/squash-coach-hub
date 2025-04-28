@@ -1110,4 +1110,110 @@ def pending_assessments_view(request):
     # We will create this template in the next step
     return render(request, 'planning/pending_assessments.html', context)
 
+def edit_coach_feedback(request, feedback_id):
+    """
+    View to edit an existing coach feedback entry.
+    """
+    feedback_instance = get_object_or_404(CoachFeedback, pk=feedback_id)
+    player = feedback_instance.player # Get the associated player
+
+    # Optional: Add permission check here - e.g., only allow the coach who wrote it to edit?
+    # if feedback_instance.recorded_by != request.user:
+    #     messages.error(request, "You are not authorized to edit this feedback.")
+    #     return redirect('planning:player_profile', player_id=player.id)
+
+    if request.method == 'POST':
+        # Pass the instance to pre-fill the form and update it
+        form = CoachFeedbackForm(request.POST, instance=feedback_instance)
+        if form.is_valid():
+            form.save() # Save the changes to the existing instance
+            messages.success(request, f"Feedback for {player.full_name} updated.")
+            return redirect('planning:player_profile', player_id=player.id) # Redirect back to player profile
+    else: # GET request
+        # Pass the instance to pre-fill the form
+        form = CoachFeedbackForm(instance=feedback_instance)
+
+    context = {
+        'form': form,
+        'player': player, # Pass player for context in template (e.g., back link)
+        'feedback_instance': feedback_instance, # Pass instance to know we are editing
+        'page_title': f'Edit Feedback for {player.full_name}'
+    }
+    # Reuse the same template as the add form
+    return render(request, 'planning/add_coach_feedback_form.html', context)
+
+def delete_coach_feedback(request, feedback_id):
+    """
+    View to delete a specific coach feedback entry.
+    Requires POST request to prevent accidental deletion via GET.
+    """
+    feedback_instance = get_object_or_404(CoachFeedback, pk=feedback_id)
+    player = feedback_instance.player # Get player before deleting feedback
+
+    # Optional: Add permission check here
+    # if feedback_instance.recorded_by != request.user:
+    #     messages.error(request, "You are not authorized to delete this feedback.")
+    #     return redirect('planning:player_profile', player_id=player.id)
+
+    if request.method == 'POST':
+        feedback_instance.delete()
+        messages.success(request, "Feedback entry deleted successfully.")
+        return redirect('planning:player_profile', player_id=player.id) # Redirect back to player profile
+    else:
+        # If accessed via GET, just redirect back (or show a confirmation page if preferred)
+        messages.warning(request, "Deletion must be confirmed via the button.")
+        return redirect('planning:player_profile', player_id=player.id)
+
+# --- NEW: Edit Session Assessment View ---
+# @login_required # Optional
+def edit_session_assessment(request, assessment_id):
+    """
+    View to edit an existing session assessment entry.
+    """
+    assessment_instance = get_object_or_404(SessionAssessment, pk=assessment_id)
+    player = assessment_instance.player
+    session = assessment_instance.session
+
+    # Optional: Permission check
+
+    if request.method == 'POST':
+        # Pass the instance to pre-fill the form and update it
+        form = SessionAssessmentForm(request.POST, instance=assessment_instance)
+        if form.is_valid():
+            form.save() # Save the changes to the existing instance
+            messages.success(request, f"Assessment for {player.full_name} (Session: {session.session_date}) updated.")
+            return redirect('planning:player_profile', player_id=player.id) # Redirect back to player profile
+    else: # GET request
+        # Pass the instance to pre-fill the form
+        form = SessionAssessmentForm(instance=assessment_instance)
+
+    context = {
+        'form': form,
+        'session': session, # Pass session for context in template
+        'player': player, # Pass player for context in template
+        'assessment_instance': assessment_instance, # Pass instance to know we are editing
+        'page_title': f'Edit Assessment for {player.full_name}'
+    }
+    # Reuse the same template as the add form
+    return render(request, 'planning/assess_player_form.html', context)      
+
+def delete_session_assessment(request, assessment_id):
+    """
+    View to delete a specific session assessment entry.
+    Requires POST request to prevent accidental deletion via GET.
+    """
+    assessment_instance = get_object_or_404(SessionAssessment, pk=assessment_id)
+    player = assessment_instance.player # Get player before deleting
+
+    # Optional: Permission check
+
+    if request.method == 'POST':
+        assessment_instance.delete()
+        messages.success(request, "Session assessment deleted successfully.")
+        return redirect('planning:player_profile', player_id=player.id) # Redirect back to player profile
+    else:
+        # If accessed via GET, just redirect back (or show a confirmation page if preferred)
+        messages.warning(request, "Deletion must be confirmed via the button.")
+        return redirect('planning:player_profile', player_id=player.id)      
+
 # End of file
