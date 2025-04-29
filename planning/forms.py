@@ -142,7 +142,7 @@ class VolleyRecordForm(forms.ModelForm): # <-- Fixed indentation
         # self.fields['shot_type'].empty_label = None # Uncomment if you DON'T want the '---------' option
 
 # --- Backwall Drive Record Form ---
-class BackwallDriveRecordForm(forms.ModelForm):
+class BackwallDriveRecordForm(forms.ModelForm): # Ensure indentation matches other classes
     date_recorded = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}), initial=timezone.now().date())
 
     class Meta:
@@ -152,11 +152,14 @@ class BackwallDriveRecordForm(forms.ModelForm):
             'date_recorded': 'Date Tested', 'shot_type': 'Shot Type (FH/BH)',
             'consecutive_count': 'Consecutive Count', 'session': 'Associated Session (Optional)'
         }
+        # Removed redundant widgets definition here
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['session'].required = False
+        # Explicitly set the widget AND choices for robustness
         self.fields['shot_type'].widget = forms.RadioSelect()
+        self.fields['shot_type'].choices = BackwallDriveRecord.ShotType.choices
 
 
 # --- NEW Match Result Form ---

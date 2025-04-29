@@ -24,13 +24,12 @@
             padding-bottom: 10px;
             color: var(--heading-color, #004085);
             font-size: 1.5em;
-            /* Removed flex styles as icon isn't needed here */
         }
          .content-wrapper p strong { /* Style the Player name display */
             color: var(--subheading-color);
          }
 
-        .form-back-link { /* Renamed class */
+        .form-back-link {
             display: inline-block;
             margin-bottom: 20px;
             color: var(--link-color);
@@ -42,7 +41,7 @@
             text-decoration: underline;
         }
         .form-field { margin-bottom: 15px; }
-        .form-field label {
+        .form-field label { /* Main field label */
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
@@ -52,7 +51,7 @@
         /* General input styling */
         .form-field input[type="text"],
         .form-field input[type="number"],
-        .form-field input[type="date"], /* Added date */
+        .form-field input[type="date"],
         .form-field select,
         .form-field textarea {
             width: 100%;
@@ -64,29 +63,45 @@
             background-color: var(--input-bg, white);
             color: var(--text-color, #333);
         }
-        /* Style radio select inline */
-        .form-field ul#id_shot_type { /* Target specific radio list */
+
+        /* --- Radio Select Styling (for default rendering) --- */
+        .form-field ul[id^='id_'] { /* Target ULs likely used for radios */
              list-style: none;
+             padding: 5px 0 0 0; /* Reduced padding */
+             margin: 0;
+             /* display: flex; /* Remove flex for default vertical */
+             /* flex-wrap: wrap; */
+             /* gap: 15px; */
+             /* align-items: center; */
+        }
+        .form-field ul[id^='id_'] li {
+             margin-bottom: 5px; /* Space between vertical options */
              padding: 0;
-             margin: 5px 0 0 0;
-             display: flex; /* Use flex for inline */
-             gap: 20px; /* Space between options */
+             display: flex; /* Align radio and label */
              align-items: center;
         }
-        .form-field ul#id_shot_type li {
-             /* display: inline-block; /* Flex handles this */
-             /* margin-right: 15px; */
-        }
-        .form-field ul#id_shot_type label {
-             margin-left: 4px; /* Space between radio and label */
-             font-weight: normal; /* Normal weight for options */
-             display: inline; /* Keep label next to radio */
-             margin-bottom: 0; /* Reset bottom margin */
-        }
-        .form-field ul#id_shot_type input[type="radio"] {
-             width: auto; /* Don't force radio to full width */
+        /* Ensure radio button itself is visible */
+        .form-field input[type="radio"] {
+             width: auto; /* Override potential full width */
+             height: auto; /* Override potential zero height */
+             opacity: 1; /* Ensure not hidden */
+             position: static; /* Ensure not absolutely positioned off-screen */
+             pointer-events: auto; /* Ensure clickable */
+             margin-right: 5px; /* Space before label */
              vertical-align: middle;
+             cursor: pointer;
+             accent-color: var(--link-color);
         }
+        /* Ensure label is visible and next to radio */
+        .form-field ul[id^='id_'] label {
+             font-weight: normal;
+             display: inline;
+             margin-bottom: 0;
+             cursor: pointer;
+             color: var(--text-color);
+        }
+        /* --- END Radio Select Styling --- */
+
 
         /* Basic dropdown arrow styling */
         .form-field select {
@@ -149,27 +164,30 @@
         .cancel-link:hover { text-decoration: underline; }
 
         /* Dark Mode */
-        body.dark-mode .content-wrapper { background-color: var(--container-bg); border-color: var(--border-color); }
-        body.dark-mode .form-back-link { color: var(--link-color); }
-        body.dark-mode .form-back-link:hover { color: var(--link-hover-color); }
-        body.dark-mode .form-field label { color: var(--subheading-color); }
-        body.dark-mode .form-field input[type="text"],
-        body.dark-mode .form-field input[type="number"],
-        body.dark-mode .form-field input[type="date"],
-        body.dark-mode .form-field select,
-        body.dark-mode .form-field textarea {
+        html.dark-mode .content-wrapper { background-color: var(--container-bg); border-color: var(--border-color); }
+        html.dark-mode .form-back-link { color: var(--link-color); }
+        html.dark-mode .form-back-link:hover { color: var(--link-hover-color); }
+        html.dark-mode .form-field label { color: var(--subheading-color); }
+        html.dark-mode .form-field input[type="text"],
+        html.dark-mode .form-field input[type="number"],
+        html.dark-mode .form-field input[type="date"],
+        html.dark-mode .form-field select,
+        html.dark-mode .form-field textarea {
             background-color: var(--input-bg);
             color: var(--text-color);
             border-color: var(--border-color);
         }
-        body.dark-mode .form-field select {
+        html.dark-mode .form-field ul[id^='id_'] label { /* Ensure label color is readable */
+             color: var(--text-color);
+        }
+        html.dark-mode .form-field select {
              background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23cccccc%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); /* Lighter arrow */
         }
-        body.dark-mode .form-field .helptext { color: #aaa; }
-        body.dark-mode .error-summary { background-color: #721c24; color: #f8d7da; border-color: #b82d3a; }
-        body.dark-mode .cancel-link { color: var(--link-color); }
-        body.dark-mode .cancel-link:hover { color: var(--link-hover-color); }
-        body.dark-mode input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); } /* Dark mode date picker icon */
+        html.dark-mode .form-field .helptext { color: #aaa; }
+        html.dark-mode .error-summary { background-color: #721c24; color: #f8d7da; border-color: #b82d3a; }
+        html.dark-mode .cancel-link { color: var(--link-color); }
+        html.dark-mode .cancel-link:hover { color: var(--link-hover-color); }
+        html.dark-mode input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); } /* Dark mode date picker icon */
 
     </style>
 {% endblock %}
@@ -180,7 +198,7 @@
     <div class="content-wrapper"> {# Wrapper for specific page styling #}
         <a href="{% url 'planning:player_profile' player.id %}" class="form-back-link"><i class="bi bi-arrow-left"></i> Back to {{ player.full_name }}'s Profile</a>
 
-        <h1>Add Backwall Drive Record</h1>
+        <h1>Add Drive Record</h1>
         <p><strong>Player:</strong> {{ player.full_name }}</p>
         <hr style="margin: 15px 0;">
 
@@ -192,7 +210,8 @@
                 <div class="form-field">
                     {{ field.label_tag }}
                     {% if field.errors %}<div class="errorlist">{{ field.errors }}</div>{% endif %}
-                    {{ field }} {# Renders widget (RadioSelect for shot_type) #}
+                    {# --- Reverted to default rendering --- #}
+                    {{ field }} {# Renders standard widget #}
                     {% if field.help_text %}<small class="helptext">{{ field.help_text|safe }}</small>{% endif %}
                 </div>
             {% endfor %}
@@ -208,3 +227,13 @@
 {# Block for page-specific JavaScript (if needed) #}
 {% block extra_scripts %}
 {% endblock %}
+```
+
+**Action Steps:**
+
+1.  **Replace Code:** Replace the entire content of your `planning/templates/planning/add_drive_form.html` file with the code from the Canvas document above.
+2.  **Save:** Save the file.
+3.  **Restart Server:** Stop and restart the development server.
+4.  **Test:** Refresh the "Add Drive Record" page. The radio buttons for "Shot Type" should now be visible (likely vertically).
+
+Let me know if they appear this ti
