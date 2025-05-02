@@ -10,6 +10,7 @@ from PIL import Image, ImageOps
 import io
 from datetime import timedelta  
 from django.conf import settings
+import re 
 
 
 # Consider using settings.AUTH_USER_MODEL if you have a custom user model
@@ -58,6 +59,19 @@ class Player(models.Model):
         related_name='players',
         blank=True
     )
+    contact_number = models.CharField(
+        max_length=20, 
+        blank=True, 
+        verbose_name="Player Contact Number",
+        help_text="Enter number including country code if outside SA (e.g., +44... or 082...)"
+    )
+    parent_contact_number = models.CharField(
+        max_length=20, 
+        blank=True, 
+        verbose_name="Parent Contact Number",
+        help_text="Enter number including country code if outside SA (e.g., +44... or 082...)"
+    )
+
     notes = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
     photo = models.ImageField(upload_to='player_photos/', null=True, blank=True)
@@ -68,6 +82,40 @@ class Player(models.Model):
 
     def __str__(self):
         return self.full_name
+    def _format_for_whatsapp(self, number_str):
+        if not number_str:
+            return None
+        # Remove spaces, hyphens, parentheses, plus signs
+        cleaned_number = re.sub(r'[+\s\-\(\)]', '', number_str)
+        # Assume SA: If starts with 0, replace with 27
+        if cleaned_number.startswith('0'):
+            cleaned_number = '27' + cleaned_number[1:]
+        # Basic check if it looks like an international number (already has country code)
+        # You might need more robust validation depending on expected input formats
+        if re.match(r'^\d{10,15}$', cleaned_number): # Simple digit check
+             return cleaned_number
+        return None # Return None if format seems invalid after cleaning
+
+    @property
+    def whatsapp_number(self):
+        """ Returns the player's number formatted for wa.me links (SA focus). """
+        return self._format_for_whatsapp(self.contact_number)
+
+    @property
+    def parent_whatsapp_number(self):
+        """ Returns the parent's number formatted for wa.me links (SA focus). """
+        return self._format_for_whatsapp(self.parent_contact_number)
+    # --- END WHATSAPP PROPERTIES ---
+
+    def __str__(self):
+        return self.full_name
+
+    def save(self, *args, **kwargs):
+        # ... existing save method for image optimization ...
+        super().save(*args, **kwargs)
+
+    class Meta:
+        ordering = ['last_name', 'first_name']        
 
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++
     # +++ ADD THIS SAVE METHOD FOR IMAGE OPTIMIZATION +++

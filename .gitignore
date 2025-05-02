@@ -148,3 +148,10 @@ cython_debug/
 pylint_report.txt
 
 .env
+
+# React PWA project folder (if inside this repo's root)
+solosync-pwa/
+
+# Node modules (just in case, good practice)
+node_modules/
+*/node_modules/

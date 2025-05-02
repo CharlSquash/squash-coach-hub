@@ -8,13 +8,14 @@ from .models import (
     ManualCourtAssignment # <-- Import the new model
 )
 
+
 # Simple registration for SchoolGroup
 admin.site.register(SchoolGroup)
 
 # Customize Player Admin slightly
 @admin.register(Player)
 class PlayerAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'skill_level', 'is_active')
+    list_display = ('full_name','contact_number', 'parent_contact_number', 'skill_level', 'is_active')
     list_filter = ('skill_level', 'is_active', 'school_groups')
     search_fields = ('first_name', 'last_name')
     filter_horizontal = ('school_groups',)
@@ -92,7 +93,7 @@ class SessionAdmin(admin.ModelAdmin):
 # Ensure other models like SchoolGroup, Player etc. are also registered
 # admin.site.register(SchoolGroup, SchoolGroupAdmin) # Using class from previous step
 # admin.site.register(Player) 
-# ...
+
 
 
 # Simple registration for ActivityAssignment

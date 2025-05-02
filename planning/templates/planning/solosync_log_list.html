@@ -1,0 +1,141 @@
+{% extends 'planning/base.html' %}
+{% load static %}
+
+{# Block for setting the page title #}
+{% block title %}{{ page_title|default:"SoloSync Logs" }} - SquashSync{% endblock %}
+
+{# Block for page-specific CSS #}
+{% block extra_head %}
+    <style>
+        /* Styling for the log list page */
+        .content-wrapper {
+            padding: 25px;
+            background-color: var(--container-bg, white);
+            border: 1px solid var(--border-color, #ddd);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        .content-wrapper h1 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--heading-color, #004085);
+            padding-bottom: 10px;
+            color: var(--heading-color, #004085);
+            font-size: 1.6em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .log-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .log-table th, .log-table td {
+            padding: 10px 8px; /* Increased padding */
+            border-bottom: 1px solid var(--border-light, #eee);
+            text-align: left;
+            vertical-align: middle; /* Align vertically */
+            font-size: 0.95em;
+        }
+        .log-table th {
+            background-color: var(--container-light-bg, #f8f9fa);
+            font-weight: bold;
+            color: var(--subheading-color);
+        }
+        .log-table tr:last-child td {
+            border-bottom: none;
+        }
+        .log-table tr:hover {
+            background-color: var(--activity-bg, #e9ecef); /* Subtle hover */
+        }
+        .log-table a {
+            color: var(--link-color);
+            text-decoration: none;
+        }
+        .log-table a:hover {
+            color: var(--link-hover-color);
+            text-decoration: underline;
+        }
+        .no-logs-msg {
+            color: var(--subheading-color, #666);
+            font-style: italic;
+            text-align: center;
+            padding: 40px 0;
+            background-color: var(--container-light-bg, #f8f9fa);
+            border: 1px dashed var(--border-light, #ccc);
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        /* Dark Mode Adjustments */
+        html.dark-mode .content-wrapper { background-color: var(--container-bg); border-color: var(--border-color); }
+        html.dark-mode .log-table th, html.dark-mode .log-table td { border-bottom-color: var(--border-light); }
+        html.dark-mode .log-table th { background-color: var(--container-light-bg); color: var(--subheading-color); }
+        html.dark-mode .log-table tr:hover { background-color: var(--activity-bg); }
+        html.dark-mode .log-table a { color: var(--link-color); }
+        html.dark-mode .log-table a:hover { color: var(--link-hover-color); }
+        html.dark-mode .no-logs-msg { background-color: var(--container-light-bg); border-color: var(--border-light); color: var(--subheading-color); }
+
+    </style>
+{% endblock %}
+
+{# Block for the main page content #}
+{% block content %}
+    <div class="content-wrapper"> {# Wrapper for specific page styling #}
+        <h1><i class="bi bi-journal-richtext"></i> {{ page_title|default:"SoloSync Session Logs" }}</h1>
+
+        {% if solo_session_logs %}
+            <table class="log-table">
+                <thead>
+                    <tr>
+                        <th>Date Completed</th>
+                        <th>Player</th>
+                        <th>Routine</th>
+                        <th>Difficulty</th>
+                        <th>Notes</th>
+                        {# Add more headers if needed, e.g., for metrics #}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in solo_session_logs %}
+                        <tr>
+                            <td>{{ log.completed_at|date:"Y-m-d H:i" }}</td>
+                            <td>
+                                {# Link to player profile if Player model is used, otherwise display username #}
+                                {% if log.player.is_active %} {# Check if it's a Player instance #}
+                                     <a href="{% url 'planning:player_profile' log.player.id %}">{{ log.player.full_name|default:log.player.username }}</a>
+                                {% else %}
+                                     {{ log.player.username|default:"Unknown User" }}
+                                {% endif %}
+                            </td>
+                            <td>{{ log.routine.name|default:"N/A" }}</td>
+                            <td>{{ log.get_physical_difficulty_rating_display|default:"-" }}</td>
+                            <td>{{ log.session_notes|truncatewords:15|default:"-" }}</td>
+                            {# Add cells for metrics if needed #}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {# REMOVED Pagination example section #}
+        {% else %}
+            <p class="no-logs-msg">No SoloSync logs have been submitted yet.</p>
+        {% endif %}
+
+    </div> {# End content-wrapper #}
+{% endblock %}
+
+{# Block for page-specific JavaScript (likely none needed here) #}
+{% block extra_scripts %}
+{% endblock %}
+```
+
+**Action Steps:**
+
+1.  **Replace Code:** Replace the entire content of your `planning/templates/planning/solosync_log_list.html` file with the code from the Canvas document above.
+2.  **Save:** Save the file.
+3.  **Restart Server:** Stop and restart the development server.
+4.  **Test:** Refresh the SoloSync Log List page (`/planning/solosync-logs/`). The strange text and the "Page of ." should now be gone.
+
+This should clean up the display nice

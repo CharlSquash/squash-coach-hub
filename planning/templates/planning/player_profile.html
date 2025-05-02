@@ -106,6 +106,43 @@
                     Not assigned to any groups.
                 {% endfor %}
             </p>
+            {# --- ADD THIS BLOCK FOR CONTACT DETAILS (SUPERUSER ONLY) --- #}
+{% if user.is_authenticated and user.is_superuser %} {# Check if user is logged in and is a superuser #}
+    <div class="contact-details" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-light);">
+        <h4>Contact Details (Admin Only)</h4> {# Add a heading #}
+
+        {% if player.contact_number %}
+            <p><strong>Player Contact:</strong> 
+                {% if player.whatsapp_number %}
+                    <a href="https://wa.me/{{ player.whatsapp_number }}" target="_blank" rel="noopener noreferrer" title="Open WhatsApp chat">
+                        {{ player.contact_number }} <i class="bi bi-whatsapp" style="color: green;"></i>
+                    </a>
+                {% else %}
+                    {{ player.contact_number }} (Invalid format for WhatsApp link)
+                {% endif %}
+            </p>
+        {% endif %}
+
+        {% if player.parent_contact_number %}
+            <p><strong>Parent Contact:</strong> 
+                {% if player.parent_whatsapp_number %}
+                    <a href="https://wa.me/{{ player.parent_whatsapp_number }}" target="_blank" rel="noopener noreferrer" title="Open WhatsApp chat">
+                        {{ player.parent_contact_number }} <i class="bi bi-whatsapp" style="color: green;"></i>
+                    </a>
+                {% else %}
+                    {{ player.parent_contact_number }} (Invalid format for WhatsApp link)
+                {% endif %}
+            </p>
+        {% endif %}
+
+        {% if not player.contact_number and not player.parent_contact_number %}
+             <p><small>No contact numbers entered.</small></p>
+        {% endif %}
+    </div>
+{% endif %}
+{# --- END CONTACT DETAILS BLOCK --- #}
+
+{# Rest of the profile content... #}
             <div style="margin-top: 15px;">
                 <a href="{% url 'planning:add_sprint_record' player.id %}" class="add-data-link">Add Sprint</a>
                 <a href="{% url 'planning:add_volley_record' player.id %}" class="add-data-link">Add Volley</a>

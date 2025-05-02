@@ -15,7 +15,8 @@ urlpatterns = [
     path('block/<int:block_id>/court/<int:court_num>/add/', views.add_activity, name='add_activity'),
     path('activity/<int:activity_id>/edit/', views.edit_activity, name='edit_activity'),
     path('activity/<int:activity_id>/delete/', views.delete_activity, name='delete_activity'),
-
+    #SOLOSYNC stuff#
+    path('solosync-logs/', views.solosync_log_list_view, name='solosync_log_list'),
     # Player Profile & Data Entry
     path('players/', views.players_list_view, name='players_list'),
     path('player/<int:player_id>/', views.player_profile, name='player_profile'),
