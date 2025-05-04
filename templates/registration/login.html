@@ -1,0 +1,151 @@
+{% extends 'planning/base.html' %} {# Assumes base template is in planning app #}
+{% load static %}
+
+{% block title %}Login - SquashSync{% endblock %}
+
+{% block extra_head %}
+<style>
+    .login-container {
+        max-width: 450px;
+        margin: 40px auto; /* Add more top margin */
+        padding: 30px;
+        background-color: var(--container-bg, white);
+        border: 1px solid var(--border-color, #ddd);
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .login-container h1 {
+        text-align: center;
+        margin-top: 0;
+        margin-bottom: 25px;
+        font-size: 1.8em;
+        color: var(--heading-color);
+        border-bottom: none; /* Remove border for login title */
+    }
+    .login-form .form-field {
+        margin-bottom: 15px;
+    }
+    .login-form label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        font-size: 0.95em;
+        color: var(--subheading-color, #333);
+    }
+    .login-form input[type="text"],
+    .login-form input[type="password"] {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid var(--border-color, #ccc);
+        border-radius: 4px;
+        font-size: 1em;
+        box-sizing: border-box;
+        background-color: var(--input-bg, white);
+        color: var(--text-color, #333);
+    }
+    .login-form .errorlist { /* Errors above fields */
+        color: #dc3545; /* Red for errors */
+        font-size: 0.9em;
+        margin-bottom: 10px;
+        list-style: none;
+        padding: 0;
+    }
+     .login-form .form-field .errorlist { /* Errors below field */
+         margin-top: 5px;
+         margin-bottom: 0;
+     }
+
+    .login-button {
+        display: block;
+        width: 100%;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 5px;
+        background-color: var(--link-color, #007bff);
+        color: white;
+        font-size: 1.1em;
+        cursor: pointer;
+        margin-top: 20px;
+        font-weight: bold;
+    }
+    .login-button:hover {
+        background-color: var(--link-hover-color, #0056b3);
+    }
+    .login-extra-links {
+        text-align: center;
+        margin-top: 20px;
+        font-size: 0.9em;
+    }
+    .login-extra-links a {
+        color: var(--link-color);
+        text-decoration: underline;
+    }
+     .login-extra-links a:hover {
+         color: var(--link-hover-color);
+     }
+
+     /* Dark mode adaptations */
+     html.dark-mode .login-container {
+         background-color: var(--container-bg);
+         border-color: var(--border-color);
+     }
+     html.dark-mode .login-form label { color: var(--subheading-color); }
+     html.dark-mode .login-form input[type="text"],
+     html.dark-mode .login-form input[type="password"] {
+         background-color: var(--input-bg);
+         color: var(--text-color);
+         border-color: var(--border-color);
+     }
+     html.dark-mode .login-form .errorlist { color: #f5c6cb; } /* Lighter red */
+     html.dark-mode .login-extra-links a { color: var(--link-color); }
+     html.dark-mode .login-extra-links a:hover { color: var(--link-hover-color); }
+
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <h1>Coach Login</h1>
+
+    {# Display non-field errors (e.g., invalid credentials) #}
+    {% if form.non_field_errors %}
+        <div class="error-summary"> {# Reuse style from other forms #}
+            {% for error in form.non_field_errors %}
+                <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'login' %}" class="login-form">
+        {% csrf_token %}
+
+        <div class="form-field">
+            <label for="{{ form.username.id_for_label }}">Username:</label>
+            {{ form.username }}
+            {% if form.username.errors %}
+                <div class="errorlist">{{ form.username.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-field">
+            <label for="{{ form.password.id_for_label }}">Password:</label>
+            {{ form.password }}
+            {% if form.password.errors %}
+                <div class="errorlist">{{ form.password.errors }}</div>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="login-button">Login</button>
+
+        {# Hidden input for redirection after login (handled by LOGIN_REDIRECT_URL setting) #}
+        <input type="hidden" name="next" value="{{ next }}">
+    </form>
+
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{# No specific JS needed for basic login #}
+{% endblock %}

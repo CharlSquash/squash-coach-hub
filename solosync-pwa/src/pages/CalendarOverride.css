@@ -1,0 +1,76 @@
+/* src/pages/CalendarOverride.css */
+
+/* Style the main calendar container */
+.calendar-container .react-calendar {
+    @apply border-none bg-transparent w-full text-gray-200;
+}
+
+/* Navigation Buttons (Prev/Next Month/Year) */
+.calendar-container .react-calendar__navigation button {
+    @apply text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-md p-2 min-w-[44px];
+}
+.calendar-container .react-calendar__navigation button:disabled {
+    @apply bg-gray-800 text-gray-600 opacity-50 cursor-not-allowed;
+}
+.calendar-container .react-calendar__navigation button:enabled:hover,
+.calendar-container .react-calendar__navigation button:enabled:focus {
+    @apply bg-gray-600;
+}
+
+/* Month/Year Label in Navigation */
+.calendar-container .react-calendar__navigation__label {
+    @apply font-semibold text-lg text-gray-100 flex-grow-0; /* Allow buttons to take space */
+}
+
+/* Weekday Abbreviations (Mon, Tue...) */
+.calendar-container .react-calendar__month-view__weekdays__weekday abbr {
+    @apply no-underline font-semibold text-gray-400; /* Remove default underline */
+}
+
+/* Individual Day Tiles */
+.calendar-container .react-calendar__tile {
+    @apply text-center p-2 h-14 flex flex-col items-center justify-start rounded-md relative; /* Added relative for star positioning */
+    flex-basis: 14.2857% !important; /* Ensure 7 columns */
+    max-width: 14.2857% !important;
+}
+
+/* Hover/Focus states for day tiles */
+.calendar-container .react-calendar__tile:enabled:hover,
+.calendar-container .react-calendar__tile:enabled:focus {
+    @apply bg-gray-700 cursor-pointer;
+}
+
+/* Style for today's date */
+.calendar-container .react-calendar__tile--now {
+    @apply bg-gray-700 font-bold;
+}
+.calendar-container .react-calendar__tile--now:enabled:hover,
+.calendar-container .react-calendar__tile--now:enabled:focus {
+    @apply bg-gray-600;
+}
+
+/* Style for the selected date */
+.calendar-container .react-calendar__tile--active {
+    @apply bg-cyan-600 text-white font-bold;
+}
+.calendar-container .react-calendar__tile--active:enabled:hover,
+.calendar-container .react-calendar__tile--active:enabled:focus {
+    @apply bg-cyan-700;
+}
+
+/* Style for days belonging to neighbouring months */
+.calendar-container .react-calendar__tile--neighboringMonth {
+    @apply text-gray-600;
+}
+
+/* Ensure star marker position */
+.calendar-container .react-calendar__tile span {
+    /* Adjust if needed based on star/marker used */
+}
+
+/* Remove default border between tiles if desired */
+.calendar-container .react-calendar,
+.calendar-container .react-calendar__viewContainer,
+.calendar-container .react-calendar__month-view__days {
+    @apply border-none;
+}

@@ -35,6 +35,7 @@ urlpatterns = [
     # --- NEW URLs for Feedback Edit/Delete ---
     path('feedback/<int:feedback_id>/edit/', views.edit_coach_feedback, name='edit_coach_feedback'),
     path('feedback/<int:feedback_id>/delete/', views.delete_coach_feedback, name='delete_coach_feedback'),
+    
     # --- END NEW URLs ---
 
     # --- APIs for Manual Assignment ---

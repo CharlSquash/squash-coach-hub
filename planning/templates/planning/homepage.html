@@ -7,12 +7,13 @@
 {# Add a specific class to the body tag for this page only #}
 {% block body_class %}homepage-body{% endblock %}
 
-{# Add page-specific CSS #}
+{# Add page-specific CSS, including the homepage banner and SoloSync card styles #}
 {% block extra_head %}
     <style>
-        /* Styles for the banner header */
+        /* Styles for the banner header - UPDATED */
         .homepage-header {
             padding: 50px 5%; /* Adjusted padding */
+            /* *** CORRECTED IMAGE FILENAME *** */
             background-image: url("{% static 'planning/images/squash_banner.png' %}"); /* Banner Image */
             background-size: cover; background-position: center; text-align: left;
             margin-bottom: 30px; border-radius: 8px; color: #fff;
@@ -60,38 +61,17 @@
         .no-data-msg { color: var(--subheading-color, #666); font-style: italic; font-size: 0.9em; margin-top: 10px; }
 
         /* --- SoloSync Log Card Styles (Simplified) --- */
-        .solosync-logs ul { /* Target the UL directly */
-            list-style: none;
-            padding: 0;
-            margin-top: 10px; /* Space below heading */
-        }
-        .solosync-logs .log-item {
-            padding: 8px 0px; /* Adjust padding */
-            border-bottom: 1px dotted var(--border-light); /* Use lighter border */
-            font-size: 0.9em;
-            /* Removed fixed height */
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-         .solosync-logs .log-item:last-child { border-bottom: none; }
-         .solosync-logs .log-item strong { color: var(--text-color); margin-bottom: 2px; }
-         .solosync-logs .log-item .log-details {
-             font-size: 0.85em;
-             color: var(--subheading-color);
-             white-space: nowrap;
-             overflow: hidden;
-             text-overflow: ellipsis;
-         }
-         /* Removed animation and hover pause styles */
-         .solosync-logs { cursor: pointer; } /* Keep card clickable */
-
+        .solosync-logs ul { list-style: none; padding: 0; margin-top: 10px; }
+        .solosync-logs .log-item { padding: 8px 0px; border-bottom: 1px dotted var(--border-light); font-size: 0.9em; display: flex; flex-direction: column; justify-content: center; }
+        .solosync-logs .log-item:last-child { border-bottom: none; }
+        .solosync-logs .log-item strong { color: var(--text-color); margin-bottom: 2px; }
+        .solosync-logs .log-item .log-details { font-size: 0.85em; color: var(--subheading-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .solosync-logs { cursor: pointer; }
 
         /* Dark Mode Compatibility */
         html.dark-mode .session-info span { color: var(--subheading-color); }
         html.dark-mode .other-apps-list a { color: var(--link-color); }
         html.dark-mode .other-apps-list a:hover { color: var(--link-hover-color); }
-        /* Removed dark mode carousel styles */
         html.dark-mode .solosync-logs .log-item { border-bottom-color: var(--border-light); }
         html.dark-mode .solosync-logs .log-item strong { color: var(--text-color); }
         html.dark-mode .solosync-logs .log-item .log-details { color: var(--subheading-color); }
@@ -103,7 +83,8 @@
 {% block content %}
     <div class="homepage-header">
         <h1>SquashSync</h1>
-        <p>Your central point for planning and tracking.</p>
+        {# *** CORRECTED SLOGAN *** #}
+        <p>Mental Focus. Physical Precision. Perfect Sync.</p>
     </div>
 
     <div class="card-grid">
@@ -167,17 +148,16 @@
             <p>View player profiles, track progress, manage group assignments, and record metrics.</p>
              <div class="card-actions">
                  <a href="{% url 'planning:players_list' %}" class="btn">
-                    Go to Players <i class="bi bi-arrow-right-short"></i>
+                     Go to Players <i class="bi bi-arrow-right-short"></i>
                  </a>
              </div>
         </div>
 
-        {# --- UPDATED SoloSync Logs Card (Static List) --- #}
+        {# --- SoloSync Logs Card --- #}
         <div class="card solosync-logs" onclick="window.location.href='{% url 'planning:solosync_log_list' %}';" title="Click to view all SoloSync logs">
              <h2><i class="bi bi-phone-vibrate"></i> Recent SoloSync Logs</h2>
              {% if recent_solo_logs %}
-                 {# Simple list, no carousel wrappers #}
-                 <ul>
+                 <ul> {# Simple list #}
                      {% for log in recent_solo_logs %}
                          <li class="log-item" data-log-id="{{ log.id }}">
                              <strong>{{ log.player.first_name|default:log.player.username }} {{ log.player.last_name|default:'' }}</strong>
@@ -189,13 +169,13 @@
                      {% endfor %}
                  </ul>
                  <div style="margin-top: 15px; text-align: right;">
-                      <a href="{% url 'planning:solosync_log_list' %}" style="font-size: 0.9em;">View All Solo Logs...</a>
+                     <a href="{% url 'planning:solosync_log_list' %}" style="font-size: 0.9em;">View All Solo Logs...</a>
                  </div>
              {% else %}
                  <p class="no-data-msg">No recent SoloSync logs submitted.</p>
              {% endif %}
          </div>
-         {# --- END SoloSync Logs Card --- #}
+
 
         {# --- Tools & Resources Card --- #}
         <div class="card other-apps">
@@ -219,13 +199,3 @@
 {% block extra_scripts %}
 {# Removed carousel JavaScript #}
 {% endblock %}
-```
-
-**Action Steps:**
-
-1.  **Replace Code:** Replace the entire content of your `planning/templates/planning/homepage.html` file with the code from the Canvas document above.
-2.  **Save:** Save the file.
-3.  **Restart Server:** Stop and restart the development server.
-4.  **Test:** Refresh the homepage. The SoloSync card should now display a simple static list of the recent logs without any scrolling animation.
-
-This should give you a cleaner, more consistent look across the homepage car

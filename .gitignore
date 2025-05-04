@@ -150,8 +150,15 @@ pylint_report.txt
 .env
 
 # React PWA project folder (if inside this repo's root)
-solosync-pwa/
+solosync-pwa/node_modules/
+solosync-pwa/build/
+solosync-pwa/.env*
+solosync-pwa/npm-debug.log*
+solosync-pwa/yarn-debug.log*
+solosync-pwa/yarn-error.log*
 
 # Node modules (just in case, good practice)
 node_modules/
 */node_modules/
+
+#
