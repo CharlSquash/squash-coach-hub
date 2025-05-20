@@ -20,8 +20,14 @@ else:
 DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 # React App Path
-REACT_APP_DIR = BASE_DIR / 'solosync-pwa'
-FRONTEND_BUILD_DIR = REACT_APP_DIR / 'build'
+if DEBUG:
+    # Local development: your React app next to Django
+    REACT_APP_DIR      = BASE_DIR / 'solosync-pwa'
+    FRONTEND_BUILD_DIR = REACT_APP_DIR / 'build'
+else:
+    # Production on PythonAnywhere: the manual upload folder
+    REACT_APP_DIR      = BASE_DIR.parent / 'frontend_build'
+    FRONTEND_BUILD_DIR = REACT_APP_DIR
 
 # --- Security ---
 SECRET_KEY = os.environ.get('SECRET_KEY', '!!!DEFINE_SECRET_KEY!!!')
