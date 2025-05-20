@@ -21,12 +21,11 @@ DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 # React App Path
 if DEBUG:
-    # Local development: your React app next to Django
     REACT_APP_DIR      = BASE_DIR / 'solosync-pwa'
     FRONTEND_BUILD_DIR = REACT_APP_DIR / 'build'
 else:
-    # Production on PythonAnywhere: the manual upload folder
-    REACT_APP_DIR      = BASE_DIR.parent / 'frontend_build'
+    # Production on PA: frontend_build lives inside the squash-coach-hub folder
+    REACT_APP_DIR      = BASE_DIR / 'frontend_build'
     FRONTEND_BUILD_DIR = REACT_APP_DIR
 
 # --- Security ---
