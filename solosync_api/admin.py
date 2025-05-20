@@ -5,17 +5,24 @@ from .models import (
     SoloRoutine,
     RoutineDrillLink,
     SoloSessionLog,
-    SoloSessionMetric
+    SoloSessionMetric,
+    SoloDrillCategory
 )
 
+# --- Admin Configuration for SoloDrillCategory ---
+@admin.register(SoloDrillCategory)
+class SoloDrillCategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'description')
+    search_fields = ('name',)
+
 # --- Configuration for SoloRoutine Admin ---
-# (Keep existing RoutineDrillLinkInline and SoloRoutineAdmin as they were in Message #171)
 class RoutineDrillLinkInline(admin.TabularInline):
     model = RoutineDrillLink
-    fields = ['order', 'drill', 'duration_seconds', 'reps_target', 'rest_after_seconds', 'metrics_to_collect', 'notes']
+    # REMOVED 'metrics_to_collect' from fields
+    fields = ['order', 'drill', 'duration_seconds', 'reps_target', 'rest_after_seconds', 'notes']
     extra = 1
     ordering = ['order']
-    # autocomplete_fields = ['drill'] # Optional
+    autocomplete_fields = ['drill'] # Recommended
 
 class SoloRoutineAdmin(admin.ModelAdmin):
     list_display = ('name', 'created_by', 'difficulty', 'total_duration_display', 'created_at')
@@ -25,9 +32,10 @@ class SoloRoutineAdmin(admin.ModelAdmin):
     readonly_fields = ('total_duration_display', 'created_at', 'updated_at')
     list_filter = ('created_by', 'difficulty')
 
+admin.site.register(SoloRoutine, SoloRoutineAdmin)
+
 
 # --- Configuration for SoloSessionLog Admin ---
-# (Keep existing SoloSessionMetricInline and SoloSessionLogAdmin as they were in Message #171)
 class SoloSessionMetricInline(admin.TabularInline):
     model = SoloSessionMetric
     extra = 0
@@ -40,7 +48,7 @@ class SoloSessionMetricInline(admin.TabularInline):
 class SoloSessionLogAdmin(admin.ModelAdmin):
     list_display = ('id', 'player', 'routine', 'completed_at', 'physical_difficulty')
     list_filter = ('player', 'routine', 'completed_at')
-    search_fields = ('player__username', 'routine__name', 'notes')
+    search_fields = ('player__user__username', 'routine__name', 'notes')
     readonly_fields = ('id', 'created_at', 'completed_at', 'player', 'routine')
     date_hierarchy = 'completed_at'
     inlines = [SoloSessionMetricInline]
@@ -54,59 +62,71 @@ class SoloSessionLogAdmin(admin.ModelAdmin):
         return ('player', 'routine', 'completed_at', 'physical_difficulty', 'notes')
 
 
-# --- Register Remaining Models ---
-
-# *** MODIFIED SoloDrillAdmin ***
+# --- UPDATED SoloDrillAdmin ---
 @admin.register(SoloDrill)
 class SoloDrillAdmin(admin.ModelAdmin):
-     # Added a helper display method for the link status
-     list_display = ('id', 'name', 'youtube_link_exists', 'created_by', 'updated_at')
-     search_fields = ('name', 'description')
-     list_filter = ('created_by',)
+    list_display = (
+        'name',
+        'display_categories',
+        'participant_type',
+        'metric_type',
+        'default_duration_seconds',
+        'youtube_link_exists',
+        'created_by',
+        'updated_at'
+    )
+    list_filter = (
+        'categories',
+        'participant_type',
+        'metric_type',
+        'created_by',
+        'updated_at'
+    )
+    search_fields = (
+        'name',
+        'description',
+        'categories__name' # Crucial for autocomplete to find by category
+    )
+    filter_horizontal = ('categories',)
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'description', 'youtube_link')
+        }),
+        ('Categorization & Type', {
+            'fields': ('categories', 'participant_type', 'metric_type')
+        }),
+        ('Timing & Creation', {
+            'fields': ('default_duration_seconds', 'created_by', 'created_at', 'updated_at')
+        }),
+    )
+    readonly_fields = ('created_at', 'updated_at')
 
-     # Use fieldsets to organize the add/change form and include the new link field
-     fieldsets = (
-         (None, { # No section title for the main fields
-             'fields': ('name', 'description')
-         }),
-         ('Drill Details', { # Separate section for details
-             'fields': ('metrics_definition', 'youtube_link') # Added youtube_link here
-         }),
-         ('Metadata', { # Optional section for metadata
-             'fields': ('created_by',), # Assuming created_by is editable or set elsewhere
-             # Add 'created_at', 'updated_at' here if you want them visible but non-editable
-             # 'classes': ('collapse',), # Optionally collapse this section
-         }),
-     )
-     # Add fields here that are automatically set and shouldn't be edited on the form
-     # readonly_fields = ('created_at', 'updated_at') # Uncomment if you want them visible
+    @admin.display(description='Categories')
+    def display_categories(self, obj):
+        return ", ".join([category.name for category in obj.categories.all()])
 
-     # Helper method to show True/False in list view if link exists
-     @admin.display(description='Has YouTube Link?', boolean=True)
-     def youtube_link_exists(self, obj):
-         return bool(obj.youtube_link)
-# *** END MODIFIED SoloDrillAdmin ***
+    @admin.display(description='Has YouTube Link?', boolean=True)
+    def youtube_link_exists(self, obj):
+        return bool(obj.youtube_link)
 
-
-# Register SoloRoutine using the custom SoloRoutineAdmin class
-admin.site.register(SoloRoutine, SoloRoutineAdmin)
-
-
-# Register SoloSessionMetric using custom class (Keep as is)
+# Register SoloSessionMetric using custom class
 @admin.register(SoloSessionMetric)
 class SoloSessionMetricAdmin(admin.ModelAdmin):
-    # ... (keep existing SoloSessionMetricAdmin code from Message #171) ...
     list_display = ('id', 'session_log_info', 'drill', 'metric_name', 'metric_value')
-    list_filter = ('drill', 'metric_name', 'session_log__routine')
-    search_fields = ('metric_name', 'metric_value', 'session_log__player__username', 'drill__name')
-    list_select_related = ('session_log__player', 'drill')
+    list_filter = ('drill__name', 'metric_name', 'session_log__routine__name')
+    search_fields = ('metric_name', 'metric_value', 'session_log__player__user__username', 'drill__name')
+    list_select_related = ('session_log__player__user', 'drill', 'session_log__routine')
 
     @admin.display(description='Session Log')
     def session_log_info(self, obj):
         if obj.session_log:
-            player_display = obj.session_log.player.username if obj.session_log.player else 'N/A'
-            return f"Log ID {obj.session_log.id} (Player: {player_display})"
+            player_name = 'N/A'
+            if obj.session_log.player:
+                if hasattr(obj.session_log.player, 'user') and obj.session_log.player.user:
+                    player_name = obj.session_log.player.user.username
+                elif hasattr(obj.session_log.player, 'name'): # Fallback if player has a name field
+                    player_name = obj.session_log.player.name
+            return f"Log ID {obj.session_log.id} (Player: {player_name})"
         return None
-
 
 # admin.site.register(RoutineDrillLink) # Usually keep commented out

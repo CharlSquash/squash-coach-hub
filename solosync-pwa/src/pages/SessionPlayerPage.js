@@ -1,158 +1,199 @@
 // src/pages/SessionPlayerPage.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CountdownCircleTimer } from 'react-countdown-circle-timer';
-import { getRoutineDetails} from '../services/api'; // Ensure logSession is imported if using alert below
+import { getRoutineDetails } from '../services/api';
 
-// Helper function to format time
+// --- Helper: Format Time ---
 const formatTime = (remainingTime) => {
-    if (typeof remainingTime !== 'number' || remainingTime < 0) return "0:00";
+    if (typeof remainingTime !== 'number' || isNaN(remainingTime) || remainingTime < 0) return "--:--";
     const minutes = Math.floor(remainingTime / 60);
     const seconds = remainingTime % 60;
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 };
 
-// Color constants (keep from previous step)
+// --- Helper: Web Audio Beep ---
+let audioCtx = null;
+function playBeep(isEnabled, frequency = 880, duration = 100, delay = 0) {
+    if (!isEnabled) return;
+    if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { console.error("Web Audio API not supported"); return; } }
+    if (!audioCtx) return;
+    setTimeout(() => { try { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); g.gain.setValueAtTime(0, audioCtx.currentTime); g.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.01); o.frequency.setValueAtTime(frequency, audioCtx.currentTime); o.type = 'sine'; o.start(audioCtx.currentTime); g.gain.setValueAtTime(0.3, audioCtx.currentTime + (duration / 1000) * 0.8); g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + duration / 1000); o.stop(audioCtx.currentTime + duration / 1000); } catch (e) { console.error("Error playing beep:", e); } }, delay);
+}
+
+// --- Color Constants ---
 const activityColorHex = '#10B981';
 const restColorHex = '#3B82F6';
+const prepColorHex = '#F59E0B';
 const trailColorHex = '#374151';
 const activityBgClass = 'bg-emerald-800';
 const restBgClass = 'bg-blue-800';
 const pausedBgClass = 'bg-gray-800';
+const prepBgClass = 'bg-amber-800';
+
+// --- Beep Frequencies ---
+const warningBeepFreq = 988; // B5
+const endRestBeepFreq = 1318; // E6 (higher pitch)
+// const endActivityBeepFreq = 1046; // C6 - REMOVED as unused
 
 function SessionPlayerPage() {
     const { routineId } = useParams();
     const navigate = useNavigate();
 
-    // State (keep all existing state)
+    // --- State ---
     const [routine, setRoutine] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [currentStepIndex, setCurrentStepIndex] = useState(0);
+    const [currentStepIndex, setCurrentStepIndex] = useState(-1); // -1 = ready/prep phase
     const [isResting, setIsResting] = useState(false);
     const [isSessionActive, setIsSessionActive] = useState(false);
     const [currentPhaseDuration, setCurrentPhaseDuration] = useState(0);
     const [timerKey, setTimerKey] = useState(0);
-    const [isTtsEnabled, setIsTtsEnabled] = useState(() => { /* ... keep localStorage logic ... */
-         try { const storedValue = localStorage.getItem('ttsEnabled'); return storedValue === 'true'; }
-         catch (e) { console.error("Could not read TTS setting from localStorage", e); return false; }
-    });
-
-    // Effect to save TTS preference (Keep as is)
-    useEffect(() => { /* ... keep localStorage logic ... */
-         try { localStorage.setItem('ttsEnabled', isTtsEnabled); }
-         catch (e) { console.error("Could not save TTS setting to localStorage", e); }
-    }, [isTtsEnabled]);
-
-    // Effect 1: Fetch Routine Data (Keep as is)
-    useEffect(() => { /* ... keep existing fetch logic ... */
-        console.log(`SessionPlayerPage: useEffect[routineId] - Fetching routine ${routineId}`);
-        if (!routineId) { setError("Routine ID is missing."); setIsLoading(false); return; }
-        setIsLoading(true); setError(null); setRoutine(null);
-        setCurrentStepIndex(0); setCurrentPhaseDuration(0); setIsResting(false);
-        setIsSessionActive(false); setTimerKey(0);
-        getRoutineDetails(routineId)
-            .then(response => {
-                 console.log("SessionPlayerPage: Fetched routine details:", response.data);
-                 if (!response.data?.routine_steps || response.data.routine_steps.length === 0) { setError("Routine has no steps defined."); setRoutine(null); }
-                 else { setRoutine(response.data); setCurrentPhaseDuration(response.data.routine_steps[0]?.duration_seconds || 0); }
-             })
-             .catch(err => { /* ... keep existing error handling ... */
-                  console.error(`SessionPlayerPage: Failed to fetch routine ${routineId}:`, err);
-                  if (err.response && err.response.status === 404) { setError(`Routine with ID ${routineId} not found or not assigned to you.`); }
-                  else { setError("Failed to load session details."); }
-             })
-             .finally(() => setIsLoading(false));
-    }, [routineId]);
+    const [isTtsEnabled, setIsTtsEnabled] = useState(() => localStorage.getItem('ttsEnabled') === 'true');
+    const [isBeepEnabled, setIsBeepEnabled] = useState(() => localStorage.getItem('beepEnabled') === 'true');
+    const wakeLockSentinel = useRef(null);
 
     // --- Get current step details ---
-    const currentStep = routine?.routine_steps?.[currentStepIndex];
-    const nextStep = routine?.routine_steps?.[currentStepIndex + 1];
+    const currentStep = (currentStepIndex >= 0) ? routine?.routine_steps?.[currentStepIndex] : null;
+    const nextStep = (currentStepIndex >= -1) ? routine?.routine_steps?.[currentStepIndex + 1] : null;
+    const firstStep = routine?.routine_steps?.[0];
 
-    // --- Text-to-Speech Helper Function (Keep as is) ---
-     const speak = useCallback((text) => { /* ... keep existing speak function ... */
-         if (!isTtsEnabled || !text || !window.speechSynthesis) { console.log(`TTS Skip: Enabled=${isTtsEnabled}, Text=${text ? 'OK' : 'Empty'}, API=${window.speechSynthesis ? 'OK' : 'Unavailable'}`); return; }
-         window.speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(text); utterance.lang = 'en-US'; utterance.rate = 0.9;
-         console.log(`TTS Speak: "${text}"`); window.speechSynthesis.speak(utterance);
-     }, [isTtsEnabled]);
+    // --- Wake Lock Functions ---
+    const requestWakeLock = useCallback(async () => {
+        if ('wakeLock' in navigator && !wakeLockSentinel.current) { try { wakeLockSentinel.current = await navigator.wakeLock.request('screen'); wakeLockSentinel.current.addEventListener('release', () => { wakeLockSentinel.current = null; }); console.log('Wake Lock requested'); } catch (err) { console.error(`Wake Lock failed: ${err.name}, ${err.message}`); wakeLockSentinel.current = null; } }
+    }, []);
+    const releaseWakeLock = useCallback(async () => {
+        if (wakeLockSentinel.current) { try { await wakeLockSentinel.current.release(); console.log('Wake Lock released'); } catch (err) { console.error(`Wake Lock release failed: ${err.name}, ${err.message}`); } finally { wakeLockSentinel.current = null; } }
+    }, []);
 
-    // --- Logic Callbacks (Keep moveToNextStep, transitionToRest, handleTimerComplete as is from Message #115) ---
-     const moveToNextStep = useCallback(() => { /* ... keep existing ... */
+    // --- Text-to-Speech Function ---
+    const speak = useCallback((text, delay = 0) => {
+        if (!isTtsEnabled || !text || !window.speechSynthesis) return; window.speechSynthesis.cancel(); setTimeout(() => { const u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; u.rate = 0.9; console.log(`TTS Speak: "${text}"`); window.speechSynthesis.speak(u); }, delay);
+    }, [isTtsEnabled]);
+
+    // --- Effect: Fetch Routine Data ---
+    useEffect(() => {
+        console.log(`Fetching routine ${routineId}`);
+        if (!routineId) { setError("Routine ID missing."); setIsLoading(false); return; }
+        setIsLoading(true); setError(null); setRoutine(null);
+        setCurrentStepIndex(-1); setCurrentPhaseDuration(0); setIsResting(false);
+        setIsSessionActive(false); setTimerKey(0);
+        releaseWakeLock(); // Release lock on new routine load
+
+        getRoutineDetails(routineId)
+            // *** Removed extra whitespace before .then, .catch, .finally ***
+            .then(response => {
+                 if (!response.data?.routine_steps || response.data.routine_steps.length === 0) { setError("Routine has no steps defined."); setRoutine(null); }
+                 else { setRoutine(response.data); }
+            })
+            .catch(err => {
+                  console.error(`Failed fetch: ${err}`);
+                  if (err.response && err.response.status === 404) { setError(`Routine with ID ${routineId} not found or not assigned to you.`); }
+                  else { setError("Failed to load session details."); }
+            })
+            .finally(() => setIsLoading(false));
+    }, [routineId, releaseWakeLock]); // Added releaseWakeLock dependency
+
+    // --- Effect: Save Toggle Preferences ---
+    useEffect(() => { try { localStorage.setItem('ttsEnabled', isTtsEnabled); } catch (e) { console.error("Could not save TTS setting", e); } }, [isTtsEnabled]);
+    useEffect(() => { try { localStorage.setItem('beepEnabled', isBeepEnabled); } catch (e) { console.error("Could not save Beep setting", e); } }, [isBeepEnabled]);
+
+    // --- Logic Callbacks ---
+     const moveToNextStep = useCallback(() => {
          console.log("moveToNextStep called. Current index:", currentStepIndex);
-         if (!routine) return; const nextIndex = currentStepIndex + 1;
+         if (!routine) return;
+         const nextIndex = currentStepIndex + 1;
          if (nextIndex >= routine.routine_steps.length) {
              console.log("Session Finished!"); setIsSessionActive(false); setIsResting(false);
-             speak("Session finished.");
-             // alert("Session Finished!"); // Keep alert removed
-             navigate(`/log-session/${routineId}`);
+             speak("Session finished."); releaseWakeLock(); navigate(`/log-session/${routineId}`);
          } else {
              const nextStepDetails = routine.routine_steps[nextIndex];
              console.log("Moving to next drill:", nextStepDetails?.drill_name);
-             speak(`Starting drill: ${nextStepDetails?.drill_name}`); // Speak next drill when starting it
+             speak(nextStepDetails?.drill_name || 'Next Drill', 300);
              setCurrentStepIndex(nextIndex); setIsResting(false);
-             setCurrentPhaseDuration(nextStepDetails?.duration_seconds || 0); setTimerKey(prevKey => prevKey + 1);
+             setCurrentPhaseDuration(nextStepDetails?.duration_seconds || 1);
+             setTimerKey(prevKey => prevKey + 1);
          }
-     }, [currentStepIndex, routine, navigate, routineId, speak]);
+     }, [currentStepIndex, routine, navigate, routineId, speak, releaseWakeLock]);
 
-     const transitionToRest = useCallback(() => { /* ... keep existing ... */
-         if (!currentStep) return; const restDuration = currentStep.rest_after_seconds;
+     const transitionToRest = useCallback(() => {
+         if (!currentStep || currentStepIndex < 0) return;
+         const restDuration = currentStep.rest_after_seconds;
+         const stepAfterRest = nextStep;
          if (restDuration && restDuration > 0) {
               console.log(`Drill finished. Starting ${restDuration}s rest.`);
-              const stepAfterRest = routine?.routine_steps?.[currentStepIndex + 1];
-              speak(`Rest. Next drill: ${stepAfterRest?.drill_name || 'Final drill'}`); // Speak next drill when rest starts
+              speak(`Rest. Next: ${stepAfterRest?.drill_name || 'Session finished'}`, 500);
               setIsResting(true); setCurrentPhaseDuration(restDuration); setTimerKey(prevKey => prevKey + 1);
          } else {
               console.log("Drill finished. No rest period, moving to next step.");
-              const stepAfterRest = routine?.routine_steps?.[currentStepIndex + 1];
-              speak(`Next drill: ${stepAfterRest?.drill_name || 'Session finished'}`); // Speak next drill if no rest
+              speak(stepAfterRest?.drill_name || 'Session finished', 300);
               moveToNextStep();
          }
-     }, [currentStep, routine, currentStepIndex, moveToNextStep, speak]);
+     }, [currentStep, currentStepIndex, nextStep, moveToNextStep, speak]);
 
-    const handleTimerComplete = () => { /* ... keep existing ... */
-        console.log("Timer complete. Step index:", currentStepIndex, "Is Resting:", isResting);
-        if (!currentStep) { console.error("Cannot transition: current step data is missing."); setIsSessionActive(false); return { shouldRepeat: false }; }
-        if (isResting) { moveToNextStep(); } else { transitionToRest(); }
+    // --- Called when the countdown timer completes ---
+    const handleTimerComplete = () => {
+        console.log("Timer complete. Phase:", currentStepIndex === -1 ? "Prep" : (isResting ? "Rest" : "Activity"));
+        const isPrepPhaseFinished = currentStepIndex === -1;
+
+        if (isPrepPhaseFinished) {
+            playBeep(isBeepEnabled, endRestBeepFreq, 150); // Signal start of first drill
+            if (firstStep) {
+                console.log("Starting first drill:", firstStep.drill_name);
+                speak(firstStep.drill_name, 200);
+                setCurrentStepIndex(0); setIsResting(false);
+                setCurrentPhaseDuration(firstStep.duration_seconds || 1);
+                setTimerKey(prevKey => prevKey + 1);
+            } else { setIsSessionActive(false); releaseWakeLock(); }
+        } else { // Normal activity or rest phase finished
+            // Beeps handled in onUpdate
+            if (isResting) { moveToNextStep(); } else { transitionToRest(); }
+        }
         return { shouldRepeat: false };
     };
 
-    // --- Event Handlers for Controls (Keep as is) ---
-    const handleStartSession = () => { /* ... keep existing start logic + speak call ... */
-         if (!currentStep) { setError("Cannot start: Routine has no steps."); return; }
-         console.log("SessionPlayerPage: handleStartSession called."); setCurrentStepIndex(0); setIsResting(false);
-         setCurrentPhaseDuration(currentStep.duration_seconds || 0); setTimerKey(prevKey => prevKey + 1); setIsSessionActive(true); setError(null);
-         speak(`Starting with: ${currentStep?.drill_name}`);
-     };
-    const handlePauseSession = () => { /* ... keep existing pause logic + cancel speech ... */
-         console.log("SessionPlayerPage: handlePauseSession called."); setIsSessionActive(false); window.speechSynthesis.cancel();
+    // --- Event Handlers for Controls ---
+    const handleStartSession = () => {
+        if (!firstStep) { setError("Cannot start: Routine has no steps."); return; }
+        console.log("Starting Prep Countdown.");
+        setCurrentStepIndex(-1); setIsResting(false);
+        setCurrentPhaseDuration(3);
+        setTimerKey(prevKey => prevKey + 1);
+        setIsSessionActive(true);
+        setError(null);
+        requestWakeLock();
     };
-    const handleResumeSession = () => { /* ... keep existing resume logic ... */
-         if (currentStep && currentPhaseDuration > 0) { console.log("SessionPlayerPage: handleResumeSession called."); setIsSessionActive(true); }
+    const handlePauseSession = () => {
+        console.log("Pausing session."); setIsSessionActive(false); window.speechSynthesis.cancel(); releaseWakeLock();
+    };
+    const handleResumeSession = () => {
+         const isFinished = currentStepIndex >= (routine?.routine_steps?.length || 0);
+         if (!isFinished && timerKey > 0) { console.log("Resuming session."); requestWakeLock(); setIsSessionActive(true); }
     };
 
-    // --- Calculate dynamic colors and background (Keep as is) ---
-    const timerRingColor = isResting ? restColorHex : activityColorHex;
+    // --- Calculate dynamic colors and background ---
+    const isPrepPhase = currentStepIndex === -1;
+    const timerRingColor = isPrepPhase ? prepColorHex : (isResting ? restColorHex : activityColorHex);
     const backgroundClass = isSessionActive
-        ? (isResting ? restBgClass : activityBgClass)
+        ? (isPrepPhase ? prepBgClass : (isResting ? restBgClass : activityBgClass))
         : pausedBgClass;
 
     // --- Render Logic ---
-    if (isLoading) return <div className="text-center py-10 text-gray-400">Loading session details...</div>;
+    if (isLoading) return <div className="text-center py-10 text-gray-400">Loading...</div>;
     if (error) return <div className="text-center py-10 text-red-400">Error: {error}</div>;
-    if (!routine) return <div className="text-center py-10 text-gray-400">Routine data not available.</div>;
-     if (!currentStep && currentStepIndex >= (routine?.routine_steps?.length || 0)) {
-         return <div className="text-center py-10 text-gray-100">Session Finished! Preparing log...</div>;
-     }
-     if (!currentStep) {
-          return <div className="text-center py-10 text-red-400">Error: Cannot find current step data (Index: {currentStepIndex}).</div>;
-     }
+    if (!routine) return <div className="text-center py-10 text-gray-400">Routine data unavailable.</div>;
+
+     const displayStep = isPrepPhase ? firstStep : currentStep;
+     const sessionEffectivelyFinished = !isPrepPhase && !displayStep && currentStepIndex >= routine.routine_steps.length;
+     if (sessionEffectivelyFinished) { return <div className="text-center py-10 text-gray-100">Session Finished!</div>; }
+     if (!displayStep && !isPrepPhase) { return <div className="text-center py-10 text-red-400">Error: Step data missing.</div>; }
 
     // --- Main Player UI ---
     return (
         <div className={`min-h-screen flex flex-col items-center justify-center p-4 transition-colors duration-500 ease-in-out ${backgroundClass} text-gray-100`}>
 
             {/* Title and Step Info */}
-            <div className="text-center mb-6"> <h2 className="text-3xl font-bold">{routine.name}</h2> <p className="text-lg text-gray-300"> Step {currentStepIndex + 1} / {routine.routine_steps.length} </p> </div>
+            <div className="text-center mb-6"> <h2 className="text-3xl font-bold">{routine.name}</h2> <p className="text-lg text-gray-300"> {isPrepPhase ? "Get Ready!" : `Step ${currentStepIndex + 1} / ${routine.routine_steps.length}: ${isResting ? 'Rest' : 'Drill'}`} </p> </div>
 
             {/* Timer Section */}
             <div className="my-6 md:my-8">
@@ -165,38 +206,66 @@ function SessionPlayerPage() {
                     size={240}
                     trailColor={trailColorHex}
                     onComplete={handleTimerComplete}
+                    onUpdate={(remainingTime) => {
+                        if (!isBeepEnabled || isPrepPhase) return; // Skip beeps if disabled or during prep
+                        if (!isResting && (remainingTime === 3 || remainingTime === 2 || remainingTime === 1)) { playBeep(isBeepEnabled, warningBeepFreq, 150); }
+                        if (isResting && (remainingTime === 3 || remainingTime === 2)) { playBeep(isBeepEnabled, warningBeepFreq, 150); }
+                        if (isResting && remainingTime === 1) { playBeep(isBeepEnabled, endRestBeepFreq, 150); }
+                    }}
                 >
-                    {/* Content inside the circle */}
                     {({ remainingTime }) => (
-                        <div className="flex flex-col items-center">
-                             {/* Line 1: The Time */}
-                            <div className="text-5xl font-bold">{formatTime(remainingTime)}</div>
-                            {/* --- Line 2: TEMPORARILY COMMENTED OUT for testing number visibility --- */}
-                            
-                            <div className={`text-lg font-semibold uppercase ${isResting ? 'text-blue-300' : 'text-emerald-300'}`}>
-                                {isResting ? 'Rest' : 'Activity'}
+                        <div className="flex flex-col items-center justify-center h-full">
+                             <div className="text-5xl font-bold">
+                                 {isSessionActive ? formatTime(remainingTime) : formatTime(firstStep?.duration_seconds)}
+                             </div>
+                            <div className={`text-lg font-semibold uppercase ${isPrepPhase ? 'text-amber-300' : (isResting ? 'text-blue-300' : 'text-emerald-300')}`}>
+                                {!isSessionActive && currentStepIndex === -1 ? 'Ready' : (isPrepPhase ? 'Starting...' : (isResting ? 'Rest' : 'Activity'))}
                             </div>
-                            
-                            {/* --- End commented out block --- */}
                         </div>
                     )}
                 </CountdownCircleTimer>
             </div>
 
             {/* Drill Info Section */}
-            <div className="text-center mb-6 px-4 py-4 bg-black bg-opacity-20 rounded-lg max-w-lg w-full"> <h4 className="text-2xl font-semibold mb-2 text-white"> {isResting ? `Rest` : (currentStep?.drill_name || 'N/A')} </h4> {!isResting && ( <> <p className="text-gray-300 mb-1">Notes: {currentStep?.notes || 'None'}</p> <p className="text-gray-300">Target: {currentStep?.duration_seconds ? `${currentStep.duration_seconds}s` : (currentStep?.reps_target ? `${currentStep.reps_target} reps` : 'N/A')}</p> </> )} </div>
+            <div className="text-center mb-6 px-4 py-4 bg-black bg-opacity-20 rounded-lg max-w-lg w-full min-h-[100px]">
+                 <h4 className="text-2xl font-semibold mb-2 text-white">
+                     {isPrepPhase || !isSessionActive ? "First Drill" : (isResting ? `Rest` : (displayStep?.drill_name || 'N/A'))}
+                 </h4>
+                 {!isResting && !isPrepPhase && displayStep && (
+                     <>
+                         {displayStep.notes && displayStep.notes.trim() !== '' && ( <p className="text-gray-300 mb-1">Notes: {displayStep.notes}</p> )}
+                         <p className="text-gray-300">Target: {displayStep?.duration_seconds ? `${displayStep.duration_seconds}s` : (displayStep?.reps_target ? `${displayStep.reps_target} reps` : 'N/A')}</p>
+                     </>
+                 )}
+                  {(isPrepPhase || (!isSessionActive && currentStepIndex === -1)) && (
+                      <p className="text-gray-300 mt-2">{firstStep?.drill_name || 'N/A'}</p>
+                  )}
+            </div>
 
              {/* Next Up Section */}
-              <div className="text-center text-gray-400 mb-8 text-lg"> {isResting ? ( nextStep ? `Next Drill: ${nextStep.drill_name}` : 'Last Rest!' ) : ( (currentStep?.rest_after_seconds && currentStep.rest_after_seconds > 0) ? `Next: Rest (${currentStep.rest_after_seconds}s)` : (nextStep ? `Next Drill: ${nextStep.drill_name}` : 'Final Drill!') ) } </div>
+             <div className="text-center text-gray-400 mb-8 text-lg min-h-[1.5em]">
+                 {!isPrepPhase && ( isResting ? ( nextStep ? `Next Drill: ${nextStep.drill_name}` : 'Last Rest!' ) : ( (currentStep?.rest_after_seconds && currentStep.rest_after_seconds > 0) ? `Next: Rest (${currentStep.rest_after_seconds}s)` : (nextStep ? `Next Drill: ${nextStep.drill_name}` : 'Final Drill!') ) )}
+             </div>
 
-            {/* TTS Toggle Switch */}
-            <div className="flex items-center justify-center space-x-2 mb-8 text-sm"> <label htmlFor="tts-toggle" className="font-medium text-gray-300 cursor-pointer"> Announce Next Drill </label> <input type="checkbox" id="tts-toggle" checked={isTtsEnabled} onChange={(e) => setIsTtsEnabled(e.target.checked)} className="form-checkbox h-5 w-5 text-cyan-500 bg-gray-600 border-gray-500 rounded focus:ring-cyan-500 focus:ring-offset-gray-800 cursor-pointer" /> </div>
+            {/* Toggle Switches */}
+            <div className="flex items-center justify-center space-x-6 mb-8 text-sm">
+                 {/* TTS Toggle */}
+                 <div className="flex items-center space-x-2">
+                    <input type="checkbox" id="tts-toggle" checked={isTtsEnabled} onChange={(e) => setIsTtsEnabled(e.target.checked)} className="form-checkbox h-5 w-5 text-cyan-500 bg-gray-600 border-gray-500 rounded focus:ring-cyan-500 focus:ring-offset-gray-800 cursor-pointer"/>
+                    <label htmlFor="tts-toggle" className="font-medium text-gray-300 cursor-pointer"> Announce Drill </label>
+                 </div>
+                 {/* Beep Toggle */}
+                 <div className="flex items-center space-x-2">
+                     <input type="checkbox" id="beep-toggle" checked={isBeepEnabled} onChange={(e) => setIsBeepEnabled(e.target.checked)} className="form-checkbox h-5 w-5 text-cyan-500 bg-gray-600 border-gray-500 rounded focus:ring-cyan-500 focus:ring-offset-gray-800 cursor-pointer"/>
+                     <label htmlFor="beep-toggle" className="font-medium text-gray-300 cursor-pointer"> Audio Cues </label>
+                 </div>
+            </div>
 
             {/* Controls Section */}
             <div className="flex flex-wrap justify-center gap-4">
-                  {!isSessionActive && timerKey === 0 && ( <button onClick={handleStartSession} className="px-6 py-3 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-emerald-500 min-w-[120px] text-center"> Start Session </button> )}
+                  {!isSessionActive && currentStepIndex === -1 && ( <button onClick={handleStartSession} className="px-6 py-3 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-emerald-500 min-w-[120px] text-center"> Start Session </button> )}
                   {isSessionActive && ( <button onClick={handlePauseSession} className="px-6 py-3 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-yellow-500 min-w-[120px] text-center"> Pause </button> )}
-                  {!isSessionActive && timerKey > 0 && currentStepIndex < routine.routine_steps.length && ( <button onClick={handleResumeSession} className="px-6 py-3 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-emerald-500 min-w-[120px] text-center"> Resume </button> )}
+                  {!isSessionActive && currentStepIndex !== -1 && !sessionEffectivelyFinished && ( <button onClick={handleResumeSession} className="px-6 py-3 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-emerald-500 min-w-[120px] text-center"> Resume </button> )}
                   {isSessionActive && ( <button onClick={isResting ? moveToNextStep : transitionToRest} className="px-6 py-3 bg-gray-600 text-white font-semibold rounded-lg shadow-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-gray-500 min-w-[120px] text-center"> Skip {isResting ? 'Rest' : 'Drill'} </button> )}
             </div>
 

@@ -1,0 +1,186 @@
+{% extends 'planning/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title|default:"My Availability" }} - SquashSync{% endblock %}
+
+{% block extra_head %}
+    <style>
+        .content-wrapper { /* Reusing style from other forms */
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 25px;
+            background-color: var(--container-bg, white);
+            border: 1px solid var(--border-color, #ddd);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .content-wrapper h1 {
+            margin-top: 0; margin-bottom: 20px; border-bottom: 2px solid var(--heading-color, #004085);
+            padding-bottom: 10px; color: var(--heading-color, #004085); font-size: 1.6em;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .session-availability-item {
+            background-color: var(--container-light-bg);
+            border: 1px solid var(--border-light);
+            border-left: 4px solid var(--link-color); /* Accent border */
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+        html.dark-mode .session-availability-item {
+            background-color: var(--input-bg);
+            border-color: var(--border-color);
+            border-left-color: var(--link-color);
+        }
+        .session-availability-item.assigned {
+            border-left-color: #28a745; /* Green if assigned */
+        }
+        .session-details strong {
+            font-size: 1.1em;
+            color: var(--heading-color);
+        }
+        .session-details p {
+            font-size: 0.9em;
+            color: var(--subheading-color);
+            margin: 5px 0;
+        }
+        .availability-form {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed var(--border-light);
+        }
+        .availability-form .form-group {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px; /* Space between radio buttons */
+        }
+        .availability-form label {
+            font-weight: normal;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .availability-form input[type="radio"] {
+            width: auto;
+            accent-color: var(--link-color);
+            cursor: pointer;
+        }
+        .availability-form textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 0.9em;
+            box-sizing: border-box;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            min-height: 60px;
+            margin-top: 5px;
+        }
+        .availability-form .submit-button {
+            padding: 6px 12px;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .current-status {
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+        .current-status .available { color: #198754; font-weight: bold; }
+        .current-status .unavailable { color: #dc3545; font-weight: bold; }
+        html.dark-mode .current-status .available { color: #20c997; }
+        html.dark-mode .current-status .unavailable { color: #f1a1b1; }
+
+        .assigned-note {
+            font-size: 0.85em;
+            font-style: italic;
+            color: #28a745;
+            margin-top: 5px;
+        }
+        html.dark-mode .assigned-note { color: #3dd5f3; }
+
+        .no-sessions-msg {
+             color: var(--subheading-color);
+             font-style: italic;
+             text-align: center;
+             padding: 30px;
+             background-color: var(--container-light-bg);
+             border: 1px dashed var(--border-light);
+             border-radius: 5px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <h1><i class="bi bi-calendar-check-fill"></i> {{ page_title|default:"My Availability" }}</h1>
+    <p class="helptext" style="margin-bottom: 20px;">
+        View upcoming sessions and mark your availability.
+        If you mark yourself as unavailable for a session you are already assigned to, you will be removed from that session's coach list.
+    </p>
+
+    {% if sessions_with_availability %}
+        {% for item in sessions_with_availability %}
+            <div class="session-availability-item {% if item.is_assigned %}assigned{% endif %}">
+                <div class="session-details">
+                    <strong>
+                        {% if item.session_obj.school_group %}
+                            {{ item.session_obj.school_group.name }}
+                        {% else %}
+                            General Session
+                        {% endif %}
+                    </strong>
+                    <p>
+                        <i class="bi bi-calendar-event"></i> {{ item.session_obj.session_date|date:"l, d F Y" }}
+                        <br>
+                        <i class="bi bi-clock"></i> {{ item.session_obj.session_start_time|time:"H:i" }}
+                        ({{ item.session_obj.planned_duration_minutes }} min)
+                    </p>
+                    <div class="current-status">
+                        Your current status:
+                        {% if item.is_available %}
+                            <span class="available">Available</span>
+                        {% else %}
+                            <span class="unavailable">Unavailable</span>
+                        {% endif %}
+                        {% if item.is_assigned %}
+                            <span class="assigned-note">(You are assigned to coach this session)</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <form method="post" class="availability-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="session_id" value="{{ item.session_obj.id }}">
+                    <div class="form-group">
+                        <label>
+                            <input type="radio" name="is_available" value="true" {% if item.is_available %}checked{% endif %}>
+                            I am Available
+                        </label>
+                        <label>
+                            <input type="radio" name="is_available" value="false" {% if not item.is_available %}checked{% endif %}>
+                            I am Unavailable
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="notes-{{ item.session_obj.id }}" style="display:block; margin-bottom:3px;">Notes (optional):</label>
+                        <textarea name="notes" id="notes-{{ item.session_obj.id }}" rows="2" placeholder="e.g., Can only make the first hour">{{ item.notes }}</textarea>
+                    </div>
+                    <button type="submit" class="submit-button btn-sm">Update Availability</button>
+                </form>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p class="no-sessions-msg">No upcoming sessions found in the next 4 weeks for which to set availability.</p>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{# No specific JS needed for this page currently #}
+{% endblock %}
+```
+

@@ -10,11 +10,10 @@
 {# Add page-specific CSS, including the homepage banner and SoloSync card styles #}
 {% block extra_head %}
     <style>
-        /* Styles for the banner header - UPDATED */
+        /* Styles for the banner header */
         .homepage-header {
             padding: 50px 5%; /* Adjusted padding */
-            /* *** CORRECTED IMAGE FILENAME *** */
-            background-image: url("{% static 'planning/images/squash_banner.png' %}"); /* Banner Image */
+            background-image: url("{% static 'planning/images/squash_banner.png' %}"); /* Corrected Banner Image */
             background-size: cover; background-position: center; text-align: left;
             margin-bottom: 30px; border-radius: 8px; color: #fff;
             text-shadow: 1px 1px 3px rgba(0,0,0,0.7); position: relative; overflow: hidden;
@@ -68,6 +67,28 @@
         .solosync-logs .log-item .log-details { font-size: 0.85em; color: var(--subheading-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .solosync-logs { cursor: pointer; }
 
+        /* --- Staffing Alert Card Styles --- */
+        .staffing-alert {
+            background-color: var(--warning-bg, #fff3cd); /* Use a warning background */
+            border-left: 5px solid var(--warning-border, #ffeeba);
+        }
+        html.dark-mode .staffing-alert {
+            background-color: var(--warning-dark-bg, #664d03);
+            border-left-color: var(--warning-dark-border, #ffc107);
+        }
+        .staffing-alert h2 { color: var(--warning-text, #856404); }
+        html.dark-mode .staffing-alert h2 { color: var(--warning-dark-text, #ffda6a); }
+        .staffing-alert .alert-count {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--action-del-text); /* Use a danger color for emphasis */
+            display: block;
+            text-align: center;
+            margin: 10px 0;
+        }
+        html.dark-mode .staffing-alert .alert-count { color: #f5c6cb; }
+
+
         /* Dark Mode Compatibility */
         html.dark-mode .session-info span { color: var(--subheading-color); }
         html.dark-mode .other-apps-list a { color: var(--link-color); }
@@ -83,7 +104,6 @@
 {% block content %}
     <div class="homepage-header">
         <h1>SquashSync</h1>
-        {# *** CORRECTED SLOGAN *** #}
         <p>Mental Focus. Physical Precision. Perfect Sync.</p>
     </div>
 
@@ -148,7 +168,7 @@
             <p>View player profiles, track progress, manage group assignments, and record metrics.</p>
              <div class="card-actions">
                  <a href="{% url 'planning:players_list' %}" class="btn">
-                     Go to Players <i class="bi bi-arrow-right-short"></i>
+                    Go to Players <i class="bi bi-arrow-right-short"></i>
                  </a>
              </div>
         </div>
@@ -169,12 +189,42 @@
                      {% endfor %}
                  </ul>
                  <div style="margin-top: 15px; text-align: right;">
-                     <a href="{% url 'planning:solosync_log_list' %}" style="font-size: 0.9em;">View All Solo Logs...</a>
+                      <a href="{% url 'planning:solosync_log_list' %}" style="font-size: 0.9em;">View All Solo Logs...</a>
                  </div>
              {% else %}
                  <p class="no-data-msg">No recent SoloSync logs submitted.</p>
              {% endif %}
          </div>
+
+        {# --- REMOVED Create Solo Routine Card --- #}
+        {# This section has been removed to prevent NoReverseMatch #}
+        {# --- END REMOVED Create Solo Routine Card --- #}
+
+        {# --- Staffing Alert Card (for Superusers) --- #}
+        {% if request.user.is_superuser %}
+        <div class="card staffing-alert">
+            <h2><i class="bi bi-person-badge"></i> Session Staffing Alert</h2>
+            {% if unstaffed_session_count > 0 %}
+                <p>
+                    There
+                    {% if unstaffed_session_count == 1 %}
+                        is <span class="alert-count">1</span> upcoming session
+                    {% else %}
+                        are <span class="alert-count">{{ unstaffed_session_count }}</span> upcoming sessions
+                    {% endif %}
+                    in the next two weeks that currently have no coaches assigned.
+                </p>
+            {% else %}
+                <p>All upcoming sessions in the next two weeks appear to have coaches assigned.</p>
+            {% endif %}
+            <div class="card-actions" style="text-align: right;">
+                <a href="{% url 'planning:session_staffing' %}" class="btn">
+                    Manage Staffing <i class="bi bi-arrow-right-short"></i>
+                </a>
+            </div>
+        </div>
+        {% endif %}
+        {# --- END Staffing Alert Card --- #}
 
 
         {# --- Tools & Resources Card --- #}
@@ -199,3 +249,4 @@
 {% block extra_scripts %}
 {# Removed carousel JavaScript #}
 {% endblock %}
+

@@ -1,0 +1,312 @@
+{% extends "planning/base.html" %}
+{% load static %}
+
+{% block title %}Session Calendar - SquashSync{% endblock %}
+
+{% block extra_head %}
+    {# FullCalendar CSS is expected to be handled by index.global.min.js #}
+
+    <style>
+        /* Basic styling for the calendar container and navigation */
+        .calendar-container {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            background-color: var(--container-bg, #fff); /* Use theme variable or default */
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        #sessionCalendar {
+            max-width: 1100px;
+            margin: 0 auto;
+            color: var(--text-color); /* Ensure calendar text uses theme color */
+        }
+        .calendar-navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: var(--container-light-bg, #f8f9fa); /* Use theme variable or default */
+            border-radius: 5px;
+        }
+        .calendar-navigation a, .calendar-navigation span {
+            padding: 8px 15px;
+            text-decoration: none;
+            color: var(--link-color);
+            font-weight: bold;
+        }
+        .calendar-navigation a:hover {
+            background-color: var(--link-hover-color, #e9ecef); /* Use link-hover for bg or create specific var */
+            color: var(--container-bg); /* Example: text color change on hover */
+            border-radius: 4px;
+        }
+        .calendar-navigation .current-month {
+            font-size: 1.2em;
+            color: var(--heading-color);
+        }
+
+        /* Styling for the download button */
+        .download-schedule-button {
+            display: inline-block;
+            padding: 8px 15px;
+            margin-top: 10px; /* Space it from the calendar navigation */
+            margin-bottom: 10px;
+            background-color: var(--link-color); /* Use a theme color */
+            color: var(--container-bg, #fff); /* Text color for the button */
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+            border: 1px solid var(--link-color);
+            cursor: pointer;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .download-schedule-button:hover {
+            background-color: var(--link-hover-color);
+            color: var(--container-bg, #fff);
+        }
+
+
+        /* Enhanced Styling for FullCalendar elements to respect theme */
+        #sessionCalendar .fc-toolbar-title {
+            color: var(--heading-color) !important;
+            font-size: 1.5em; /* Make title a bit larger */
+        }
+        #sessionCalendar .fc-button { /* Style FullCalendar's own buttons */
+            background-color: var(--link-color) !important; 
+            border: 1px solid var(--link-color) !important; 
+            color: var(--container-bg, #fff) !important; 
+            text-transform: capitalize;
+            opacity: 0.9;
+            transition: opacity 0.2s ease-in-out;
+        }
+        #sessionCalendar .fc-button:hover {
+            background-color: var(--link-hover-color) !important;
+            border-color: var(--link-hover-color) !important;
+            opacity: 1;
+        }
+        #sessionCalendar .fc-button-primary:disabled { 
+            background-color: var(--border-light, #ccc) !important;
+            border-color: var(--border-light, #ccc) !important;
+            color: var(--subheading-color, #666) !important;
+        }
+        #sessionCalendar .fc-button-primary.fc-button-active {
+            background-color: var(--heading-color) !important; 
+            border-color: var(--heading-color) !important;
+            color: var(--container-bg, #fff) !important;
+        }
+        #sessionCalendar .fc-button-primary.fc-button-active:hover {
+             background-color: var(--heading-color) !important;
+             opacity: 0.85;
+        }
+        #sessionCalendar .fc-daygrid-day-number { 
+            color: var(--text-color) !important;
+            padding: 5px;
+            font-size: 0.9em;
+        }
+        #sessionCalendar .fc-col-header-cell-cushion { 
+             color: var(--subheading-color) !important;
+             font-weight: bold;
+             padding: 8px 0;
+        }
+        #sessionCalendar .fc-day-today { 
+            background-color: var(--action-add-bg, rgba(212, 237, 218, 0.5)) !important; 
+        }
+        #sessionCalendar .fc-daygrid-day:hover { 
+            background-color: var(--container-light-bg, #f0f0f0);
+        }
+        #sessionCalendar .fc-event {
+            border: 1px solid var(--link-color);
+            background-color: var(--link-color);
+            color: var(--container-bg, #fff); 
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            cursor: pointer;
+        }
+        #sessionCalendar .fc-event:hover {
+            opacity: 0.85;
+        }
+        #sessionCalendar .fc-event.cancelled-event { 
+            background-color: var(--border-color, #ccc) !important;
+            border-color: var(--subheading-color, #aaa) !important;
+            color: var(--subheading-color, #666) !important;
+        }
+        #sessionCalendar .fc-event.cancelled-event .fc-event-title {
+            text-decoration: line-through;
+        }
+
+        /* Modal styling */
+        .modal { display: none; position: fixed; z-index: 1055; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: var(--card-bg-color, #fefefe); color: var(--text-color); margin: 10% auto; padding: 20px; border: 1px solid var(--border-color, #888); width: 80%; max-width: 600px; border-radius: 8px; position: relative; }
+        .modal-header { padding-bottom: 10px; border-bottom: 1px solid var(--border-color, #eee); margin-bottom: 15px; }
+        .modal-header h2 { margin: 0; color: var(--heading-color); }
+        .close-button { color: var(--icon-color, #aaa); float: right; font-size: 28px; font-weight: bold; position: absolute; top: 10px; right: 20px; }
+        .close-button:hover, .close-button:focus { color: var(--text-color); text-decoration: none; cursor: pointer; }
+        .modal-body p { margin-bottom: 8px; }
+        .modal-body strong { color: var(--subheading-color); }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title|default:"Session Calendar" }}</h1>
+</div>
+
+<div class="calendar-container">
+    {# Custom Navigation Controls #}
+    <div class="calendar-navigation">
+        <a href="{% url 'planning:session_calendar' %}?year={{ prev_year }}&month={{ prev_month }}">&laquo; Previous Month</a>
+        <span class="current-month">{{ current_month_display }}</span>
+        <a href="{% url 'planning:session_calendar' %}?year={{ next_year }}&month={{ next_month }}">Next Month &raquo;</a>
+    </div>
+
+    {# Download Button - Placed below custom navigation, above the calendar #}
+    <div style="text-align: center; margin-bottom: 15px;">
+        <a href="#" id="downloadScheduleBtn" class="download-schedule-button">
+            <i class="bi bi-download"></i> Download Week Data (CSV)
+        </a>
+    </div>
+
+    {# Div where FullCalendar will be rendered #}
+    <div id="sessionCalendar"></div>
+</div>
+
+{# Modal structure for displaying event details #}
+<div id="sessionDetailModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" onclick="document.getElementById('sessionDetailModal').style.display='none'">&times;</span>
+        <div class="modal-header">
+            <h2 id="modalTitle">Session Details</h2>
+        </div>
+        <div class="modal-body">
+            <p><strong>Date:</strong> <span id="modalDate"></span></p>
+            <p><strong>Time:</strong> <span id="modalTime"></span></p>
+            <p><strong>School Group:</strong> <span id="modalSchoolGroup"></span></p>
+            <p><strong>Venue:</strong> <span id="modalVenue"></span></p>
+            <p><strong>Coaches:</strong> <span id="modalCoaches"></span></p>
+            <p><strong>Duration:</strong> <span id="modalDuration"></span></p>
+            <p><strong>Status:</strong> <span id="modalStatus"></span></p>
+            <p><strong>Notes:</strong> <span id="modalNotes"></span></p>
+            <p id="modalAdminLinkContainer" style="margin-top:15px;"></p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+    {# FullCalendar JS - Served locally #}
+    <script src="{% static 'planning/fullcalendar/index.global.min.js' %}"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const calendarEl = document.getElementById('sessionCalendar');
+            console.log("Raw calendar_events_json from Django:", '{{ calendar_events_json|escapejs }}');
+            let eventsJson = [];
+            try {
+                eventsJson = JSON.parse('{{ calendar_events_json|escapejs }}');
+                console.log("Parsed eventsDataFromDjango:", eventsJson);
+            } catch (e) {
+                console.error("Error parsing calendar_events_json:", e);
+            }
+
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+                },
+                events: eventsJson,
+                editable: false, 
+                selectable: true, 
+
+                eventContent: function(arg) {
+                    let titleEl = document.createElement('div');
+                    titleEl.innerHTML = arg.event.title;
+                    return { domNodes: [titleEl] };
+                },
+
+                eventClassNames: function(arg) {
+                    if (arg.event.extendedProps.is_cancelled_bool) {
+                        return ['cancelled-event'];
+                    }
+                    return [];
+                },
+
+                eventClick: function(info) {
+                    info.jsEvent.preventDefault(); 
+                    const event = info.event;
+                    const props = event.extendedProps;
+                    // (Modal population logic as before)
+                    document.getElementById('modalTitle').textContent = `${props.school_group_name} Session`;
+                    const startDate = new Date(event.startStr); 
+                    document.getElementById('modalDate').textContent = startDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+                    document.getElementById('modalTime').textContent = props.session_time_str;
+                    document.getElementById('modalSchoolGroup').textContent = props.school_group_name;
+                    document.getElementById('modalVenue').textContent = props.venue_name;
+                    document.getElementById('modalCoaches').textContent = props.coaches_attending.join(', ');
+                    document.getElementById('modalDuration').textContent = `${props.duration_minutes} minutes`;
+                    document.getElementById('modalStatus').textContent = props.status_display;
+                    document.getElementById('modalNotes').textContent = props.notes || "No notes.";
+                    const adminLinkContainer = document.getElementById('modalAdminLinkContainer');
+                    adminLinkContainer.innerHTML = ''; 
+                    if (props.admin_url) {
+                        const adminLink = document.createElement('a');
+                        adminLink.href = props.admin_url;
+                        adminLink.textContent = "Edit Session (Admin)";
+                        adminLink.className = 'button-link'; 
+                        adminLink.target = "_blank"; 
+                        adminLinkContainer.appendChild(adminLink);
+                    }
+                    document.getElementById('sessionDetailModal').style.display = 'block';
+                },
+            });
+
+            calendar.render();
+
+            // --- Logic for Download Button ---
+            const downloadBtn = document.getElementById('downloadScheduleBtn');
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', function(e) {
+                    e.preventDefault(); // Prevent default anchor action initially
+
+                    // Get the current view's date range from FullCalendar
+                    // For month view, currentStart is the first visible day of the month grid
+                    // For week view, it's the first day of the week.
+                    // We want the Monday of the week that contains the calendar's current date.
+                    
+                    let currentDate = calendar.getDate(); // Gets the date the calendar is currently focused on
+                    
+                    // Calculate Monday of that week
+                    let dayOfWeek = currentDate.getDay(); // Sunday = 0, Monday = 1, ..., Saturday = 6
+                    let diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Adjust for Sunday
+                    let mondayOfCurrentWeek = new Date(currentDate.setDate(currentDate.getDate() + diffToMonday));
+
+                    const year = mondayOfCurrentWeek.getFullYear();
+                    const month = mondayOfCurrentWeek.getMonth() + 1; // JavaScript months are 0-indexed
+                    const day = mondayOfCurrentWeek.getDate();
+
+                    // Construct the URL for the export view
+                    // Note: Ensure 'planning:export_weekly_schedule' is correctly defined in your urls.py
+                    const exportUrl = `{% url 'planning:export_weekly_schedule' %}?year=${year}&month=${month}&day=${day}`;
+                    
+                    console.log("Export URL:", exportUrl);
+                    // Set the href and trigger the download (or redirect to it)
+                    // downloadBtn.href = exportUrl; // Set href if you want the link to be inspectable
+                    window.location.href = exportUrl; // This will trigger the download
+                });
+            }
+
+            // Modal close logic
+            const modal = document.getElementById('sessionDetailModal');
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                }
+            }
+        });
+    </script>
+{% endblock %}

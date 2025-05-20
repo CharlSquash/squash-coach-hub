@@ -10,15 +10,39 @@ from django.db.models.functions import Coalesce
 # Ensure settings.AUTH_USER_MODEL points to your actual User model
 
 
-class SoloDrill(models.Model):
-    # Assuming SoloDrill model is okay as previously provided
-    name = models.CharField(max_length=150, unique=True)
-    description = models.TextField(blank=True)
-    metrics_definition = models.JSONField(default=dict, blank=True, help_text="Defines potential metrics and their types")
-    youtube_link = models.URLField(
-        max_length=255, # Allow longer URLs
+# --- NEW MODEL: SoloDrillCategory ---
+class SoloDrillCategory(models.Model):
+    """
+    Represents a category for SoloDrills, e.g., Racketwork, Fitness, Ghosting.
+    """
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="e.g., Racketwork, Fitness, Stretching & Warmup, Ghosting, Pressure Drills"
+    )
+    description = models.TextField(
         blank=True,
-        null=True, # Make it optional
+        null=True,
+        help_text="Optional description of the category."
+    )
+
+    class Meta:
+        verbose_name = "Solo Drill Category"
+        verbose_name_plural = "Solo Drill Categories"
+        ordering = ['name'] # Optional: Default ordering for categories
+
+    def __str__(self):
+        return self.name
+
+# --- UPDATED SoloDrill model ---
+class SoloDrill(models.Model):
+    name = models.CharField(max_length=150, unique=True)
+    description = models.TextField(blank=True, null=True) # Changed from blank=True to blank=True, null=True for consistency
+    # metrics_definition = models.JSONField(default=dict, blank=True, help_text="Defines potential metrics and their types") # This field will be replaced by metric_type
+    youtube_link = models.URLField(
+        max_length=255,
+        blank=True,
+        null=True,
         help_text="Optional YouTube link for drill explanation/demonstration."
     )
     created_by = models.ForeignKey(
@@ -29,6 +53,53 @@ class SoloDrill(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # --- NEW FIELDS based on the plan ---
+    categories = models.ManyToManyField(
+        SoloDrillCategory,
+        blank=True,
+        related_name='solo_drills',
+        help_text="Categories this drill belongs to (e.g., Fitness, Ghosting)."
+    )
+
+    PARTICIPANT_CHOICES = [
+        ('SOLO', 'Solo (Player Only)'),
+        ('COACH_PLAYER', 'Coach + Player(s)'),
+        ('ANY', 'Any (Flexible)')
+    ]
+    participant_type = models.CharField(
+        max_length=20,
+        choices=PARTICIPANT_CHOICES,
+        default='SOLO', # Defaulting to SOLO as per original plan for SoloDrills
+        help_text="Intended participant setup for this drill when used in a routine."
+    )
+
+    METRIC_TYPE_CHOICES = [
+        ('AMOUNT', 'Amount (e.g., count, repetitions)'),
+        ('TIME', 'Time to Complete (e.g., duration for a set task)')
+        # Add ('NONE', 'No Specific Metric') if you want an explicit "none" option,
+        # otherwise blank=True, null=True handles cases with no metric.
+    ]
+    metric_type = models.CharField(
+        max_length=10,
+        choices=METRIC_TYPE_CHOICES,
+        blank=True,  # Allows this field to be empty if no specific metric
+        null=True,   # Stores NULL in the database if empty
+        help_text="The type of metric collected for this drill, if any."
+    )
+    # Note: The old 'metrics_definition' JSONField has been removed/commented out.
+    # If you need to migrate data from 'metrics_definition' to 'metric_type',
+    # a custom data migration will be needed after applying schema migrations.
+
+    # Added default_duration_seconds field
+    default_duration_seconds = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Suggested default duration for this drill in seconds, if applicable (e.g., for timed drills)."
+    )
+
+
+    class Meta:
+        ordering = ['name'] # Optional: Default ordering for drills
 
     def __str__(self):
         return self.name
@@ -121,25 +192,19 @@ class SoloRoutine(models.Model):
 
 class RoutineDrillLink(models.Model):
     """Defines a specific drill's place and settings within a routine."""
-    # --- Per-step DifficultyRating REMOVED ---
 
-    routine = models.ForeignKey(SoloRoutine, on_delete=models.CASCADE, related_name='routinedrilllink_set') # Added related_name here explicitly
+    routine = models.ForeignKey(SoloRoutine, on_delete=models.CASCADE, related_name='routinedrilllink_set')
     drill = models.ForeignKey(SoloDrill, on_delete=models.CASCADE)
     order = models.PositiveIntegerField(help_text="Sequence number (1, 2, 3...)")
 
-    # --- REVERTED to duration_seconds ---
     duration_seconds = models.PositiveIntegerField(
-         default=60, # Default to 60 seconds
-         validators=[MinValueValidator(1)],
-         help_text="Time for this specific drill step (seconds)."
+        default=60,
+        validators=[MinValueValidator(1)],
+        help_text="Time for this specific drill step (seconds)."
     )
-    # --- REMOVED duration_minutes field ---
-    # --- REMOVED per-step difficulty_rating field ---
-
-    # Existing fields
     reps_target = models.PositiveIntegerField(null=True, blank=True, help_text="Target repetitions")
     rest_after_seconds = models.PositiveIntegerField(default=30, help_text="Rest duration after this drill (seconds)")
-    metrics_to_collect = models.JSONField(default=list, blank=True, help_text="List of metric keys to log for this step")
+    # metrics_to_collect = models.JSONField(default=list, blank=True, help_text="List of metric keys to log for this step") # <-- REMOVED
     notes = models.TextField(blank=True, help_text="Optional notes for the player for this specific step")
 
     class Meta:
@@ -149,8 +214,6 @@ class RoutineDrillLink(models.Model):
     def __str__(self):
         return f"{self.routine.name} - Step {self.order}: {self.drill.name}"
 
-    # --- overridden save method REMOVED ---
-    # --- overridden delete method REMOVED ---
 
 
 class SoloSessionLog(models.Model):

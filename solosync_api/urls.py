@@ -4,6 +4,8 @@ from rest_framework.routers import DefaultRouter
 from . import views # Import views from the current app
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from django.conf import settings
+from django.conf.urls.static import static
 
 # *** ADD THIS VIEW FUNCTION (can be temporary) ***
 @api_view(['GET'])
@@ -13,6 +15,7 @@ def ping_view(request):
 
 # Create a router and register our viewsets with it.
 router = DefaultRouter()
+router.register(r'solodrills', views.SoloDrillViewSet, basename='solodrill')
 router.register(r'assigned-routines', views.AssignedRoutinesViewSet, basename='assigned-routine')
 router.register(r'session-logs', views.SoloSessionLogViewSet, basename='session-log')
 
@@ -24,3 +27,4 @@ urlpatterns = [
 
     # You could add other non-router views here if needed
 ]
+

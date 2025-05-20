@@ -1,0 +1,232 @@
+{% extends 'planning/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title|default:"Session Staffing" }} - SquashSync{% endblock %}
+
+{% block extra_head %}
+    <style>
+        .content-wrapper { /* Reusing style from other forms */
+            max-width: 1100px; /* Wider for more info */
+            margin: 20px auto;
+            padding: 25px;
+            background-color: var(--container-bg, white);
+            border: 1px solid var(--border-color, #ddd);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .content-wrapper h1 {
+            margin-top: 0; margin-bottom: 20px; border-bottom: 2px solid var(--heading-color, #004085);
+            padding-bottom: 10px; color: var(--heading-color, #004085); font-size: 1.6em;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .session-staffing-card {
+            background-color: var(--container-light-bg, #f8f9fa);
+            border: 1px solid var(--border-light);
+            border-left: 4px solid var(--link-color); /* Accent border */
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        html.dark-mode .session-staffing-card {
+            background-color: var(--input-bg);
+            border-color: var(--border-color);
+            border-left-color: var(--link-color);
+        }
+        .session-staffing-card h2 {
+            font-size: 1.2em;
+            color: var(--heading-color);
+            margin-top: 0;
+            margin-bottom: 8px;
+        }
+        .session-staffing-card p.session-time { /* Specific class for time paragraph */
+            font-size: 0.9em;
+            color: var(--subheading-color);
+            margin: 3px 0;
+        }
+        .staffing-details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed var(--border-light);
+        }
+        .staffing-column h4 {
+            font-size: 1em;
+            font-weight: bold;
+            color: var(--subheading-color);
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--border-light);
+            padding-bottom: 4px;
+        }
+        .staffing-column ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 0.9em;
+        }
+        .staffing-column li {
+            margin-bottom: 4px;
+            padding: 3px 0;
+            display: flex; /* Align icon and text */
+            align-items: center;
+            gap: 6px;
+        }
+        .availability-notes {
+            font-size: 0.8em;
+            color: var(--text-color-muted, #6c757d);
+            margin-left: 5px;
+            font-style: italic;
+        }
+        html.dark-mode .availability-notes { color: var(--subheading-color); }
+
+        .assignment-form { margin-top: 15px; }
+        .assignment-form label {
+            display: block; /* Each checkbox on a new line */
+            margin-bottom: 6px; /* Spacing */
+            font-weight: normal;
+            cursor: pointer;
+            display: flex; /* Align checkbox, label, icon */
+            align-items: center;
+            gap: 8px;
+        }
+        .assignment-form input[type="checkbox"] {
+            width: 1.1em; /* Slightly larger checkbox */
+            height: 1.1em;
+            vertical-align: middle;
+            accent-color: var(--link-color);
+            cursor: pointer;
+            flex-shrink: 0; /* Prevent checkbox from shrinking */
+        }
+        .assignment-form .coach-name {
+             flex-grow: 1; /* Allow name to take space */
+        }
+        .assignment-form .availability-icon {
+             font-size: 0.9em;
+             flex-shrink: 0; /* Prevent icon from shrinking */
+        }
+
+        .submit-button {
+            padding: 8px 15px;
+            font-size: 0.95em;
+            margin-top: 15px; /* More space above button */
+            border: none;
+            border-radius: 5px;
+            background-color: var(--link-color, #007bff);
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+         .submit-button:hover {
+             background-color: var(--link-hover-color, #0056b3);
+         }
+        .no-sessions-msg {
+             color: var(--subheading-color, #666);
+             font-style: italic;
+             text-align: center;
+             padding: 30px;
+             background-color: var(--container-light-bg);
+             border: 1px dashed var(--border-light);
+             border-radius: 5px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <h1><i class="bi bi-person-check-fill"></i> {{ page_title|default:"Session Staffing" }}</h1>
+    <p class="helptext" style="margin-bottom: 20px;">
+        View upcoming sessions, see which coaches are available, and assign them using the checkboxes.
+        Coaches manage their own availability on the "My Availability" page.
+    </p>
+
+    {% if sessions_for_staffing %}
+        {% for item in sessions_for_staffing %}
+            <div class="session-staffing-card">
+                <h2>
+                    {% if item.session_obj.school_group %}
+                        {{ item.session_obj.school_group.name }}
+                    {% else %}
+                        General Session
+                    {% endif %}
+                    <a href="{% url 'planning:session_detail' item.session_obj.id %}" title="View Session Plan" style="font-size: 0.7em; margin-left: 10px; font-weight: normal;">(View Plan)</a>
+                </h2>
+                <p class="session-time">
+                    <i class="bi bi-calendar-event"></i> {{ item.session_obj.session_date|date:"l, d F Y" }}
+                    &nbsp;&nbsp; <i class="bi bi-clock"></i> {{ item.session_obj.session_start_time|time:"H:i" }}
+                    ({{ item.session_obj.planned_duration_minutes }} min)
+                </p>
+
+                <div class="staffing-details-grid">
+                    <div class="staffing-column">
+                        <h4>Currently Assigned Coaches:</h4>
+                        {% if item.currently_assigned_coaches %}
+                            <ul>
+                                {% for coach in item.currently_assigned_coaches %}
+                                    <li><i class="bi bi-person-fill-check"></i> {{ coach.name }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="no-content-msg">None assigned yet.</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="staffing-column">
+                        <h4>Available Coaches:</h4>
+                        {% if item.available_coach_profiles %}
+                            <ul>
+                                {% for coach_profile in item.available_coach_profiles %}
+                                    <li>
+                                        <i class="bi bi-check-circle-fill" style="color: #28a745;"></i>
+                                        {{ coach_profile.name }} {# Display Coach name #}
+                                        {# *** UPDATED: Access attached note *** #}
+                                        {% if coach_profile.availability_note %}
+                                            <span class="availability-notes">({{ coach_profile.availability_note }})</span>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="no-content-msg">No coaches have marked themselves available yet.</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="staffing-column">
+                        <h4>Assign/Update Coaches:</h4>
+                        <form method="post" class="assignment-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="session_id" value="{{ item.session_obj.id }}">
+                            {% for coach_profile in all_coaches %} {# Loop through Coach model instances #}
+                                <label title="{% if coach_profile in item.available_coach_profiles %}Available{% else %}Not Marked Available / Unavailable{% endif %}">
+                                    <input type="checkbox" name="coaches_for_session_{{ item.session_obj.id }}" value="{{ coach_profile.id }}"
+                                        {% if coach_profile in item.currently_assigned_coaches %}checked{% endif %}
+                                    >
+                                    <span class="coach-name">{{ coach_profile.name }}</span>
+                                    {# Icon indicating availability status #}
+                                    {% if coach_profile in item.available_coach_profiles %}
+                                        <i class="bi bi-hand-thumbs-up-fill availability-icon" style="color: #28a745;" title="Marked as available"></i>
+                                    {% else %}
+                                         <i class="bi bi-hand-thumbs-down availability-icon" style="color: #6c757d;" title="Not marked as available / Unavailable"></i>
+                                    {% endif %}
+                                </label>
+                            {% empty %}
+                                <p class="no-content-msg">No active coaches found in the system to assign.</p>
+                            {% endfor %}
+                            {% if all_coaches %}
+                                <button type="submit" class="submit-button">Update Assignments</button>
+                            {% endif %}
+                        </form>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p class="no-sessions-msg">No upcoming sessions found in the next 8 weeks to staff.</p>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{# No specific JS needed for this page currently, standard form submission #}
+{% endblock %}

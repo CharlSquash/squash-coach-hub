@@ -1,7 +1,7 @@
 {% extends 'planning/base.html' %}
 {% load static %}
 
-{# Block for setting the page title - THIS SHOULD BE THE ONLY ONE #}
+{# Block for setting the page title #}
 {% block title %}Player Profile: {{ player.full_name }}{% endblock %}
 
 {# Block for page-specific CSS and JavaScript needed in the <head> #}
@@ -32,9 +32,29 @@
             font-size: 1.3em; padding-bottom: 8px; margin-bottom: 15px; display: flex;
             justify-content: space-between; align-items: baseline;
         }
-         .attendance-percentage { font-size: 0.8em; font-weight: bold; color: var(--heading-color); background-color: var(--container-light-bg); padding: 3px 8px; border-radius: 10px; }
-         .attendance-percentage .details { font-weight: normal; font-size: 0.9em; color: var(--subheading-color); margin-left: 5px; }
-         .profile-section h4 { margin-top: 20px; color: var(--subheading-color, #333); border-bottom: 1px dashed var(--border-light, #eee); font-size: 1.1em; padding-bottom: 5px; margin-bottom: 10px; }
+        .profile-section h3 summary { /* Style summary to look like the h3 */
+            font-size: 1em; /* Inherit size from h3 */
+            color: var(--subheading-color, #333);
+            font-weight: bold; /* Typically h3 is bold */
+            padding: 0;
+            margin:0;
+            border-bottom: none; /* Remove summary's own border if any */
+            cursor: pointer;
+            list-style: none; /* Remove default marker if any */
+            display: inline; /* Make it part of the h3 flow */
+        }
+        .profile-section h3 summary::-webkit-details-marker { display: none; } /* Hide Chrome/Safari marker */
+        .profile-section h3 summary::before { /* Custom marker */
+            content: '► '; /* Collapsed state */
+            font-size: 0.8em;
+            margin-right: 5px;
+        }
+        .profile-section details[open] > h3 summary::before {
+            content: '▼ '; /* Expanded state */
+        }
+        .attendance-percentage { font-size: 0.8em; font-weight: bold; color: var(--heading-color); background-color: var(--container-light-bg); padding: 3px 8px; border-radius: 10px; }
+        .attendance-percentage .details { font-weight: normal; font-size: 0.9em; color: var(--subheading-color); margin-left: 5px; }
+        .profile-section h4 { margin-top: 20px; color: var(--subheading-color, #333); border-bottom: 1px dashed var(--border-light, #eee); font-size: 1.1em; padding-bottom: 5px; margin-bottom: 10px; }
         .data-table td, .data-table th { padding: 8px 5px; border-bottom: 1px dotted var(--border-light, #eee); font-size: 0.95em; vertical-align: top; }
         .data-table tr:last-child td { border-bottom: none; }
         .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -46,8 +66,33 @@
         .add-data-link { display: inline-block; margin: 0 5px 5px 0; font-size: 0.9em; background-color: var(--action-add-bg, #28a745); color: var(--action-add-text, #fff); padding: 4px 10px; border-radius: 4px; text-decoration: none; border: 1px solid var(--action-add-border, #28a745); }
         .add-data-link:hover { background-color: var(--action-add-hover, #218838); }
 
-        details > summary { cursor: pointer; font-size: 0.9em; color: var(--link-color, #007bff); margin-top: 10px; display: inline-block; }
-        details > summary:hover { color: var(--link-hover-color); }
+        /* Styling for details/summary to make the whole h3 clickable */
+        .profile-section details > summary.h3-summary {
+            display: block; /* Make summary take full width of h3 */
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+            list-style: none; /* Remove default marker */
+        }
+        .profile-section details > summary.h3-summary::-webkit-details-marker {
+            display: none; /* Hide marker for Webkit browsers */
+        }
+        .profile-section details > summary.h3-summary .summary-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            width: 100%;
+        }
+         .profile-section details > summary.h3-summary .summary-content::before { /* Custom marker */
+            content: '► '; /* Collapsed state */
+            font-size: 0.8em; /* Match other marker */
+            margin-right: 5px;
+            color: var(--subheading-color); /* Match h3 color */
+        }
+        .profile-section details[open] > summary.h3-summary .summary-content::before {
+            content: '▼ '; /* Expanded state */
+        }
+
 
         /* Button styles */
         .btn { display: inline-block; padding: 8px 15px; border: 1px solid transparent; border-radius: 5px; text-decoration: none; cursor: pointer; text-align: center; font-size: 0.9em; line-height: 1.5; }
@@ -60,24 +105,26 @@
         .btn-outline-secondary:hover { color: var(--text-color); background-color: var(--container-light-bg); border-color: var(--subheading-color); }
         .btn-outline-danger { color: var(--action-del-text); border-color: var(--action-del-border); background-color: transparent; }
         .btn-outline-danger:hover { color: #fff; background-color: var(--action-del-bg); border-color: var(--action-del-border); }
+        .btn-outline-info { color: var(--link-color); border-color: var(--link-color); background-color: transparent; }
+        .btn-outline-info:hover { color: #fff; background-color: var(--link-color); border-color: var(--link-color); }
 
-        /* Feedback section */
-        .feedback-section { margin-top: 30px; padding: 15px 20px; background-color: var(--container-bg, #fff); border: 1px solid var(--border-color, #ddd); border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .feedback-section h2 { margin-top: 0; color: var(--subheading-color, #333); border-bottom: 1px solid var(--border-light, #eee); font-size: 1.3em; padding-bottom: 8px; margin-bottom: 15px; }
-        .feedback-entry { border-bottom: 1px dashed var(--border-light, #eee); padding-bottom: 15px; margin-bottom: 15px; position: relative; padding-right: 80px; }
-        .feedback-entry:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-        .feedback-entry p { margin-bottom: 10px; }
-        .feedback-entry p strong { color: var(--text-color); }
-        .feedback-actions { position: absolute; top: 5px; right: 0; display: flex; gap: 5px; }
-        .feedback-actions form { display: inline; margin: 0; padding: 0; }
 
         /* Action buttons area */
         .profile-actions { padding: 15px 0; border-bottom: 1px solid var(--border-light, #eee); margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; }
 
         /* Assessment table actions */
         .assessment-actions { white-space: nowrap; /* Keep buttons together */ }
-        .assessment-actions form { display: inline; margin: 0; padding: 0; }
-        .assessment-actions .btn { margin-left: 5px; } /* Space between buttons */
+        .assessment-actions form, .assessment-actions .btn { display: inline-block; margin: 0 2px; padding: 0; vertical-align: middle;}
+        /* .assessment-actions .btn { margin-left: 5px; } */ /* Space between buttons */
+        .hidden-assessment-row td {
+            background-color: var(--container-light-bg, #f8f9fa) !important;
+            color: var(--subheading-color, #6c757d) !important;
+            font-style: italic;
+        }
+        html.dark-mode .hidden-assessment-row td {
+            background-color: var(--body-bg, #343a40) !important; /* Darker bg for hidden rows in dark mode */
+        }
+
 
     </style>
 {% endblock %}
@@ -106,43 +153,36 @@
                     Not assigned to any groups.
                 {% endfor %}
             </p>
-            {# --- ADD THIS BLOCK FOR CONTACT DETAILS (SUPERUSER ONLY) --- #}
-{% if user.is_authenticated and user.is_superuser %} {# Check if user is logged in and is a superuser #}
-    <div class="contact-details" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-light);">
-        <h4>Contact Details (Admin Only)</h4> {# Add a heading #}
-
-        {% if player.contact_number %}
-            <p><strong>Player Contact:</strong> 
-                {% if player.whatsapp_number %}
-                    <a href="https://wa.me/{{ player.whatsapp_number }}" target="_blank" rel="noopener noreferrer" title="Open WhatsApp chat">
-                        {{ player.contact_number }} <i class="bi bi-whatsapp" style="color: green;"></i>
-                    </a>
-                {% else %}
-                    {{ player.contact_number }} (Invalid format for WhatsApp link)
+            {% if user.is_authenticated and user.is_superuser %}
+            <div class="contact-details" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-light);">
+                <h4>Contact Details (Admin Only)</h4>
+                {% if player.contact_number %}
+                    <p><strong>Player Contact:</strong> 
+                        {% if player.whatsapp_number %}
+                            <a href="https://wa.me/{{ player.whatsapp_number }}" target="_blank" rel="noopener noreferrer" title="Open WhatsApp chat">
+                                {{ player.contact_number }} <i class="bi bi-whatsapp" style="color: green;"></i>
+                            </a>
+                        {% else %}
+                            {{ player.contact_number }} (Invalid format for WhatsApp link)
+                        {% endif %}
+                    </p>
                 {% endif %}
-            </p>
-        {% endif %}
-
-        {% if player.parent_contact_number %}
-            <p><strong>Parent Contact:</strong> 
-                {% if player.parent_whatsapp_number %}
-                    <a href="https://wa.me/{{ player.parent_whatsapp_number }}" target="_blank" rel="noopener noreferrer" title="Open WhatsApp chat">
-                        {{ player.parent_contact_number }} <i class="bi bi-whatsapp" style="color: green;"></i>
-                    </a>
-                {% else %}
-                    {{ player.parent_contact_number }} (Invalid format for WhatsApp link)
+                {% if player.parent_contact_number %}
+                    <p><strong>Parent Contact:</strong> 
+                        {% if player.parent_whatsapp_number %}
+                            <a href="https://wa.me/{{ player.parent_whatsapp_number }}" target="_blank" rel="noopener noreferrer" title="Open WhatsApp chat">
+                                {{ player.parent_contact_number }} <i class="bi bi-whatsapp" style="color: green;"></i>
+                            </a>
+                        {% else %}
+                            {{ player.parent_contact_number }} (Invalid format for WhatsApp link)
+                        {% endif %}
+                    </p>
                 {% endif %}
-            </p>
-        {% endif %}
-
-        {% if not player.contact_number and not player.parent_contact_number %}
-             <p><small>No contact numbers entered.</small></p>
-        {% endif %}
-    </div>
-{% endif %}
-{# --- END CONTACT DETAILS BLOCK --- #}
-
-{# Rest of the profile content... #}
+                {% if not player.contact_number and not player.parent_contact_number %}
+                     <p><small>No contact numbers entered.</small></p>
+                {% endif %}
+            </div>
+            {% endif %}
             <div style="margin-top: 15px;">
                 <a href="{% url 'planning:add_sprint_record' player.id %}" class="add-data-link">Add Sprint</a>
                 <a href="{% url 'planning:add_volley_record' player.id %}" class="add-data-link">Add Volley</a>
@@ -153,132 +193,138 @@
     </div>
     <hr>
 
-    {# --- Action Buttons --- #}
+    {# --- Action Buttons (Coach Feedback button removed) --- #}
     <div class="profile-actions">
-        <a href="{% url 'planning:add_coach_feedback' player.id %}" class="btn btn-primary">
-            <i class="bi bi-chat-left-text-fill"></i> Add Coach Feedback
-        </a>
         <a href="{% url 'planning:assess_latest_session' player.id %}" class="btn btn-secondary">
              <i class="bi bi-clipboard-check"></i> Assess Latest Session
         </a>
+        {# Add other general player actions here if needed #}
     </div>
 
-    {# --- Session Attendance History --- #}
+    {# --- Session Attendance History (Expandable) --- #}
     <div class="profile-section">
-        <h3>
-            Session Attendance History
-            {% if attendance_percentage is not None %}
-                <span class="attendance-percentage" title="{{ attended_sessions_count }} attended / {{ total_relevant_sessions_count }} total relevant sessions">
-                    {{ attendance_percentage }}%
-                    <span class="details">({{ attended_sessions_count }}/{{ total_relevant_sessions_count }})</span>
-                </span>
-            {% elif player.school_groups.exists %}
-                 <span class="attendance-percentage" title="No relevant sessions found for player's group(s)">N/A</span>
-            {% endif %}
-        </h3>
-        {% if sessions_attended %}
-            <table class="data-table">
-                <thead><tr><th>Date</th><th>Session</th><th>Time</th></tr></thead>
-                <tbody>
-                    {% for session in sessions_attended %}
-                    <tr>
-                        <td>{{ session.session_date|date:"D, d M Y" }}</td>
-                        <td><a href="{% url 'planning:session_detail' session.id %}">{% if session.school_group %}{{ session.school_group.name }}{% else %}Session{% endif %}</a></td>
-                        <td>{{ session.session_start_time|time:"H:i" }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p class="no-data-msg">No session attendance recorded yet.</p>
-        {% endif %}
-    </div>
-
-    {# --- Session Assessments --- #}
-    <div class="profile-section">
-        <h3>Session Assessments</h3>
-        {% if assessments %}
-            <table class="data-table">
-                {# ADDED Actions Header #}
-                <thead><tr><th>Date</th><th>Session</th><th>Effort</th><th>Focus</th><th>Resilience</th><th>Composure</th><th>Decision Making</th><th>Notes</th><th>Actions</th></tr></thead>
-                <tbody>
-                    {% for assessment in assessments %}
-                    <tr>
-                        <td>{{ assessment.date_recorded|date:"Y-m-d" }}</td>
-                        <td><a href="{% url 'planning:session_detail' assessment.session.id %}">{{ assessment.session.session_date|date:"d M" }}</a></td>
-                        <td style="text-align: center;">{{ assessment.get_effort_rating_display|default:"-" }}</td>
-                        <td style="text-align: center;">{{ assessment.get_focus_rating_display|default:"-" }}</td>
-                        <td style="text-align: center;">{{ assessment.get_resilience_rating_display|default:"-" }}</td>
-                        <td style="text-align: center;">{{ assessment.get_composure_rating_display|default:"-" }}</td>
-                        <td style="text-align: center;">{{ assessment.get_decision_making_rating_display|default:"-" }}</td>
-                        <td class="notes-cell">{{ assessment.coach_notes|default:""|linebreaksbr }}</td>
-                        {# ADDED Actions Cell #}
-                        <td class="assessment-actions">
-                             {# Edit Link (Placeholder URL) #}
-                             <a href="{% url 'planning:edit_session_assessment' assessment.id %}" class="btn btn-sm btn-outline-secondary" title="Edit Assessment">
-                                 <i class="bi bi-pencil"></i>
-                             </a>
-                             {# Delete Form (Placeholder URL) #}
-                             <form method="POST" action="{% url 'planning:delete_session_assessment' assessment.id %}" onsubmit="return confirm('Are you sure you want to delete this assessment?');">
-                                 {% csrf_token %}
-                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Assessment">
-                                     <i class="bi bi-trash"></i>
-                                 </button>
-                             </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p class="no-data-msg">No session assessments recorded yet.</p>
-        {% endif %}
-    </div>
-
-    {# --- Coach Feedback Display Section --- #}
-    <div class="feedback-section">
-        <h2><i class="bi bi-clipboard2-check"></i> Coach Feedback</h2>
-        {% for feedback in player.feedback_entries.all %}
-            <div class="feedback-entry">
-                 <div class="feedback-actions">
-                     <a href="{% url 'planning:edit_coach_feedback' feedback.id %}" class="btn btn-sm btn-outline-secondary" title="Edit Feedback">
-                         <i class="bi bi-pencil"></i>
-                     </a>
-                     <form method="POST" action="{% url 'planning:delete_coach_feedback' feedback.id %}" onsubmit="return confirm('Are you sure you want to delete this feedback entry?');">
-                         {% csrf_token %}
-                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Feedback">
-                             <i class="bi bi-trash"></i>
-                         </button>
-                     </form>
-                 </div>
-                <p style="font-weight: bold; margin-bottom: 8px; font-size: 0.95em; color: var(--subheading-color);">
-                    <i class="bi bi-calendar3"></i> {{ feedback.date_recorded|date:"Y-m-d H:i" }}
-                    {% if feedback.session %}
-                        | Linked Session: <a href="{% url 'planning:session_detail' feedback.session.id %}">{{ feedback.session.session_date|date:"Y-m-d" }}</a>
+        <details>
+            <summary class="h3-summary">
+                <span class="summary-content"> {# Wrap content for flexbox alignment of arrow and text #}
+                    Session Attendance History
+                    {% if attendance_percentage is not None %}
+                        <span class="attendance-percentage" title="{{ attended_sessions_count }} attended / {{ total_relevant_sessions_count }} total relevant sessions">
+                            {{ attendance_percentage }}%
+                            <span class="details">({{ attended_sessions_count }}/{{ total_relevant_sessions_count }})</span>
+                        </span>
+                    {% elif player.school_groups.exists %}
+                         <span class="attendance-percentage" title="No relevant sessions found for player's group(s)">N/A</span>
                     {% endif %}
-                </p>
-                {% if feedback.strengths_observed %}
-                    <p><strong>Strengths Observed:</strong><br>{{ feedback.strengths_observed|linebreaksbr }}</p>
-                {% endif %}
-                {% if feedback.areas_for_development %}
-                    <p><strong>Areas for Development:</strong><br>{{ feedback.areas_for_development|linebreaksbr }}</p>
-                {% endif %}
-                {% if feedback.suggested_focus %}
-                    <p><strong>Suggested Focus / Next Steps:</strong><br>{{ feedback.suggested_focus|linebreaksbr }}</p>
-                {% endif %}
-                 {% if feedback.general_notes %}
-                    <p><strong>General Notes:</strong><br>{{ feedback.general_notes|linebreaksbr }}</p>
-                {% endif %}
-            </div>
-        {% empty %}
-            <p class="no-data-msg">No feedback entries recorded yet.</p>
-        {% endfor %}
+                </span>
+            </summary>
+            {% if sessions_attended %}
+                <table class="data-table">
+                    <thead><tr><th>Date</th><th>Session</th><th>Time</th></tr></thead>
+                    <tbody>
+                        {% for session in sessions_attended %}
+                        <tr>
+                            <td>{{ session.session_date|date:"D, d M Y" }}</td>
+                            <td><a href="{% url 'planning:session_detail' session.id %}">{% if session.school_group %}{{ session.school_group.name }}{% else %}Session{% endif %}</a></td>
+                            <td>{{ session.session_start_time|time:"H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="no-data-msg" style="margin-top: 15px;">No session attendance recorded yet.</p>
+            {% endif %}
+        </details>
+    </div>
+
+    {# --- Session Assessments (Expandable) --- #}
+    <div class="profile-section">
+        <details>
+            <summary class="h3-summary">
+                 <span class="summary-content">Session Assessments</span>
+            </summary>
+            {% if assessments %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Session</th>
+                            {% if user.is_superuser %}
+                            <th>Assessed by</th> 
+                            <th>Status</th> {# Superusers see hidden status #}
+                            {% endif %}
+                            <th>Effort</th>
+                            <th>Focus</th>
+                            <th>Resilience</th>
+                            <th>Composure</th>
+                            <th>Decision Making</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for assessment in assessments %}
+                        {# Apply a class if the assessment is hidden, for superuser visual cue #}
+                        <tr class="{% if assessment.is_hidden and user.is_superuser %}hidden-assessment-row{% endif %}">
+                            <td>{{ assessment.date_recorded|date:"Y-m-d" }}</td>
+                            <td><a href="{% url 'planning:session_detail' assessment.session.id %}">{{ assessment.session.session_date|date:"d M" }}</a></td>
+                            {% if user.is_superuser %}
+                                <td>
+                                    {% if assessment.submitted_by %}
+                                        {{ assessment.submitted_by.get_full_name|default:assessment.submitted_by.username }}
+                                    {% else %}
+                                        N/A 
+                                    {% endif %}
+                                </td>
+                                <td>{% if assessment.is_hidden %}Hidden{% else %}Visible{% endif %}</td>
+                            {% endif %}
+                            <td style="text-align: center;">{{ assessment.get_effort_rating_display|default:"-" }}</td>
+                            <td style="text-align: center;">{{ assessment.get_focus_rating_display|default:"-" }}</td>
+                            <td style="text-align: center;">{{ assessment.get_resilience_rating_display|default:"-" }}</td>
+                            <td style="text-align: center;">{{ assessment.get_composure_rating_display|default:"-" }}</td>
+                            <td style="text-align: center;">{{ assessment.get_decision_making_rating_display|default:"-" }}</td>
+                            <td class="notes-cell">{{ assessment.coach_notes|default:""|linebreaksbr }}</td>
+                            <td class="assessment-actions">
+                                {# Conditional Edit/Delete based on permissions #}
+                                {% if user.is_superuser or assessment.submitted_by == user %}
+                                     <a href="{% url 'planning:edit_session_assessment' assessment.id %}" class="btn btn-sm btn-outline-secondary" title="Edit Assessment">
+                                         <i class="bi bi-pencil"></i>
+                                     </a>
+                                     <form method="POST" action="{% url 'planning:delete_session_assessment' assessment.id %}" onsubmit="return confirm('Are you sure you want to delete this assessment?');">
+                                         {% csrf_token %}
+                                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Assessment">
+                                             <i class="bi bi-trash"></i>
+                                         </button>
+                                     </form>
+                                {% endif %}
+                                {# Hide/Unhide Toggle for Superusers #}
+                                {% if user.is_superuser %}
+                                    <form method="POST" action="{% url 'planning:toggle_assessment_visibility' assessment.id %}" style="display: inline-block; margin-left: 5px;">
+                                        {% csrf_token %}
+                                        {% if assessment.is_hidden %}
+                                            <button type="submit" class="btn btn-sm btn-outline-info" title="Make Visible">
+                                                <i class="bi bi-eye-fill"></i>
+                                            </button>
+                                        {% else %}
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Hide Assessment">
+                                                <i class="bi bi-eye-slash-fill"></i>
+                                            </button>
+                                        {% endif %}
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="no-data-msg" style="margin-top: 15px;">No session assessments recorded yet.</p>
+            {% endif %}
+        </details>
     </div>
 
     {# --- Metric Records & CHARTS --- #}
     <div class="profile-section">
         <h3>Metric Records</h3>
-        {# ... Metric sections remain the same ... #}
         {# === Court Sprints === #}
         <h4>Court Sprints <a href="{% url 'planning:add_sprint_record' player.id %}" class="add-data-link" style="font-size: 0.8em; margin-left: 10px;">+ Add</a></h4>
         {% if sprints %}
@@ -344,8 +390,7 @@
             }
             try {
                 const jsonData = JSON.parse(scriptElement.textContent);
-                 // console.log(`[${jsonScriptId}] Parsed data:`, jsonData); // Log parsed data
-                 return jsonData;
+                return jsonData;
             } catch (e) {
                 console.error(`Chart Error: Failed parsing JSON for #${jsonScriptId}:`, e, "\nRaw content:", scriptElement.textContent);
                 return null;
@@ -420,15 +465,15 @@
                         scales: {
                             x: {
                                 title: { display: true, text: 'Date Recorded' },
-                                type: 'category', // Use category scale for date strings
-                                labels: sortedLabels // Explicitly provide labels
+                                type: 'category', 
+                                labels: sortedLabels 
                             },
                             y: { beginAtZero: true, title: { display: true, text: yAxisLabel } }
                         },
                         interaction: { mode: 'nearest', axis: 'x', intersect: false }
                     }
                 });
-                 console.log(`Chart Info: Chart created successfully for ${canvasId}`); // INFO Log
+                 console.log(`Chart Info: Chart created successfully for ${canvasId}`);
             } catch(e) {
                  console.error(`*** Chart Error: Failed creating Chart.js instance for ${canvasId}:`, e);
                  ctx.font = "16px sans-serif"; ctx.fillStyle = "red"; ctx.textAlign = "center";
@@ -436,9 +481,8 @@
             }
         }
 
-        // Create the charts when the DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
-            console.log("DOM Loaded, attempting to create charts..."); // DEBUG Log
+            console.log("DOM Loaded, attempting to create charts...");
             const sprintData = getChartData('sprint-chart-data');
             if (sprintData) createLineChart('sprintChart', sprintData, 'Court Sprint Progress', 'Score (Laps)');
 
@@ -447,8 +491,7 @@
 
             const driveData = getChartData('drive-chart-data');
             if (driveData) createLineChart('driveChart', driveData, 'Backwall Drive Progress', 'Consecutive Count');
-            console.log("Chart creation process finished."); // DEBUG Log
+            console.log("Chart creation process finished.");
         });
     </script>
-    {# --- END JavaScript --- #}
 {% endblock %}
