@@ -1,0 +1,10 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block nav-global %}
+    {# Add your custom link before or after the default "View site" link #}
+    <a href="{% url 'homepage' %}">{% translate 'Return to Main Site' %}</a>
+    {% if site_url %}
+        | <a href="{{ site_url }}">{% translate 'View site' %}</a>
+    {% endif %}
+{% endblock %}
