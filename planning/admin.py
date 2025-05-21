@@ -229,7 +229,7 @@ class SessionAdmin(admin.ModelAdmin):
     )
     date_hierarchy = 'session_date'
     filter_horizontal = ('coaches_attending', 'attendees',) 
-    # inlines = [TimeBlockInline] # Uncomment if TimeBlockInline is defined and used
+    inlines = [TimeBlockInline] 
     readonly_fields = ('assessments_complete',) 
     fields = (
         'school_group',

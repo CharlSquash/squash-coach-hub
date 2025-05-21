@@ -26,24 +26,13 @@ precacheAndRoute(self.__WB_MANIFEST);
 // https://developers.google.com/web/fundamentals/architecture/app-shell
 const fileExtensionRegexp = new RegExp('/[^/?]+\\.[^/]+$');
 registerRoute(
-  // Return false to exempt requests from being fulfilled by index.html.
   ({ request, url }) => {
-    // If this isn't a navigation, skip.
-    if (request.mode !== 'navigate') {
-      return false;
-    } // If this is a URL that starts with /_, skip.
-
-    if (url.pathname.startsWith('/_')) {
-      return false;
-    } // If this looks like a URL for a resource, because it contains // a file extension, skip.
-
-    if (url.pathname.match(fileExtensionRegexp)) {
-      return false;
-    } // Return true to signal that we want to use the handler.
-
-    return true;
+    if (request.mode !== 'navigate') return false;
+    if (url.pathname.startsWith('/_')) return false;
+    if (url.pathname.match(fileExtensionRegexp)) return false;
+    return url.pathname.startsWith('/app/');      // optionally restrict further
   },
-  createHandlerBoundToURL(process.env.PUBLIC_URL + '/index.html')
+  createHandlerBoundToURL(process.env.PUBLIC_URL + '/app/index.html')
 );
 
 // An example runtime caching route for requests that aren't handled by the
