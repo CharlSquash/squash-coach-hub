@@ -9,10 +9,10 @@ from django.core.signing import TimestampSigner, BadSignature, SignatureExpired
 from django.utils.html import strip_tags
 from datetime import timedelta
 
-from planning.models import Session, CoachAvailability
-from planning.notifications import confirmation_signer  # ensure this import is correct
+from planning.models import Session, CoachAvailability  # your models
 
-# Initialize a TimestampSigner (salted) if not already
+
+# Initialize a TimestampSigner for session confirmations
 confirmation_signer = TimestampSigner(salt='planning.session_confirmation')
 
 
@@ -25,7 +25,7 @@ def send_session_confirmation_email(coach_user, session_obj, is_reminder=False):
         return False
 
     token_payload = f"{coach_user.id}:{session_obj.id}"
-    signed_token = confirmation_signer.sign(token_payload)  # include timestamp
+    signed_token = confirmation_signer.sign(token_payload)
 
     SITE_URL = getattr(settings, 'APP_SITE_URL', 'http://127.0.0.1:8000')
 
@@ -47,12 +47,11 @@ def send_session_confirmation_email(coach_user, session_obj, is_reminder=False):
         'session_date': session_obj.session_date.strftime('%A, %d %B %Y'),
         'session_time': session_obj.session_start_time.strftime('%H:%M'),
         'session_group': session_obj.school_group.name if session_obj.school_group else "N/A",
-        # ← Fixed here: use session_obj.venue.name
         'session_venue': session_obj.venue.name if session_obj.venue else "N/A",
         'confirm_url': confirm_url,
         'decline_url': decline_url,
         'is_reminder': is_reminder,
-        'site_name': "SquashSync"
+        'site_name': "SquashSync",
     }
 
     html_message = render_to_string('planning/emails/session_confirmation_email.html', context)
@@ -60,7 +59,13 @@ def send_session_confirmation_email(coach_user, session_obj, is_reminder=False):
     from_email = settings.DEFAULT_FROM_EMAIL
 
     try:
-        send_mail(subject, plain_message, from_email, [coach_user.email], html_message=html_message)
+        send_mail(
+            subject,
+            plain_message,
+            from_email,
+            [coach_user.email],
+            html_message=html_message
+        )
         print(f"Sent session confirmation email to {coach_user.email} for session {session_obj.id}. Reminder: {is_reminder}")
         return True
     except Exception as e:
@@ -70,16 +75,15 @@ def send_session_confirmation_email(coach_user, session_obj, is_reminder=False):
 
 def verify_confirmation_token(token):
     """
-    Verifies a signed token (now expecting a timestamp) and returns the payload.
+    Verifies a signed token (with timestamp) and returns the payload.
     Returns None if the token is invalid or expired.
     """
     try:
-        # max_age=7 days
         payload = confirmation_signer.unsign(token, max_age=timedelta(days=7))
         return payload
     except (BadSignature, SignatureExpired):
-        print(f"Token verification failed: Invalid, tampered, or expired token.")
+        print("Token verification failed: Invalid, tampered, or expired token.")
         return None
     except Exception as e:
-        print(f"An unexpected error occurred during token verification: {e}")
+        print(f"Unexpected error during token verification: {e}")
         return None
