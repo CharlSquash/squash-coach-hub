@@ -1,0 +1,73 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block extrastyle %}{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static "admin/css/forms.css" %}">
+{% endblock %}
+
+{% block coltype %}colM{% endblock %}
+
+{% block bodyclass %}{{ block.super }} app-{{ opts.app_label }} model-{{ opts.model_name }} change-form scheduledclass-generate-sessions{% endblock %}
+
+{% if not is_popup %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+&rsaquo; <a href="{% url 'admin:planning_scheduledclass_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+&rsaquo; {{ title }}
+</div>
+{% endblock %}
+{% endif %}
+
+{% block content %}
+<div id="content-main">
+    <form method="post">
+        {% csrf_token %}
+        {# These hidden fields are crucial for admin actions with intermediate pages #}
+        <input type="hidden" name="action" value="generate_sessions_action">
+        <input type="hidden" name="select_across" value="0"> {# Or handle this based on actual select_across if used #}
+        {% for obj in queryset %}
+        <input type="hidden" name="{{ action_checkbox_name }}" value="{{ obj.pk }}">
+        {% endfor %}
+
+        <div>
+            {% if form.errors %}
+                <p class="errornote">
+                {% if form.errors.items|length == 1 %}{% translate "Please correct the error below." %}{% else %}{% translate "Please correct the errors below." %}{% endif %}
+                </p>
+                {{ form.non_field_errors }}
+            {% endif %}
+
+            <fieldset class="module aligned">
+                <h2>{{ title }}</h2>
+                <p>You have selected the following {{ queryset|length }} scheduled class rule{{ queryset|pluralize }}:</p>
+                <ul>
+                    {% for rule in queryset %}
+                        <li>{{ rule }}</li>
+                    {% endfor %}
+                </ul>
+                <p>Please specify the date range for which to generate sessions:</p>
+                
+                {% for field in form %}
+                    <div class="form-row{% if field.errors %} errors{% endif %}">
+                        {{ field.errors }}
+                        <div>
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% if field.help_text %}
+                                <div class="help">{{ field.help_text|safe }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </fieldset>
+
+            <div class="submit-row">
+                {# Use a specific name for this submit button to differentiate from initial action submission #}
+                <input type="submit" name="generate_sessions_submit" value="{% translate 'Generate Sessions' %}" class="default">
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

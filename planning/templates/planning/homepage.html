@@ -1,252 +1,401 @@
-{% extends 'planning/base.html' %}
+{% extends "planning/base.html" %}
 {% load static %}
 
-{# Set a specific title for this page #}
-{% block title %}SquashSync - Home{% endblock %}
+{% block title %}{{ page_title|default:"Dashboard" }} - SquashSync{% endblock %}
 
-{# Add a specific class to the body tag for this page only #}
-{% block body_class %}homepage-body{% endblock %}
-
-{# Add page-specific CSS, including the homepage banner and SoloSync card styles #}
 {% block extra_head %}
-    <style>
-        /* Styles for the banner header */
-        .homepage-header {
-            padding: 50px 5%; /* Adjusted padding */
-            background-image: url("{% static 'planning/images/squash_banner.png' %}"); /* Corrected Banner Image */
-            background-size: cover; background-position: center; text-align: left;
-            margin-bottom: 30px; border-radius: 8px; color: #fff;
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.7); position: relative; overflow: hidden;
-        }
-        .homepage-header h1, .homepage-header p { position: relative; z-index: 2; }
-        .homepage-header h1 { font-size: 2.8em; margin: 0 0 10px 0; font-weight: 600; }
-        .homepage-header p { font-size: 1.2em; margin: 0; opacity: 0.95; max-width: 60%; }
+<style>
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Responsive columns */
+        gap: 20px;
+        margin-top: 20px;
+    }
+    .dashboard-card {
+        background-color: var(--container-bg, #fff);
+        border: 1px solid var(--border-color, #ddd);
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .dashboard-card h2 {
+        margin-top: 0;
+        font-size: 1.3em;
+        color: var(--heading-color);
+        border-bottom: 1px solid var(--border-light, #eee);
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+        display: flex; /* For icon alignment */
+        align-items: center;
+    }
+    .dashboard-card h2 i { /* Icon spacing */
+        margin-right: 8px;
+    }
+    .dashboard-card ul {
+        list-style: none;
+        padding-left: 0;
+        margin-bottom: 0;
+    }
+    .dashboard-card li {
+        padding: 8px 0;
+        border-bottom: 1px dotted var(--border-light, #eee);
+        font-size: 0.95em;
+        display: flex; 
+        justify-content: space-between;
+        align-items: flex-start; 
+        gap: 10px; 
+    }
+    .dashboard-card li .list-item-content { /* General class for main content in a list item */
+        flex-grow: 1; 
+    }
+    .dashboard-card li:last-child {
+        border-bottom: none;
+    }
+    .dashboard-card a {
+        text-decoration: none;
+        color: var(--link-color);
+    }
+    .dashboard-card a:hover {
+        text-decoration: underline;
+    }
+    .dashboard-card .session-time, 
+    .dashboard-card .assessment-meta,
+    .dashboard-card .staffing-alert-meta,
+    .dashboard-card .confirmation-session-details { /* Class for session details in confirmation card */
+        font-size: 0.85em;
+        color: var(--subheading-color);
+        display: block; 
+        margin-top: 3px;
+        line-height: 1.4;
+    }
+     .dashboard-card .staffing-alert-meta strong { 
+        color: var(--text-color); 
+    }
+    .dashboard-card .assessment-notes {
+        font-size: 0.9em;
+        color: var(--text-color);
+        margin-top: 5px;
+        padding-left: 10px;
+        border-left: 2px solid var(--border-accent);
+    }
+    .no-data {
+        color: var(--subheading-color);
+        font-style: italic;
+    }
+    .unstaffed-alert, .staffing-problem-alert, .confirmation-alert { /* Generalizing alert style */
+        background-color: var(--action-del-bg-light, #f8d7da); 
+        color: var(--action-del-text, #721c24);
+        padding: 10px 15px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        border: 1px solid var(--action-del-border, #f5c6cb);
+    }
+    .confirmation-alert.declined { /* Specific style for declined status */
+         background-color: var(--border-light, #e9ecef);
+         color: var(--subheading-color, #495057);
+         border-color: var(--border-color, #ced4da);
+    }
+    html.dark-mode .unstaffed-alert, html.dark-mode .staffing-problem-alert, html.dark-mode .confirmation-alert {
+        background-color: var(--action-del-bg-dark, #58151c);
+        color: var(--action-del-text-dark, #f1aeb5);
+        border-color: var(--action-del-border-dark, #f17c89);
+    }
+    html.dark-mode .confirmation-alert.declined {
+        background-color: var(--body-bg, #343a40); /* Darker bg for declined in dark mode */
+        color: var(--subheading-color, #adb5bd);
+        border-color: var(--border-color, #495057);
+    }
 
-        /* Card grid and card styles */
-        .card-grid { display: grid; gap: 25px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin-top: 20px; }
-        .card {
-            background-color: var(--container-bg, white); border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1); padding: 20px;
-            border: 1px solid var(--border-color, #ddd); display: flex;
-            flex-direction: column; transition: transform 0.2s ease-in-out;
-        }
-        .card:hover { transform: translateY(-5px); }
-        .card h2 {
-            font-size: 1.4em; color: var(--heading-color, #343a40); border-bottom: 1px solid var(--border-light, #eee);
-            padding-bottom: 10px; margin-bottom: 15px; margin-top: 0; display: flex; align-items: center;
-        }
-        .card h2 i { margin-right: 8px; font-size: 1em; opacity: 0.8; }
-        .card p { margin-bottom: 15px; color: var(--text-color); line-height: 1.5; flex-grow: 1; }
-         .card ul { list-style: none; padding: 0; margin: 0; flex-grow: 1; }
-
-        /* Session list item styling within card */
-        .session-list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px dotted var(--border-light, #eee); font-size: 0.95em; }
-        .session-list-item:last-child { border-bottom: none; }
-        .session-info strong { display: block; font-size: 1.05em; margin-bottom: 3px; }
-        .session-info span { font-size: 0.9em; color: var(--subheading-color, #555); }
-
-        /* Link/Button styling within card */
-        .session-link a, a.session-link, .card .btn { padding: 8px 15px; background-color: var(--link-color, #007bff); color: white !important; border-radius: 4px; text-decoration: none; font-size: 0.9em; white-space: nowrap; display: inline-block; border: none; cursor: pointer; text-align: center; }
-        .session-link a:hover, a.session-link:hover, .card .btn:hover { background-color: var(--link-hover-color, #0056b3); text-decoration: none; }
-        .card .session-link, .card .card-actions { margin-top: auto; padding-top: 15px; text-align: right; }
-         .card .card-actions { text-align: left; }
-
-        /* Tools list styling */
-        .other-apps-list a { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px dotted var(--border-light, #eee); text-decoration: none; color: var(--link-color); font-weight: normal; }
-        .other-apps-list a:last-child { border-bottom: none; }
-        .other-apps-list a:hover { color: var(--link-hover-color); }
-        .other-apps-list a i { margin-right: 8px; font-size: 1.1em; width: 20px; text-align: center; }
-
-        .no-data-msg { color: var(--subheading-color, #666); font-style: italic; font-size: 0.9em; margin-top: 10px; }
-
-        /* --- SoloSync Log Card Styles (Simplified) --- */
-        .solosync-logs ul { list-style: none; padding: 0; margin-top: 10px; }
-        .solosync-logs .log-item { padding: 8px 0px; border-bottom: 1px dotted var(--border-light); font-size: 0.9em; display: flex; flex-direction: column; justify-content: center; }
-        .solosync-logs .log-item:last-child { border-bottom: none; }
-        .solosync-logs .log-item strong { color: var(--text-color); margin-bottom: 2px; }
-        .solosync-logs .log-item .log-details { font-size: 0.85em; color: var(--subheading-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .solosync-logs { cursor: pointer; }
-
-        /* --- Staffing Alert Card Styles --- */
-        .staffing-alert {
-            background-color: var(--warning-bg, #fff3cd); /* Use a warning background */
-            border-left: 5px solid var(--warning-border, #ffeeba);
-        }
-        html.dark-mode .staffing-alert {
-            background-color: var(--warning-dark-bg, #664d03);
-            border-left-color: var(--warning-dark-border, #ffc107);
-        }
-        .staffing-alert h2 { color: var(--warning-text, #856404); }
-        html.dark-mode .staffing-alert h2 { color: var(--warning-dark-text, #ffda6a); }
-        .staffing-alert .alert-count {
-            font-size: 1.5em;
-            font-weight: bold;
-            color: var(--action-del-text); /* Use a danger color for emphasis */
-            display: block;
-            text-align: center;
-            margin: 10px 0;
-        }
-        html.dark-mode .staffing-alert .alert-count { color: #f5c6cb; }
+    .unstaffed-alert a, .staffing-problem-alert a, .confirmation-alert a {
+        color: var(--action-del-text, #721c24);
+        font-weight: bold;
+        text-decoration: underline;
+    }
+    html.dark-mode .unstaffed-alert a, html.dark-mode .staffing-problem-alert a, html.dark-mode .confirmation-alert a {
+        color: var(--action-del-text-dark, #f1aeb5);
+    }
+    html.dark-mode .confirmation-alert.declined a {
+        color: var(--link-color); /* Use normal link color for declined alert links */
+    }
 
 
-        /* Dark Mode Compatibility */
-        html.dark-mode .session-info span { color: var(--subheading-color); }
-        html.dark-mode .other-apps-list a { color: var(--link-color); }
-        html.dark-mode .other-apps-list a:hover { color: var(--link-hover-color); }
-        html.dark-mode .solosync-logs .log-item { border-bottom-color: var(--border-light); }
-        html.dark-mode .solosync-logs .log-item strong { color: var(--text-color); }
-        html.dark-mode .solosync-logs .log-item .log-details { color: var(--subheading-color); }
+    .dashboard-card .card-link-button {
+        display: inline-block;
+        margin-top: 15px;
+        padding: 8px 15px;
+        background-color: var(--link-color);
+        color: var(--container-bg, #fff);
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    .dashboard-card .card-link-button:hover {
+        background-color: var(--link-hover-color);
+        text-decoration: none;
+    }
+    .mark-reviewed-form {
+        display: inline; 
+    }
+    .mark-reviewed-btn {
+        padding: 3px 8px;
+        font-size: 0.8em;
+        background-color: var(--action-add-bg);
+        color: var(--action-add-text);
+        border: 1px solid var(--action-add-border);
+        border-radius: 4px;
+        cursor: pointer;
+        white-space: nowrap; 
+    }
+    .mark-reviewed-btn:hover {
+        background-color: var(--action-add-hover);
+    }
+    .mark-reviewed-btn i {
+        font-size: 0.9em; 
+    }
+    .confirmation-actions {
+        margin-top: 10px;
+        display: flex;
+        gap: 10px;
+    }
+    .confirmation-actions .btn {
+        flex-grow: 1; /* Make buttons take equal width */
+        padding: 6px 10px;
+        font-size: 0.85em;
+    }
+    .confirmation-actions textarea {
+        width: 100%;
+        padding: 6px;
+        border: 1px solid var(--border-color);
+        border-radius: 3px;
+        font-size: 0.85em;
+        margin-top: 5px;
+        min-height: 40px;
+        box-sizing: border-box;
+        background-color: var(--input-bg);
+        color: var(--text-color);
+    }
 
-    </style>
+
+</style>
 {% endblock %}
 
-{# Block for the main page content #}
 {% block content %}
-    <div class="homepage-header">
-        <h1>SquashSync</h1>
-        <p>Mental Focus. Physical Precision. Perfect Sync.</p>
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+</div>
+
+{# Superuser Specific Content (Alerts) #}
+{% if user.is_superuser %}
+    {% if unstaffed_session_count > 0 %}
+        <div class="unstaffed-alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Alert:</strong> There {% if unstaffed_session_count == 1 %}is 1 unstaffed session{% else %}are {{ unstaffed_session_count }} unstaffed sessions{% endif %} in the next two weeks.
+            <a href="{% url 'planning:session_staffing' %}">Go to Staffing Page</a>
+        </div>
+    {% endif %}
+    {% if unconfirmed_staffing_alerts %}
+        <div class="staffing-problem-alert">
+            <i class="bi bi-person-fill-exclamation"></i>
+            <strong>Staffing Alert:</strong> The following upcoming sessions have unconfirmed or declined coaches:
+            <ul style="margin-top: 5px; padding-left: 20px;">
+                {% for alert_item in unconfirmed_staffing_alerts %}
+                    <li style="padding: 3px 0; border-bottom: 1px solid var(--action-del-border); margin-top: 3px;">
+                        <a href="{% url 'planning:session_detail' alert_item.session.id %}">
+                            {{ alert_item.session.session_date|date:"D, d M" }} - {{ alert_item.session.session_start_time|time:"H:i" }}
+                            {% if alert_item.session.school_group %}({{ alert_item.session.school_group.name }}){% endif %}
+                        </a>
+                        <div style="font-size:0.85em; margin-left:10px;">
+                        Unconfirmed/Declined:
+                        {% for coach_status in alert_item.unconfirmed_coaches %}
+                            <strong>{{ coach_status.name }}</strong> ({{ coach_status.status }}){% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+            <p style="margin-top:10px;"><a href="{% url 'planning:session_staffing' %}">Go to Session Staffing page for details.</a></p>
+        </div>
+    {% endif %}
+{% endif %}
+
+<div class="dashboard-grid">
+    {# Card 1: Upcoming Sessions (Visible to all staff) #}
+    <div class="dashboard-card">
+        <h2><i class="bi bi-calendar-event"></i> Upcoming Sessions</h2>
+        {% if upcoming_sessions %}
+            <ul>
+                {% for session in upcoming_sessions %}
+                <li>
+                    <div class="list-item-content"> 
+                        <a href="{% url 'planning:session_detail' session.id %}">
+                            {{ session.session_date|date:"D, d M Y" }} - {{ session.session_start_time|time:"H:i" }}
+                            {% if session.school_group %}({{ session.school_group.name }}){% endif %}
+                        </a>
+                        <span class="session-time">
+                            {% if session.venue_name %}Venue: {{ session.venue_name }}{% endif %}
+                            {% if session.is_cancelled %}<strong style="color: var(--action-del-text);"> (CANCELLED)</strong>{% endif %}
+                        </span>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="no-data">No upcoming sessions scheduled{% if not user.is_superuser %} for you{% endif %}.</p>
+        {% endif %}
+        <a href="{% url 'planning:session_calendar' %}" class="card-link-button" style="margin-top:15px;">View Full Calendar</a>
     </div>
 
-    <div class="card-grid">
+    {# Card 2: Manage Players (Visible to all staff) #}
+    {% if user.is_staff %}
+    <div class="dashboard-card">
+        <h2><i class="bi bi-people-fill"></i> Manage Players</h2>
+        <p>View player profiles, track progress, and manage group assignments.</p>
+        <a href="{% url 'planning:players_list' %}" class="card-link-button">Go to Players List</a>
+    </div>
+    {% endif %}
 
-        {# --- Upcoming Sessions Card --- #}
-        <div class="card upcoming-sessions">
-            <h2><i class="bi bi-calendar-check"></i> Upcoming Sessions</h2>
-            {% if upcoming_sessions %}
-                 {% for session in upcoming_sessions %}
-                     <div class="session-list-item">
-                         <div class="session-info">
-                             <strong>{% if session.school_group %}{{ session.school_group.name }}{% else %}General Session{% endif %}</strong>
-                             <span>{{ session.session_date|date:"D, M j" }} at {{ session.session_start_time|time:"H:i" }}</span>
-                         </div>
-                         <div class="session-link">
-                             <a href="{% url 'planning:session_detail' session.id %}">View Plan</a>
-                         </div>
-                     </div>
-                 {% endfor %}
-            {% else %}
-                <p class="no-data-msg">No upcoming sessions found.</p>
-            {% endif %}
-            <div style="margin-top: 15px;">
-                 <a href="{% url 'planning:session_list' %}" style="font-size: 0.9em;">View Full Schedule...</a>
-            </div>
-        </div>
 
-        {# --- Feedback Reminders Card --- #}
-        <div class="card feedback-reminders">
-            <h2><i class="bi bi-journal-check"></i> Feedback Reminders</h2>
-            <p style="font-size: 0.9em; color: var(--subheading-color); margin-top: -10px; margin-bottom: 15px;">
-                Sessions recently completed that may need assessment:
-            </p>
-            {% if recent_sessions_for_feedback %}
-                {% for session in recent_sessions_for_feedback %}
-                    <div class="session-list-item">
-                        <div class="session-info">
-                            <strong>{% if session.school_group %}{{ session.school_group.name }}{% else %}General Session{% endif %}</strong>
-                            <span>Finished: {{ session.end_datetime|date:"D, M j H:i" }}</span>
+    {# Card 3: Content varies by user type (Assessments / Confirmations) #}
+    {% if user.is_superuser %}
+        <div class="dashboard-card">
+            <h2><i class="bi bi-card-checklist"></i> Recent Player Assessments (To Review)</h2>
+            {% if all_coach_assessments %}
+                <ul>
+                    {% for assessment in all_coach_assessments %}
+                    <li>
+                        <div class="assessment-content"> 
+                            <strong><a href="{% url 'planning:player_profile' assessment.player.id %}">{{ assessment.player.full_name }}</a></strong>
+                            <span class="assessment-meta">
+                                Session: <a href="{% url 'planning:session_detail' assessment.session.id %}">{{ assessment.session.session_date|date:"d M Y" }}</a>
+                                {% if assessment.session.school_group %} ({{ assessment.session.school_group.name }}){% endif %}<br>
+                                Assessed by: 
+                                {% if assessment.submitted_by %}
+                                    {{ assessment.submitted_by.get_full_name|default:assessment.submitted_by.username }}
+                                {% else %}
+                                    Unknown
+                                {% endif %}
+                                {% if assessment.is_hidden %} <span style="color: var(--subheading-color); font-style: italic;">(Hidden from coaches)</span>{% endif %}
+                            </span>
+                            {% if assessment.coach_notes %}
+                                <p class="assessment-notes">Notes: {{ assessment.coach_notes|truncatewords:15 }}</p>
+                            {% endif %}
                         </div>
-                        <div class="session-link">
-                            <a href="{% url 'planning:pending_assessments' %}" title="Go to Pending Assessments Page">
-                                Review Assessments
-                            </a>
+                        <form method="POST" action="{% url 'planning:toggle_assessment_superuser_review_status' assessment.id %}" class="mark-reviewed-form">
+                            {% csrf_token %}
+                            <button type="submit" class="mark-reviewed-btn" title="Mark as Reviewed">
+                                <i class="bi bi-check-circle-fill"></i> Mark Reviewed
+                            </button>
+                        </form>
+                    </li>
+                    {% endfor %}
+                </ul>
+                 <a href="{% url 'admin:planning_sessionassessment_changelist' %}" class="card-link-button" style="margin-top:15px;">View All Assessments (Admin)</a>
+            {% else %}
+                <p class="no-data">No unreviewed assessments found.</p>
+            {% endif %}
+        </div>
+    {% elif user.is_staff %} {# Regular Coach #}
+        {# Card 3a: Direct Confirmation for Tomorrow's Sessions #}
+        {% if sessions_for_direct_confirmation %}
+        <div class="dashboard-card">
+            <h2><i class="bi bi-calendar-check"></i> Confirm for Tomorrow's Sessions</h2>
+            <ul>
+                {% for item in sessions_for_direct_confirmation %}
+                <li>
+                    <div class="list-item-content">
+                        <strong>
+                            {{ item.session.session_date|date:"D, d M" }} - {{ item.session.session_start_time|time:"H:i" }}
+                            {% if item.session.school_group %}({{ item.session.school_group.name }}){% endif %}
+                        </strong>
+                        <span class="confirmation-session-details">
+                            Venue: {{ item.session.venue_name|default:"N/A" }}
+                            {% if item.current_status_is_declined %}
+                                <br><strong style="color: var(--action-del-text);">You previously declined.</strong>
+                                {% if item.current_notes %}Notes: {{ item.current_notes }}{% endif %}
+                            {% endif %}
+                        </span>
+                        <div class="confirmation-actions">
+                            <form method="POST" action="{% url 'planning:direct_confirm_attendance' item.session.id %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-primary">Confirm</button>
+                            </form>
+                            <form method="POST" action="{% url 'planning:direct_decline_attendance' item.session.id %}" style="display: inline;">
+                                {% csrf_token %}
+                                {# Consider adding a small notes field here for declining if needed, or link to a page with notes #}
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Decline</button>
+                            </form>
                         </div>
                     </div>
+                </li>
                 {% endfor %}
-                 {% if recent_sessions_for_feedback|length > 2 %}
-                     <div style="margin-top: 15px; text-align: right;">
-                         <a href="{% url 'planning:pending_assessments' %}" style="font-size: 0.9em;">View All Pending...</a>
-                     </div>
-                 {% endif %}
-            {% else %}
-                <p class="no-data-msg">No recent sessions pending assessment.</p>
-            {% endif %}
-        </div>
-
-        {# --- Player Management Card --- #}
-        <div class="card players-card">
-            <h2><i class="bi bi-person-lines-fill"></i> Players</h2>
-            <p>View player profiles, track progress, manage group assignments, and record metrics.</p>
-             <div class="card-actions">
-                 <a href="{% url 'planning:players_list' %}" class="btn">
-                    Go to Players <i class="bi bi-arrow-right-short"></i>
-                 </a>
-             </div>
-        </div>
-
-        {# --- SoloSync Logs Card --- #}
-        <div class="card solosync-logs" onclick="window.location.href='{% url 'planning:solosync_log_list' %}';" title="Click to view all SoloSync logs">
-             <h2><i class="bi bi-phone-vibrate"></i> Recent SoloSync Logs</h2>
-             {% if recent_solo_logs %}
-                 <ul> {# Simple list #}
-                     {% for log in recent_solo_logs %}
-                         <li class="log-item" data-log-id="{{ log.id }}">
-                             <strong>{{ log.player.first_name|default:log.player.username }} {{ log.player.last_name|default:'' }}</strong>
-                             <span class="log-details">
-                                 Completed: {{ log.routine.name|default:'Unknown Routine' }}
-                                 on {{ log.completed_at|date:"D, M j" }}
-                             </span>
-                         </li>
-                     {% endfor %}
-                 </ul>
-                 <div style="margin-top: 15px; text-align: right;">
-                      <a href="{% url 'planning:solosync_log_list' %}" style="font-size: 0.9em;">View All Solo Logs...</a>
-                 </div>
-             {% else %}
-                 <p class="no-data-msg">No recent SoloSync logs submitted.</p>
-             {% endif %}
-         </div>
-
-        {# --- REMOVED Create Solo Routine Card --- #}
-        {# This section has been removed to prevent NoReverseMatch #}
-        {# --- END REMOVED Create Solo Routine Card --- #}
-
-        {# --- Staffing Alert Card (for Superusers) --- #}
-        {% if request.user.is_superuser %}
-        <div class="card staffing-alert">
-            <h2><i class="bi bi-person-badge"></i> Session Staffing Alert</h2>
-            {% if unstaffed_session_count > 0 %}
-                <p>
-                    There
-                    {% if unstaffed_session_count == 1 %}
-                        is <span class="alert-count">1</span> upcoming session
-                    {% else %}
-                        are <span class="alert-count">{{ unstaffed_session_count }}</span> upcoming sessions
-                    {% endif %}
-                    in the next two weeks that currently have no coaches assigned.
-                </p>
-            {% else %}
-                <p>All upcoming sessions in the next two weeks appear to have coaches assigned.</p>
-            {% endif %}
-            <div class="card-actions" style="text-align: right;">
-                <a href="{% url 'planning:session_staffing' %}" class="btn">
-                    Manage Staffing <i class="bi bi-arrow-right-short"></i>
-                </a>
-            </div>
+            </ul>
         </div>
         {% endif %}
-        {# --- END Staffing Alert Card --- #}
 
-
-        {# --- Tools & Resources Card --- #}
-        <div class="card other-apps">
-            <h2><i class="bi bi-tools"></i> Tools & Resources</h2>
-            <div class="other-apps-list">
-                <a href="https://musical-squirrel-d7b18e.netlify.app/" target="_blank" rel="noopener noreferrer">
-                    <i class="bi bi-box-arrow-up-right"></i>
-                    Shot IQ
-                </a>
-                <a href="{% url 'admin:index' %}">
-                    <i class="bi bi-gear-fill"></i>
-                    Admin Site
-                </a>
-            </div>
+        {# Card 3b: My Pending Assessment Reminders #}
+        <div class="dashboard-card">
+            <h2><i class="bi bi-pencil-square"></i> My Pending Assessment Reminders</h2>
+            {% if recent_sessions_for_feedback %}
+                <ul>
+                    {% for session in recent_sessions_for_feedback %}
+                    <li>
+                        <div class="list-item-content"> 
+                            <a href="{% url 'planning:session_detail' session.id %}">
+                                {{ session.session_date|date:"D, d M Y" }} - {{ session.session_start_time|time:"H:i" }}
+                                {% if session.school_group %}({{ session.school_group.name }}){% endif %}
+                            </a>
+                            <span class="session-time">Assess players for this session.</span>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="no-data">No pending assessment reminders for you. Great job!</p>
+            {% endif %}
+             <a href="{% url 'planning:pending_assessments' %}" class="card-link-button" style="margin-top: 15px;">View All My Pending Assessments</a>
         </div>
+    {% endif %}
 
-    </div> {# End card-grid #}
+    {# Card 4: Recent SoloSync Logs (Common for all staff) #}
+    {% if solosync_imported and SoloSessionLog is not None %}
+    <div class="dashboard-card">
+        <h2><i class="bi bi-activity"></i> Recent SoloSync Activity</h2>
+        {% if recent_solo_logs %}
+            <ul>
+                {% for log in recent_solo_logs %}
+                <li>
+                    <div class="list-item-content"> 
+                        <strong>
+                            {% if log.player %}
+                                {{ log.player.full_name|default:log.player.username }}
+                            {% else %}
+                                Unknown Player
+                            {% endif %}
+                        </strong> completed 
+                        <a href="#">"{{ log.routine.name }}"</a> 
+                        <span class="session-time">{{ log.completed_at|date:"D, d M Y H:i" }}</span>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="no-data">No recent SoloSync activity.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {# Card 5: Admin & Management (Superuser only) #}
+    {% if user.is_superuser %}
+    <div class="dashboard-card">
+        <h2><i class="bi bi-gear-fill"></i> Admin & Management</h2>
+        <ul>
+            <li><a href="{% url 'admin:index' %}">Full Admin Site</a></li>
+            <li><a href="{% url 'planning:session_staffing' %}">Session Staffing</a></li>
+            <li><a href="{% url 'admin:planning_coach_changelist' %}">Manage Coaches (Admin)</a></li>
+            <li><a href="{% url 'admin:planning_payslip_changelist' %}">Manage Payslips (Admin)</a></li>
+        </ul>
+    </div>
+    {% endif %}
+
+</div>
 {% endblock %}
-
-{# Block for page-specific JavaScript #}
-{% block extra_scripts %}
-{# Removed carousel JavaScript #}
-{% endblock %}
-

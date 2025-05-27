@@ -4,84 +4,78 @@
 {% block title %}Session Calendar - SquashSync{% endblock %}
 
 {% block extra_head %}
-    {# FullCalendar CSS is expected to be handled by index.global.min.js #}
-
     <style>
-        /* Basic styling for the calendar container and navigation */
+        /* General Page & Container */
+        .page-header h1 {
+            font-size: 1.4em; /* Adjusted page title */
+            margin-bottom: 10px;
+        }
         .calendar-container {
-            margin-top: 20px;
+            margin-top: 10px; /* Reduced top margin */
             margin-bottom: 20px;
-            background-color: var(--container-bg, #fff); /* Use theme variable or default */
-            padding: 20px;
+            background-color: var(--container-bg, #fff);
+            padding: 5px; /* Minimal padding for the container itself */
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* Softer shadow */
         }
         #sessionCalendar {
-            max-width: 1100px;
+            max-width: 100%; /* Allow calendar to use full width of its container */
             margin: 0 auto;
-            color: var(--text-color); /* Ensure calendar text uses theme color */
+            color: var(--text-color);
         }
-        .calendar-navigation {
+
+        /* FullCalendar Theming & Mobile Adjustments */
+        /* Toolbar customization */
+        #sessionCalendar .fc-header-toolbar {
             display: flex;
-            justify-content: space-between;
+            flex-direction: column; /* Stack sections for mobile */
+            padding: 5px 0px !important; /* Reduced padding */
+            gap: 8px;
+            margin-bottom: 8px !important;
+        }
+        #sessionCalendar .fc-toolbar-chunk { /* Each part of the toolbar (left, center, right) */
+            display: flex;
+            justify-content: center; /* Center items within each chunk */
             align-items: center;
-            margin-bottom: 20px;
-            padding: 10px;
-            background-color: var(--container-light-bg, #f8f9fa); /* Use theme variable or default */
-            border-radius: 5px;
+            gap: 5px; /* Space between buttons in a chunk */
+            width: 100%;
         }
-        .calendar-navigation a, .calendar-navigation span {
-            padding: 8px 15px;
-            text-decoration: none;
-            color: var(--link-color);
-            font-weight: bold;
+         /* Custom buttons in toolbar */
+        #sessionCalendar .fc-button.fc-prevMonthButton-button, /* Target generated class */
+        #sessionCalendar .fc-button.fc-nextMonthButton-button, /* Target generated class */
+        #sessionCalendar .fc-button.fc-downloadCsvButton-button { /* Target generated class */
+            font-size: 0.75em !important; /* Smaller custom buttons */
+            padding: .3em .5em !important;
+            line-height: 1.4 !important;
+            background-color: var(--link-color) !important;
+            border-color: var(--link-color) !important;
+            color: var(--container-bg, #fff) !important;
+            text-transform: none !important; /* Keep text as is */
         }
-        .calendar-navigation a:hover {
-            background-color: var(--link-hover-color, #e9ecef); /* Use link-hover for bg or create specific var */
-            color: var(--container-bg); /* Example: text color change on hover */
-            border-radius: 4px;
+        #sessionCalendar .fc-button.fc-prevMonthButton-button:hover, /* Target generated class */
+        #sessionCalendar .fc-button.fc-nextMonthButton-button:hover, /* Target generated class */
+        #sessionCalendar .fc-button.fc-downloadCsvButton-button:hover { /* Target generated class */
+            background-color: var(--link-hover-color) !important;
         }
-        .calendar-navigation .current-month {
-            font-size: 1.2em;
-            color: var(--heading-color);
-        }
-
-        /* Styling for the download button */
-        .download-schedule-button {
-            display: inline-block;
-            padding: 8px 15px;
-            margin-top: 10px; /* Space it from the calendar navigation */
-            margin-bottom: 10px;
-            background-color: var(--link-color); /* Use a theme color */
-            color: var(--container-bg, #fff); /* Text color for the button */
-            text-decoration: none;
-            border-radius: 4px;
-            font-weight: bold;
-            text-align: center;
-            border: 1px solid var(--link-color);
-            cursor: pointer;
-            transition: background-color 0.2s ease, color 0.2s ease;
-        }
-        .download-schedule-button:hover {
-            background-color: var(--link-hover-color);
-            color: var(--container-bg, #fff);
+        #sessionCalendar .fc-button .fc-icon {
+             font-size: 1em; /* Ensure icons are not overly large */
         }
 
-
-        /* Enhanced Styling for FullCalendar elements to respect theme */
         #sessionCalendar .fc-toolbar-title {
             color: var(--heading-color) !important;
-            font-size: 1.5em; /* Make title a bit larger */
+            font-size: 1.1em !important; 
+            margin: 0 5px !important; /* Adjust margin for title */
         }
-        #sessionCalendar .fc-button { /* Style FullCalendar's own buttons */
+        #sessionCalendar .fc-button { /* General FC buttons (today, view switchers) */
             background-color: var(--link-color) !important; 
             border: 1px solid var(--link-color) !important; 
             color: var(--container-bg, #fff) !important; 
-            text-transform: capitalize;
             opacity: 0.9;
-            transition: opacity 0.2s ease-in-out;
+            padding: .2em .3em !important; 
+            font-size: 0.75em !important; 
+            line-height: 1.4;
         }
-        #sessionCalendar .fc-button:hover {
+         #sessionCalendar .fc-button:hover {
             background-color: var(--link-hover-color) !important;
             border-color: var(--link-hover-color) !important;
             opacity: 1;
@@ -91,61 +85,104 @@
             border-color: var(--border-light, #ccc) !important;
             color: var(--subheading-color, #666) !important;
         }
-        #sessionCalendar .fc-button-primary.fc-button-active {
+        #sessionCalendar .fc-button-primary.fc-button-active,
+        #sessionCalendar .fc-button-primary:not(:disabled):active {
             background-color: var(--heading-color) !important; 
             border-color: var(--heading-color) !important;
             color: var(--container-bg, #fff) !important;
         }
-        #sessionCalendar .fc-button-primary.fc-button-active:hover {
-             background-color: var(--heading-color) !important;
-             opacity: 0.85;
-        }
+
+        /* Calendar Grid */
         #sessionCalendar .fc-daygrid-day-number { 
             color: var(--text-color) !important;
-            padding: 5px;
-            font-size: 0.9em;
+            padding: 2px; 
+            font-size: 0.7em; 
         }
-        #sessionCalendar .fc-col-header-cell-cushion { 
+        #sessionCalendar .fc-col-header-cell-cushion { /* Sun, Mon, Tue headers */
              color: var(--subheading-color) !important;
-             font-weight: bold;
-             padding: 8px 0;
+             font-weight: normal; 
+             padding: 3px 0; 
+             font-size: 0.7em; 
         }
         #sessionCalendar .fc-day-today { 
-            background-color: var(--action-add-bg, rgba(212, 237, 218, 0.5)) !important; 
+            background-color: var(--action-add-bg, rgba(212, 237, 218, 0.2)) !important; 
         }
-        #sessionCalendar .fc-daygrid-day:hover { 
-            background-color: var(--container-light-bg, #f0f0f0);
-        }
-        #sessionCalendar .fc-event {
-            border: 1px solid var(--link-color);
-            background-color: var(--link-color);
-            color: var(--container-bg, #fff); 
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-size: 0.85em;
+        
+        /* Event Styling */
+        #sessionCalendar .fc-event { 
+            padding: 1px 3px; 
+            border-radius: 2px; 
+            font-size: 0.7em; 
             cursor: pointer;
+            overflow: hidden; 
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            border-width: 1px; 
+            border-style: solid;
+            line-height: 1.3; 
         }
-        #sessionCalendar .fc-event:hover {
-            opacity: 0.85;
+        #sessionCalendar .fc-event:hover { opacity: 0.85; }
+        #sessionCalendar .fc-event-main { color: inherit !important; }
+        #sessionCalendar .fc-daygrid-event-dot {
+            border: 4px solid var(--fc-event-border-color, var(--link-color)); 
         }
-        #sessionCalendar .fc-event.cancelled-event { 
-            background-color: var(--border-color, #ccc) !important;
-            border-color: var(--subheading-color, #aaa) !important;
-            color: var(--subheading-color, #666) !important;
-        }
-        #sessionCalendar .fc-event.cancelled-event .fc-event-title {
-            text-decoration: line-through;
+        #sessionCalendar .fc-daygrid-more-link { 
+            font-size: 0.7em;
+            padding: 1px 3px;
+            margin-top: 1px;
         }
 
-        /* Modal styling */
-        .modal { display: none; position: fixed; z-index: 1055; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
-        .modal-content { background-color: var(--card-bg-color, #fefefe); color: var(--text-color); margin: 10% auto; padding: 20px; border: 1px solid var(--border-color, #888); width: 80%; max-width: 600px; border-radius: 8px; position: relative; }
-        .modal-header { padding-bottom: 10px; border-bottom: 1px solid var(--border-color, #eee); margin-bottom: 15px; }
-        .modal-header h2 { margin: 0; color: var(--heading-color); }
-        .close-button { color: var(--icon-color, #aaa); float: right; font-size: 28px; font-weight: bold; position: absolute; top: 10px; right: 20px; }
-        .close-button:hover, .close-button:focus { color: var(--text-color); text-decoration: none; cursor: pointer; }
-        .modal-body p { margin-bottom: 8px; }
+        /* Modal styling (responsive) */
+        .modal { display: none; position: fixed; z-index: 1055; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
+        .modal-content { background-color: var(--card-bg-color, #fefefe); color: var(--text-color); margin: 10% auto; padding: 15px; border: 1px solid var(--border-color, #888); width: 90%; max-width: 400px; border-radius: 8px; position: relative; }
+        .modal-header { padding-bottom: 8px; border-bottom: 1px solid var(--border-color, #eee); margin-bottom: 12px; }
+        .modal-header h2 { margin: 0; color: var(--heading-color); font-size: 1.1em; }
+        .close-button { color: var(--icon-color, var(--text-color)); opacity: 0.7; float: right; font-size: 24px; font-weight: bold; position: absolute; top: 5px; right: 10px; }
+        .close-button:hover, .close-button:focus { color: var(--text-color); opacity:1; text-decoration: none; cursor: pointer; }
+        .modal-body p { margin-bottom: 6px; font-size: 0.85em; }
         .modal-body strong { color: var(--subheading-color); }
+        .modal-actions { margin-top: 15px; padding-top: 10px; border-top: 1px solid var(--border-light); text-align: right; }
+        .modal-actions .button-link, .modal-actions .btn { 
+            margin-left: 10px; 
+            padding: 6px 12px; 
+            font-size: 0.85em;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .modal-actions .btn-primary { 
+            background-color: var(--link-color);
+            color: var(--container-bg, #fff);
+            border: 1px solid var(--link-color);
+        }
+         .modal-actions .btn-primary:hover {
+            background-color: var(--link-hover-color);
+        }
+
+
+        /* Desktop Overrides: Apply when screen is larger */
+        @media (min-width: 769px) {
+            .page-header h1 { font-size: 1.8em; }
+            .calendar-container { padding: 20px; }
+            #sessionCalendar .fc-header-toolbar {
+                flex-direction: row; /* Horizontal layout for FC toolbar */
+                margin-bottom: 15px !important;
+                padding: 10px !important;
+            }
+            #sessionCalendar .fc-toolbar-title { font-size: 1.5em !important; }
+            #sessionCalendar .fc-button,
+            #sessionCalendar .fc-button.fc-prevMonthButton-button, /* Target generated class */
+            #sessionCalendar .fc-button.fc-nextMonthButton-button, /* Target generated class */
+            #sessionCalendar .fc-button.fc-downloadCsvButton-button { /* Target generated class */
+                padding: .3em .5em !important; 
+                font-size: 0.9em !important; 
+            }
+            #sessionCalendar .fc-daygrid-day-number { font-size: 0.9em; padding: 5px;}
+            #sessionCalendar .fc-col-header-cell-cushion { font-size: 0.85em; padding: 8px 0;}
+            #sessionCalendar .fc-event { font-size: 0.85em; padding: 2px 4px; }
+            .modal-content { max-width: 500px; margin: 5% auto; padding: 20px;}
+            .modal-header h2 { font-size: 1.2em; }
+            .modal-body p { font-size: 0.9em; }
+        }
     </style>
 {% endblock %}
 
@@ -155,25 +192,11 @@
 </div>
 
 <div class="calendar-container">
-    {# Custom Navigation Controls #}
-    <div class="calendar-navigation">
-        <a href="{% url 'planning:session_calendar' %}?year={{ prev_year }}&month={{ prev_month }}">&laquo; Previous Month</a>
-        <span class="current-month">{{ current_month_display }}</span>
-        <a href="{% url 'planning:session_calendar' %}?year={{ next_year }}&month={{ next_month }}">Next Month &raquo;</a>
-    </div>
-
-    {# Download Button - Placed below custom navigation, above the calendar #}
-    <div style="text-align: center; margin-bottom: 15px;">
-        <a href="#" id="downloadScheduleBtn" class="download-schedule-button">
-            <i class="bi bi-download"></i> Download Week Data (CSV)
-        </a>
-    </div>
-
-    {# Div where FullCalendar will be rendered #}
+    {# FullCalendar will render its own toolbar with custom buttons #}
     <div id="sessionCalendar"></div>
 </div>
 
-{# Modal structure for displaying event details #}
+{# Modal structure for displaying event details (remains the same) #}
 <div id="sessionDetailModal" class="modal">
     <div class="modal-content">
         <span class="close-button" onclick="document.getElementById('sessionDetailModal').style.display='none'">&times;</span>
@@ -189,7 +212,11 @@
             <p><strong>Duration:</strong> <span id="modalDuration"></span></p>
             <p><strong>Status:</strong> <span id="modalStatus"></span></p>
             <p><strong>Notes:</strong> <span id="modalNotes"></span></p>
-            <p id="modalAdminLinkContainer" style="margin-top:15px;"></p>
+            {# Container for action buttons inside the modal #}
+            <div class="modal-actions">
+                <span id="modalAdminLinkContainer"></span> {# For "Edit Session (Admin)" link #}
+                <span id="modalSessionPlanLinkContainer"></span> {# For "Go to Session Plan" link #}
+            </div>
         </div>
     </div>
 </div>
@@ -197,17 +224,16 @@
 {% endblock %}
 
 {% block extra_scripts %}
-    {# FullCalendar JS - Served locally #}
     <script src="{% static 'planning/fullcalendar/index.global.min.js' %}"></script>
-
     <script>
+        // Pass Django context to JavaScript
+        const IS_STAFF_USER = {{ is_staff_user|yesno:"true,false" }}; 
+
         document.addEventListener('DOMContentLoaded', function() {
             const calendarEl = document.getElementById('sessionCalendar');
-            console.log("Raw calendar_events_json from Django:", '{{ calendar_events_json|escapejs }}');
             let eventsJson = [];
             try {
                 eventsJson = JSON.parse('{{ calendar_events_json|escapejs }}');
-                console.log("Parsed eventsDataFromDjango:", eventsJson);
             } catch (e) {
                 console.error("Error parsing calendar_events_json:", e);
             }
@@ -215,32 +241,81 @@
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 headerToolbar: {
-                    left: 'prev,next today',
+                    left: 'prevMonthButton,nextMonthButton today',
                     center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+                    right: 'downloadCsvButton dayGridMonth,timeGridWeek,listWeek' 
                 },
-                events: eventsJson,
+                customButtons: {
+                    prevMonthButton: {
+                        text: '‹ Prev', 
+                        click: function() {
+                            // Construct URL using current_year and prev_month from Django context
+                            window.location.href = `{% url 'planning:session_calendar' %}?year={{ prev_year }}&month={{ prev_month }}`;
+                        }
+                    },
+                    nextMonthButton: {
+                        text: 'Next ›', 
+                        click: function() {
+                            // Construct URL using current_year and next_month from Django context
+                            window.location.href = `{% url 'planning:session_calendar' %}?year={{ next_year }}&month={{ next_month }}`;
+                        }
+                    },
+                    downloadCsvButton: {
+                        text: 'CSV', // Shorter text for mobile
+                        // icon: 'download', // Optional: if you have a way to add icons to FC buttons
+                        click: function() {
+                            let currentDate = calendar.getDate(); 
+                            let dayOfWeek = currentDate.getDay(); 
+                            let diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; 
+                            let mondayOfCurrentWeek = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + diffToMonday);
+                            const year = mondayOfCurrentWeek.getFullYear();
+                            const month = mondayOfCurrentWeek.getMonth() + 1; 
+                            const day = mondayOfCurrentWeek.getDate();
+                            const exportUrl = `{% url 'planning:export_weekly_schedule' %}?year=${year}&month=${month}&day=${day}`;
+                            window.location.href = exportUrl; 
+                        }
+                    }
+                },
+                buttonText: { 
+                    today: 'Today', month: 'Month', week: 'Week', list: 'List'
+                },
+                events: eventsJson, 
                 editable: false, 
                 selectable: true, 
+                dayMaxEvents: 2, 
+                eventMinHeight: 16, 
+                eventShortHeight: 16,
+                slotEventOverlap: true,
+                displayEventTime: false, // Ensure this is false
 
-                eventContent: function(arg) {
-                    let titleEl = document.createElement('div');
-                    titleEl.innerHTML = arg.event.title;
-                    return { domNodes: [titleEl] };
-                },
-
-                eventClassNames: function(arg) {
-                    if (arg.event.extendedProps.is_cancelled_bool) {
-                        return ['cancelled-event'];
+                eventDidMount: function(info) {
+                    if (info.event.extendedProps.is_cancelled_bool) {
+                        info.el.style.textDecoration = 'line-through';
                     }
-                    return [];
+                    // Apply background, border, and text color from event data
+                    // FullCalendar uses 'backgroundColor' for the 'color' property from the event source
+                    if (info.event.backgroundColor) { 
+                        info.el.style.backgroundColor = info.event.backgroundColor;
+                    }
+                    if (info.event.borderColor) { // Ensure border color is also set
+                        info.el.style.borderColor = info.event.borderColor;
+                    }
+                    if (info.event.textColor) {
+                       // Try to target the inner text element more reliably
+                       const titleEl = info.el.querySelector('.fc-event-title, .fc-list-event-title, .fc-event-main > *, .fc-event-main'); 
+                       if (titleEl) {
+                           titleEl.style.color = info.event.textColor;
+                       } else {
+                           info.el.style.color = info.event.textColor; 
+                       }
+                    }
                 },
 
                 eventClick: function(info) {
                     info.jsEvent.preventDefault(); 
                     const event = info.event;
                     const props = event.extendedProps;
-                    // (Modal population logic as before)
+                    // (Modal population logic remains the same)
                     document.getElementById('modalTitle').textContent = `${props.school_group_name} Session`;
                     const startDate = new Date(event.startStr); 
                     document.getElementById('modalDate').textContent = startDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
@@ -251,56 +326,34 @@
                     document.getElementById('modalDuration').textContent = `${props.duration_minutes} minutes`;
                     document.getElementById('modalStatus').textContent = props.status_display;
                     document.getElementById('modalNotes').textContent = props.notes || "No notes.";
+                    
                     const adminLinkContainer = document.getElementById('modalAdminLinkContainer');
                     adminLinkContainer.innerHTML = ''; 
-                    if (props.admin_url) {
+                    if (props.admin_url) { 
                         const adminLink = document.createElement('a');
                         adminLink.href = props.admin_url;
-                        adminLink.textContent = "Edit Session (Admin)";
-                        adminLink.className = 'button-link'; 
+                        adminLink.textContent = "Edit (Admin)";
+                        adminLink.className = 'btn btn-sm btn-outline-secondary'; 
                         adminLink.target = "_blank"; 
                         adminLinkContainer.appendChild(adminLink);
                     }
+
+                    const sessionPlanLinkContainer = document.getElementById('modalSessionPlanLinkContainer');
+                    sessionPlanLinkContainer.innerHTML = ''; 
+                    if (IS_STAFF_USER && props.session_planner_url) { 
+                        const planLink = document.createElement('a');
+                        planLink.href = props.session_planner_url;
+                        planLink.textContent = "Go to Session Plan";
+                        planLink.className = 'btn btn-sm btn-primary'; 
+                        sessionPlanLinkContainer.appendChild(planLink);
+                    }
+                    
                     document.getElementById('sessionDetailModal').style.display = 'block';
                 },
             });
 
             calendar.render();
 
-            // --- Logic for Download Button ---
-            const downloadBtn = document.getElementById('downloadScheduleBtn');
-            if (downloadBtn) {
-                downloadBtn.addEventListener('click', function(e) {
-                    e.preventDefault(); // Prevent default anchor action initially
-
-                    // Get the current view's date range from FullCalendar
-                    // For month view, currentStart is the first visible day of the month grid
-                    // For week view, it's the first day of the week.
-                    // We want the Monday of the week that contains the calendar's current date.
-                    
-                    let currentDate = calendar.getDate(); // Gets the date the calendar is currently focused on
-                    
-                    // Calculate Monday of that week
-                    let dayOfWeek = currentDate.getDay(); // Sunday = 0, Monday = 1, ..., Saturday = 6
-                    let diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Adjust for Sunday
-                    let mondayOfCurrentWeek = new Date(currentDate.setDate(currentDate.getDate() + diffToMonday));
-
-                    const year = mondayOfCurrentWeek.getFullYear();
-                    const month = mondayOfCurrentWeek.getMonth() + 1; // JavaScript months are 0-indexed
-                    const day = mondayOfCurrentWeek.getDate();
-
-                    // Construct the URL for the export view
-                    // Note: Ensure 'planning:export_weekly_schedule' is correctly defined in your urls.py
-                    const exportUrl = `{% url 'planning:export_weekly_schedule' %}?year=${year}&month=${month}&day=${day}`;
-                    
-                    console.log("Export URL:", exportUrl);
-                    // Set the href and trigger the download (or redirect to it)
-                    // downloadBtn.href = exportUrl; // Set href if you want the link to be inspectable
-                    window.location.href = exportUrl; // This will trigger the download
-                });
-            }
-
-            // Modal close logic
             const modal = document.getElementById('sessionDetailModal');
             window.onclick = function(event) {
                 if (event.target == modal) {

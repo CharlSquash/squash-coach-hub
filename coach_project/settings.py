@@ -9,7 +9,7 @@ from datetime import timedelta
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from .env
-dotenv_path = os.path.join(BASE_DIR, '.env')
+dotenv_path = BASE_DIR / '.env'
 if os.path.exists(dotenv_path):
     print(f"INFO: Loading .env from {dotenv_path}")
     load_dotenv(dotenv_path)
@@ -30,12 +30,34 @@ else:
 
 # --- Security ---
 SECRET_KEY = os.environ.get('SECRET_KEY', '!!!DEFINE_SECRET_KEY!!!')
-ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',') if host.strip()]
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+    if host.strip()
+]
 
 # --- Auth Redirects ---
-LOGIN_URL = '/accounts/login/'
-LOGIN_REDIRECT_URL = '/dashboard/'
+LOGIN_URL         = '/accounts/login/'
+LOGIN_REDIRECT_URL= '/dashboard/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
+
+# --- Email Configuration ---
+if DEBUG:
+    # During local development, print emails to the console
+    EMAIL_BACKEND      = 'django.core.mail.backends.console.EmailBackend'
+    DEFAULT_FROM_EMAIL = 'noreply@squashsync.com'
+else:
+    # In production, use real SMTP server
+    EMAIL_BACKEND       = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST          = os.environ['EMAIL_HOST']
+    EMAIL_PORT          = int(os.environ.get('EMAIL_PORT', 587))
+    EMAIL_HOST_USER     = os.environ['EMAIL_HOST_USER']
+    EMAIL_HOST_PASSWORD = os.environ['EMAIL_HOST_PASSWORD']
+    EMAIL_USE_TLS       = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+    DEFAULT_FROM_EMAIL  = os.environ['DEFAULT_FROM_EMAIL']
+
+# Base URL for building links in emails
+APP_SITE_URL = os.environ.get('APP_SITE_URL', 'http://127.0.0.1:8000')
 
 # --- Installed Apps ---
 INSTALLED_APPS = [
@@ -50,7 +72,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'planning.apps.PlanningConfig',
     'solosync_api',
-    'django_filters', 
+    'django_filters',
 ]
 
 # --- Middleware ---
@@ -92,7 +114,9 @@ WSGI_APPLICATION = 'coach_project.wsgi.application'
 # --- Database ---
 default_db_url = f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
 DATABASES = {
-    'default': dj_database_url.config(default=os.environ.get('DATABASE_URL', default_db_url))
+    'default': dj_database_url.config(
+        default=os.environ.get('DATABASE_URL', default_db_url)
+    )
 }
 
 # --- Password Validation ---
@@ -105,22 +129,20 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # --- Internationalization ---
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'Africa/Johannesburg'
-USE_I18N = True
-USE_TZ = True
+TIME_ZONE     = 'Africa/Johannesburg'
+USE_I18N      = True
+USE_TZ        = True
 
 # --- Static Files ---
-STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    str(FRONTEND_BUILD_DIR / 'static') 
-    
-]
-STATIC_ROOT = os.environ.get('STATIC_ROOT', BASE_DIR / 'staticfiles_collected')
+STATIC_URL        = '/static/'
+STATICFILES_DIRS  = [ str(FRONTEND_BUILD_DIR / 'static') ]
+STATIC_ROOT       = os.environ.get('STATIC_ROOT', BASE_DIR / 'staticfiles_collected')
 
 # --- Media Files ---
 MEDIA_URL = os.environ.get('MEDIA_URL', '/media/')
-MEDIA_ROOT = BASE_DIR / 'mediafiles/'
+MEDIA_ROOT= BASE_DIR / 'mediafiles/'
 
+# --- Default Primary Key ---
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # --- DRF + JWT ---
@@ -133,15 +155,15 @@ REST_FRAMEWORK = {
     ),
 }
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'ACCESS_TOKEN_LIFETIME':  timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': False,
+    'ROTATE_REFRESH_TOKENS':  False,
     'BLACKLIST_AFTER_ROTATION': False,
 }
 
 # --- CORS/CSRF ---
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
+CORS_ALLOWED_ORIGINS   = [
     origin.strip() for origin in os.environ.get(
         'CORS_ALLOWED_ORIGINS',
         'http://localhost:3000,http://127.0.0.1:3000,http://192.168.3.6:3000'

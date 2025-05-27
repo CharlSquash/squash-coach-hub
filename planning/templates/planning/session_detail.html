@@ -1,30 +1,18 @@
 {% extends 'planning/base.html' %}
 {% load static %}
-{% load tz %} {# Ensure 'tz' is loaded if needed for timezone filters #}
+{% load tz %} 
+{% load planning_extras %} {# Ensure this custom filter library is loaded #}
 
-{# Block for setting the page title #}
-{% block title %}Plan: {% if session.school_group %}{{ session.school_group.name }}{% else %}Session{% endif %} {{ session.session_date|date:"Y-m-d" }}{% endblock %} {# Use correct field name #}
+{% block title %}Plan: {% if session.school_group %}{{ session.school_group.name }}{% else %}Session{% endif %} {{ session.session_date|date:"Y-m-d" }}{% endblock %}
 
-{# Block for page-specific CSS and JavaScript needed in the <head> #}
 {% block extra_head %}
-    {# --- SORTABLEJS LIBRARY --- #}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
-    {# --- END SORTABLEJS LIBRARY --- #}
-
-    {# --- Page-specific styles --- #}
     <style>
         /* Styles specific to Session Detail - Keep only necessary overrides/additions */
         .action-button {
-            font-weight: bold;
-            padding: 8px 12px;
-            border-radius: 4px;
-            text-decoration: none;
-            display: inline-block;
-            margin-right: 10px;
-            margin-bottom: 5px;
-            border: 1px solid transparent;
-            cursor: pointer;
-            text-align: center;
+            font-weight: bold; padding: 8px 12px; border-radius: 4px; text-decoration: none;
+            display: inline-block; margin-right: 10px; margin-bottom: 5px;
+            border: 1px solid transparent; cursor: pointer; text-align: center;
         }
         .live-view-btn { background-color: #28a745; color: white; border-color: #28a745;}
         .live-view-btn:hover { background-color: #218838; border-color: #1e7e34;}
@@ -33,45 +21,33 @@
 
         .attendee-list { list-style: none; padding-left: 0; }
         .attendee-list li {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 4px 0;
-            border-bottom: 1px dotted var(--border-light, #eee);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 4px 0; border-bottom: 1px dotted var(--border-light, #eee);
         }
-         .attendee-list li:last-child { border-bottom: none; }
+        .attendee-list li:last-child { border-bottom: none; }
         .attendee-list li > span { flex-grow: 1; margin-right: 10px; }
 
         .alert-warning {
-            color: #856404;
-            background-color: #fff3cd;
-            border: 1px solid #ffeeba;
-            padding: 10px 15px;
-            border-radius: 4px;
-            margin-top: 10px;
-            margin-bottom: 15px;
+            color: #856404; background-color: #fff3cd; border: 1px solid #ffeeba;
+            padding: 10px 15px; border-radius: 4px; margin-top: 10px; margin-bottom: 15px;
         }
         html.dark-mode .alert-warning {
-            color: #ffeeba;
-            background-color: #3b310a;
-            border-color: #856404;
+            color: #ffeeba; background-color: #3b310a; border-color: #856404;
         }
 
         /* Drag and Drop Styles */
-        .block-player-groups {
-            display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px;
-            padding-top: 10px; border-top: 1px solid var(--border-light, #eee);
+        .block-player-groups { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-light, #eee); }
+        .court-group-column { 
+            flex: 1; 
+            min-width: 220px; 
+            background-color: var(--court-bg, #f8f9fa); 
+            padding: 10px; 
+            border-radius: 4px; 
+            border: 1px solid var(--court-border, #eee);
         }
-        .court-group-column { flex: 1; min-width: 180px; }
         .court-group-column strong { display: block; margin-bottom: 5px; font-weight: bold; color: var(--court-header-color, #444); }
-        .player-group-list {
-            min-height: 60px; border: 1px dashed var(--border-color, #ccc); padding: 8px;
-            border-radius: 4px; background-color: var(--court-bg, #f8f9fa); list-style: none; margin: 0;
-        }
-        .player-group-list li {
-            cursor: grab; background-color: var(--container-bg, #fff); padding: 5px 8px; margin-bottom: 5px;
-            border: 1px solid var(--border-color, #ddd); border-radius: 3px; font-size: 0.9em; display: block;
-        }
+        .player-group-list { min-height: 60px; border: 1px dashed var(--border-color, #ccc); padding: 8px; border-radius: 4px; background-color: var(--court-bg, #f8f9fa); list-style: none; margin: 0; margin-bottom: 10px; }
+        .player-group-list li { cursor: grab; background-color: var(--container-bg, #fff); padding: 5px 8px; margin-bottom: 5px; border: 1px solid var(--border-color, #ddd); border-radius: 3px; font-size: 0.9em; display: block; }
         .player-group-list li:last-child { margin-bottom: 0; }
         .player-group-list li:hover { background-color: var(--activity-bg, #e9ecef); }
         .sortable-ghost { opacity: 0.4; background-color: #cce5ff; }
@@ -81,78 +57,127 @@
         html.dark-mode .player-group-list li:hover { background-color: var(--court-bg); }
         html.dark-mode .sortable-ghost { background-color: #004085; }
         html.dark-mode .sortable-drag { background-color: #0056b3; }
-
-        /* Status Message Styles */
         .status-message { padding: 10px; margin-top: 15px; border-radius: 4px; text-align: center; font-weight: bold; display: none; }
         .status-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .status-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        html.dark-mode .status-success { background-color: #155724; color: #d4edda; border-color: #207a3d; }
-        html.dark-mode .status-error { background-color: #721c24; color: #f8d7da; border-color: #b82d3a; }
-
-        /* Clear Button Styles */
-        .clear-assignments-btn {
-            font-size: 0.8em; padding: 2px 6px; margin-left: 10px; background-color: #f8d7da;
-            color: #721c24; border: 1px solid #f5c6cb; border-radius: 3px; cursor: pointer; vertical-align: middle;
-        }
-        .clear-assignments-btn:hover { background-color: #f1c1c1; }
-        html.dark-mode .clear-assignments-btn {
-            background-color: var(--action-del-bg, #721c24); color: var(--action-del-text, #f8d7da); border-color: var(--action-del-border, #b82d3a);
-        }
-        html.dark-mode .clear-assignments-btn:hover { background-color: var(--action-del-hover, #8a2a33); }
-
-        /* Attendance Layout Styles */
+        .clear-assignments-btn { font-size: 0.8em; padding: 2px 6px; margin-left: 10px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 3px; cursor: pointer; vertical-align: middle; }
         .attendance-layout-container { display: flex; gap: 30px; flex-wrap: wrap; margin-bottom: 20px; }
         .current-attendees-display, .attendance-form { flex: 1; min-width: 250px; }
-        .attendance-form p { margin-top: 0; }
-        .attendance-form label { display: block; margin-bottom: 5px; }
-
-        /* Attendance Link Styles */
         .attendance-link-section { margin: 15px 0; padding: 10px 15px; background-color: var(--container-light-bg, #f0f0f0); border: 1px solid var(--border-light, #ddd); border-radius: 5px; }
-        .attendance-link-section a.btn { background-color: var(--link-color); color: white; border-color: var(--link-color); font-weight: normal; margin-right: 10px; }
-        .attendance-link-section a.btn:hover { background-color: var(--link-hover-color); border-color: var(--link-hover-color); }
-        .attendance-link-section small { display: inline; margin-top: 0; color: var(--subheading-color, #555); font-size: 0.9em; }
-        html.dark-mode .attendance-link-section { background-color: var(--container-light-bg); border-color: var(--border-light); }
-        html.dark-mode .attendance-link-section small { color: var(--subheading-color); }
 
-        /* Button Styles (General - should match style.css) */
-        .btn { display: inline-block; padding: 8px 15px; border: 1px solid transparent; border-radius: 5px; text-decoration: none; cursor: pointer; text-align: center; font-size: 0.9em; line-height: 1.5; }
-        .btn-sm { padding: .25rem .5rem; font-size: .875rem; line-height: 1.5; border-radius: .2rem; }
-        .btn-warning { color: #212529; background-color: #ffc107; border-color: #ffc107; }
-        .btn-warning:hover { color: #212529; background-color: #e0a800; border-color: #d39e00; }
+        /* Timeline & TimeBlock Formset Styles */
+        .timeblock-formset-section h2 { 
+            margin-top: 25px; margin-bottom: 15px; padding-bottom: 8px; 
+            border-bottom: 1px solid var(--border-light, #eee); font-size: 1.4em; 
+        }
+        .time-block-details {
+            background-color: var(--court-bg, #f8f9fa);
+            border: 1px solid var(--court-border, #eee);
+            border-radius: 5px;
+            margin-bottom: 15px;
+            overflow: hidden; 
+        }
+        html.dark-mode .time-block-details {
+            background-color: var(--input-bg);
+            border-color: var(--border-color);
+        }
+        .time-block-details summary {
+            padding: 10px 15px;
+            cursor: pointer;
+            list-style: none; 
+            background-color: var(--container-light-bg, #e9ecef); 
+            border-bottom: 1px solid var(--border-light, #ddd);
+            font-weight: bold;
+            color: var(--heading-color);
+            display: flex; 
+            align-items: center;
+            justify-content: space-between; 
+        }
+        html.dark-mode .time-block-details summary {
+             background-color: var(--body-bg); 
+             border-bottom-color: var(--border-color);
+        }
+        .time-block-details summary::-webkit-details-marker { display: none; }
+        .time-block-details[open] > summary {
+            border-bottom: 1px solid var(--link-color); 
+        }
+        .summary-text::before { 
+            content: '► '; 
+            margin-right: 8px;
+            font-size: 0.9em;
+        }
+        .time-block-details[open] > summary .summary-text::before {
+            content: '▼ '; 
+        }
+        .summary-main-info { flex-grow: 1; }
 
-        /* Timeline Styles */
-        .timeline-container h4 { margin-top: 25px; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid var(--border-light, #eee); font-size: 1.1em; }
-        .courts-container { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; }
-        .court-column { flex: 1; min-width: 200px; background-color: var(--court-bg, #f8f9fa); padding: 10px; border-radius: 4px; border: 1px solid var(--court-border, #eee); }
-        .court-column strong { display: block; margin-bottom: 8px; font-size: 1em; color: var(--court-header-color, #444); }
-        .court-column ul { list-style: none; padding: 0; margin: 0 0 10px 0; }
-        .court-column li { font-size: 0.9em; }
-        .court-column li.activity-item { background-color: var(--activity-bg, #e9ecef); padding: 6px 8px; margin-bottom: 5px; border-radius: 3px; border: 1px solid var(--activity-border, #dee2e6); display: flex; justify-content: space-between; align-items: center; }
+        .time-block-form-content { 
+            padding: 15px;
+        }
+        .time-block-form-content .form-field { margin-bottom: 10px; }
+        .time-block-form-content .form-field label { display: block; font-weight: bold; font-size: 0.9em; margin-bottom: 3px; color: var(--subheading-color); }
+        .time-block-form-content .form-field input[type="number"],
+        .time-block-form-content .form-field input[type="text"],
+        .time-block-form-content .form-field select {
+            width: 100%; padding: 8px; border: 1px solid var(--border-color);
+            border-radius: 4px; box-sizing: border-box; font-size: 0.9em;
+            background-color: var(--input-bg); color: var(--text-color);
+        }
+        .delete-checkbox-label { font-size: 0.85em; color: var(--action-del-text); display: inline-block; margin-left: 5px; }
+        .formset-submit-row { margin-top: 20px; text-align: right; }
+        
+        /* Activity Display within Player Grouping Section */
+        .court-activities-section {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px dashed var(--border-light);
+        }
+        .court-activities-section h5 { /* Sub-heading for activities */
+            font-size: 0.95em;
+            color: var(--subheading-color);
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .court-activities-section ul { list-style: none; padding: 0; margin: 0 0 10px 0; }
+        .court-activities-section li.activity-item { 
+            background-color: var(--activity-bg, #e9ecef); 
+            padding: 6px 8px; margin-bottom: 5px; border-radius: 3px; 
+            border: 1px solid var(--activity-border, #dee2e6); 
+            display: flex; justify-content: space-between; align-items: center; 
+            font-size: 0.85em; 
+        }
         .activity-item > span:first-child { flex-grow: 1; margin-right: 10px; }
         .activity-actions { white-space: nowrap; }
-        .activity-actions a { font-size: 0.85em; margin-left: 5px; text-decoration: none; }
-        .edit-link { color: var(--link-color, #007bff); }
-        .delete-link { color: var(--action-del-text, #dc3545); }
-        .edit-link:hover { color: var(--link-hover-color); }
-        .delete-link:hover { color: var(--action-del-hover, #c82333); }
-        .add-link { font-size: 0.9em; text-decoration: none; color: var(--link-color); display: inline-block; margin-top: 5px; }
-        .add-link:hover { color: var(--link-hover-color); }
-        .no-activities-msg { font-style: italic; color: #666; font-size: 0.9em; padding: 6px 0; }
+        .activity-actions a, .activity-actions button { 
+            font-size: 0.9em; 
+            margin-left: 8px; 
+            text-decoration: none; 
+            background: none; border: none; cursor: pointer; padding: 0;
+            vertical-align: middle; 
+            color: var(--link-color); 
+        }
+        .activity-actions .delete-link { color: var(--action-del-text, #dc3545); }
+        .activity-actions a:hover, .activity-actions button:hover { opacity: 0.7; }
+
+        .add-link { 
+            font-size: 0.9em; text-decoration: none; color: var(--link-color); 
+            display: inline-block; margin-top: 8px;
+            padding: 4px 8px; border: 1px solid var(--link-color); border-radius: 3px;
+        }
+        .add-link:hover { color: var(--link-hover-color); background-color: var(--container-light-bg); }
+        .no-activities-msg { font-style: italic; color: var(--subheading-color); font-size: 0.9em; padding: 6px 0; margin-top:5px; }
         html.dark-mode .no-activities-msg { color: #aaa; }
 
     </style>
 {% endblock %}
 
 
-{# Block for the main page content #}
 {% block content %}
-
-    <h1> {# CORRECTED Title using updated field names #}
+    <h1> 
         {% if session.school_group %}{{ session.school_group.name }}{% else %}Session Plan{% endif %}
         : {{ session.session_date|date:"D, d M Y" }} at {{ session.session_start_time|time:"H:i" }}
     </h1>
 
-    {# --- Action Buttons --- #}
     <div style="margin-top: 10px; margin-bottom: 20px;">
         <a href="{% url 'planning:live_session' session.id %}" class="action-button live-view-btn"><i class="bi bi-broadcast"></i> Go to Live Session View</a>
         <a href="{% url 'planning:one_page_plan' session.id %}" class="action-button one-page-btn" target="_blank"><i class="bi bi-printer"></i> View One-Page Plan</a>
@@ -168,24 +193,21 @@
                 {% endfor %}
             </p>
         {% endif %}
+        {% if session.venue %} 
+            <p><strong>Venue:</strong> {{ session.venue.name }}</p>
+        {% endif %}
     </div>
     <hr>
 
-    {# --- Attendance Form Link --- #}
     {% if session.school_group and session.school_group.attendance_form_url %}
     <div class="attendance-link-section">
-        <a href="{{ session.school_group.attendance_form_url }}"
-           target="_blank"
-           rel="noopener noreferrer"
-           class="btn btn-sm"> {# Removed btn-info #}
+        <a href="{{ session.school_group.attendance_form_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm"> 
             <i class="bi bi-box-arrow-up-right"></i>
             Open {{ session.school_group.name }} Attendance Form
         </a>
         <small>(Opens Google Form in new tab)</small>
     </div>
     {% endif %}
-
-    {# --- ATTENDANCE SECTION --- #}
     <div class="attendance-section">
         <h2>Attendance ({{ current_attendees.count }} Player{{ current_attendees.count|pluralize }})</h2>
         {% if session.school_group %}
@@ -196,7 +218,6 @@
                         {% for player in current_attendees %}
                             <li>
                                 <span><a href="{% url 'planning:player_profile' player.id %}">{{ player.full_name }}</a></span>
-                                {# Assess button removed from here #}
                             </li>
                         {% empty %}
                             <li>No players marked as attending yet.</li>
@@ -216,248 +237,192 @@
             <p class="alert-warning"><strong>No School Group assigned!</strong> Please assign a School Group to this session via the admin interface to manage attendance and player groups.</p>
         {% endif %}
     </div>
-    <hr> {# Separator #}
+    <hr> 
 
-    {# --- Player Group Assignments (Per Block - WITH DRAG & DROP) --- #}
+    {# Player Group Assignments section - Activities will be added here #}
     {% if session.school_group %}
     <div class="grouping-section">
-        <h2>Player Group Assignments (Per Block) - Drag to Adjust</h2>
+        <h2>Player Group Assignments & Activities (Per Block)</h2>
+        <p class="helptext">Drag players between courts for specific time blocks. Changes are saved automatically. Add activities to each court within a block.</p>
         <div id="assignment-status" class="status-message"></div>
         {% if block_data %}
-            <div> {# Wrapper for all blocks #}
+             <div> 
                 {% for data_item in block_data %}
                     {% with block=data_item.block assignments=data_item.assignments has_manual=data_item.has_manual %}
-                        <h5 style="margin-top: 20px;">
-                            Block: {{ block.block_start_datetime|time:"H:i" }} - {{ block.block_end_datetime|time:"H:i" }} ({{ block.number_of_courts }} Court{{ block.number_of_courts|pluralize }})
+                        <h3 style="margin-top: 25px; padding-bottom: 5px; border-bottom: 1px solid var(--border-color);">
+                            Block: {{ block.block_start_datetime|time:"H:i" }} - {{ block.block_end_datetime|time:"H:i" }} 
+                            {% if block.block_focus %}(Focus: {{ block.block_focus }}){% endif %}
+                            - {{ block.number_of_courts }} Court{{ block.number_of_courts|pluralize }}
                             {% if has_manual %}
                                 <button class="clear-assignments-btn" data-block-id="{{ block.id }}">
                                     <i class="bi bi-arrow-counterclockwise"></i> Use Auto Grouping
                                 </button>
                             {% endif %}
-                        </h5>
-                        {% if assignments %}
+                        </h3>
                         <div class="block-player-groups" data-block-id="{{ block.id }}">
-                            {% for court_num, players in assignments.items|dictsort:0 %}
+                            {% for court_num_str, players in assignments.items|dictsort:0 %}
+                                {% with court_num_int=court_num_str|add:0 %} {# Convert court_num_str to int for get_item #}
                                 <div class="court-group-column">
-                                    <strong>Court {{ court_num }}:</strong>
-                                    <ul class="group-list player-group-list" data-court-id="{{ court_num }}">
+                                    <strong>Court {{ court_num_int }}: Players</strong>
+                                    <ul class="group-list player-group-list" data-court-id="{{ court_num_int }}">
                                         {% for player in players %}
                                             <li data-player-id="{{ player.id }}">
                                                 <a href="{% url 'planning:player_profile' player.id %}">{{ player.full_name }}</a>
                                             </li>
                                         {% empty %}
+                                            <li style="font-style: italic; cursor: default; background: none; border: none;">No players assigned</li>
                                         {% endfor %}
                                     </ul>
+                                    {# --- Activities for this court in this block --- #}
+                                    <div class="court-activities-section">
+                                        <h5>Activities on this Court:</h5>
+                                        {% with activities_for_block=activities_by_block_and_court|get_item:block.id %}
+                                            {% with court_activities=activities_for_block|get_item:court_num_int %}
+                                                {% if court_activities %}
+                                                    <ul>
+                                                        {% for activity in court_activities %}
+                                                            <li class="activity-item">
+                                                                <span>- {% if activity.drill %}{{ activity.drill.name }}{% else %}{{ activity.custom_activity_name }}{% endif %} ({{ activity.duration_minutes }} min){% if activity.lead_coach %} [{{ activity.lead_coach.name }}]{% endif %}</span>
+                                                                <span class="activity-actions">
+                                                                    <a href="{% url 'planning:edit_activity' activity.id %}" class="edit-link" title="Edit Activity"><i class="bi bi-pencil-square"></i></a>
+                                                                    <form method="POST" action="{% url 'planning:delete_activity' activity.id %}" onsubmit="return confirm('Are you sure you want to delete this activity?');" style="display: inline;">
+                                                                        {% csrf_token %}
+                                                                        <button type="submit" class="delete-link" title="Delete Activity"><i class="bi bi-trash"></i></button>
+                                                                    </form>
+                                                                </span>
+                                                            </li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                {% else %}
+                                                    <p class="no-activities-msg">No activities added yet.</p>
+                                                {% endif %}
+                                            {% endwith %}
+                                        {% endwith %}
+                                        <a href="{% url 'planning:add_activity' block.id court_num_int %}" class="add-link">
+                                            <i class="bi bi-plus-circle-fill"></i> Add Activity to Court {{ court_num_int }}
+                                        </a>
+                                    </div>
+                                    {# --- END Activities --- #}
                                 </div>
+                                {% endwith %}
                             {% endfor %}
                         </div>
-                        {% elif current_attendees %}
-                            <p style="font-style: italic; font-size: 0.9em;">(No groups assigned for this block?)</p>
-                        {% endif %}
                     {% endwith %}
                 {% endfor %}
             </div>
         {% elif current_attendees %}
-            <p>No time blocks defined for this session.</p>
+            <p>No time blocks defined for this session to assign players to. Please add and save time blocks using the form above.</p>
         {% else %}
-            <p>No players marked as attending.</p>
+            <p>No players marked as attending. Please update attendance first.</p>
         {% endif %}
     </div>
-    <hr> {# Separator #}
-    {% endif %} {# End check for session.school_group #}
+    <hr> 
+    {% endif %} 
 
-
-    {# --- Activity Plan Details --- #}
-    <h2>Activity Plan Details</h2>
-    <div class="timeline-container">
-        {% if block_data %}
-            {% for data_item in block_data %}
-                {% with block=data_item.block %}
-                <div class="time-block">
-                    <h4> Block: {{ block.block_start_datetime|localtime|time:"H:i" }} - {{ block.block_end_datetime|localtime|time:"H:i" }} ({{ block.duration_minutes }} min) | Courts: {{ block.number_of_courts }} {% if block.block_focus %} | Focus: {{ block.block_focus }} {% endif %} </h4>
-                    <div class="courts-container">
-                        {% for i in ""|ljust:block.number_of_courts %}
-                            {% with court_display_num=forloop.counter %}
-                            <div class="court-column">
-                                <strong>Court {{ court_display_num }} Activities:</strong>
-                                <ul>
-                                    {% for activity in activities %}
-                                        {% if activity.time_block.id == block.id and activity.court_number == court_display_num %}
-                                            <li class="activity-item">
-                                                <span>- {% if activity.drill %}{{ activity.drill.name }}{% else %}{{ activity.custom_activity_name }}{% endif %} ({{ activity.duration_minutes }} min){% if activity.lead_coach %} [{{ activity.lead_coach.name }}]{% endif %}</span>
-                                                <span class="activity-actions">
-                                                    <a href="{% url 'planning:edit_activity' activity.id %}" class="edit-link" title="Edit Activity"><i class="bi bi-pencil-square"></i></a>
-                                                    <a href="{% url 'planning:delete_activity' activity.id %}" class="delete-link" title="Delete Activity"><i class="bi bi-trash"></i></a>
-                                                </span>
-                                            </li>
-                                        {% endif %}
-                                    {% endfor %}
-                                </ul>
-                                <a href="{% url 'planning:add_activity' block.id court_display_num %}" class="add-link"> + Add Activity </a>
-                            </div>
-                            {% endwith %}
-                        {% endfor %}
+    {# --- MOVED: TimeBlock Formset Section (Collapsible) --- #}
+    <div class="timeblock-formset-section">
+        <h2>Session Time Blocks</h2>
+        <p class="helptext">Click on a block header to expand and edit its details. Add new blocks using the "Add New Time Block" form at the end.</p>
+        <form method="POST" action="{% url 'planning:session_detail' session.id %}">
+            {% csrf_token %}
+            {{ timeblock_formset.management_form }}
+            {% for form in timeblock_formset %}
+                {# MODIFIED: Removed 'open' attribute to make all collapsed by default #}
+                <details class="time-block-details"> 
+                    <summary>
+                        <span class="summary-main-info">
+                            <span class="summary-text">
+                                {% if form.instance.pk %}
+                                    Block {{ forloop.counter }}: 
+                                    Offset {{ form.instance.start_offset_minutes|default_if_none:"0" }}m, 
+                                    Duration {{ form.instance.duration_minutes|default_if_none:"0" }}m
+                                    {% if form.instance.block_focus %}| Focus: {{ form.instance.block_focus|truncatechars:30 }}{% endif %}
+                                {% else %}
+                                    Add New Time Block
+                                {% endif %}
+                            </span>
+                        </span>
+                        {% if form.instance.pk and form.can_delete %} 
+                            <label for="{{ form.DELETE.id_for_label }}" class="delete-checkbox-label" style="font-weight:normal; margin-left: auto; white-space: nowrap;">
+                                {{ form.DELETE }} Delete
+                            </label>
+                        {% endif %}
+                    </summary>
+                    <div class="time-block-form-content">
+                        {{ form.id }} 
+                        <div class="form-field">
+                            {{ form.start_offset_minutes.label_tag }}
+                            {{ form.start_offset_minutes }}
+                            {{ form.start_offset_minutes.errors }}
+                        </div>
+                        <div class="form-field">
+                            {{ form.duration_minutes.label_tag }}
+                            {{ form.duration_minutes }}
+                            {{ form.duration_minutes.errors }}
+                        </div>
+                        <div class="form-field">
+                            {{ form.number_of_courts.label_tag }}
+                            {{ form.number_of_courts }}
+                            {{ form.number_of_courts.errors }}
+                        </div>
+                        <div class="form-field">
+                            {{ form.rotation_interval_minutes.label_tag }}
+                            {{ form.rotation_interval_minutes }}
+                            {{ form.rotation_interval_minutes.errors }}
+                        </div>
+                        <div class="form-field">
+                            {{ form.block_focus.label_tag }}
+                            {{ form.block_focus }}
+                            {{ form.block_focus.errors }}
+                        </div>
+                        
+                        {% if not form.instance.pk %}
+                             <p class="no-activities-msg"><em>Save this new time block first to enable player grouping and activity assignment for it.</em></p>
+                        {% endif %}
                     </div>
-                </div>
-                {% endwith %}
+                </details>
             {% endfor %}
-        {% else %}
-            <p>No time blocks have been defined for this session yet.</p>
-        {% endif %}
+            <div class="formset-submit-row">
+                <button type="submit" name="update_timeblocks" class="btn btn-primary">Save Time Block Changes</button>
+            </div>
+        </form>
     </div>
+    {# --- END MOVED TimeBlock Formset Section --- #}
 
 {% endblock %}
 
 
-{# Block for page-specific JavaScript #}
 {% block extra_scripts %}
-    {# --- Initialize SortableJS & API Calls --- #}
+    {# ... (existing script for SortableJS and API calls remains the same) ... #}
     <script>
-        // Function to get CSRF token from cookies
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
+        function getCookie(name) { 
+            let cookieValue = null; if (document.cookie && document.cookie !== '') { const cookies = document.cookie.split(';'); for (let i = 0; i < cookies.length; i++) { const cookie = cookies[i].trim(); if (cookie.substring(0, name.length + 1) === (name + '=')) { cookieValue = decodeURIComponent(cookie.substring(name.length + 1)); break; } } } return cookieValue;
         }
         const csrftoken = getCookie('csrftoken');
-
-        // API URLs
         const updateApiUrl = "{% url 'planning:update_manual_assignment_api' %}";
-        const clearApiUrlBase = "/api/clear_block_assignments/"; // Assumes direct include
-
-        const statusDiv = document.getElementById('assignment-status');
-
-        // Function to show status message
-        function showStatusMessage(message, isError = false) {
-            if (!statusDiv) return;
-            statusDiv.textContent = message;
-            statusDiv.className = isError ? 'status-message status-error' : 'status-message status-success';
-            statusDiv.style.display = 'block';
-            setTimeout(() => { statusDiv.style.display = 'none'; }, 4000);
+        let clearApiUrlBase = "";
+        try {
+            clearApiUrlBase = "{% url 'planning:clear_manual_assignments_api' 0 %}".slice(0, -2);
+        } catch (e) {
+            console.warn("Could not reverse clear_manual_assignments_api with dummy arg, ensure URL is correct.");
         }
 
+        const statusDiv = document.getElementById('assignment-status');
+        function showStatusMessage(message, isError = false) { 
+            if (!statusDiv) return; statusDiv.textContent = message; statusDiv.className = isError ? 'status-message status-error' : 'status-message status-success'; statusDiv.style.display = 'block'; setTimeout(() => { statusDiv.style.display = 'none'; }, 4000);
+        }
 
         document.addEventListener('DOMContentLoaded', function () {
-            // Initialize Drag and Drop for each block
             const blockContainers = document.querySelectorAll('.block-player-groups');
-            blockContainers.forEach(container => {
-                const blockId = container.dataset.blockId;
-                const courtLists = container.querySelectorAll('.player-group-list');
+            blockContainers.forEach(container => { 
+                const blockId = container.dataset.blockId; const courtLists = container.querySelectorAll('.player-group-list');
+                courtLists.forEach(list => { new Sortable(list, { group: `block-${blockId}`, animation: 150, ghostClass: 'sortable-ghost', dragClass: 'sortable-drag', onEnd: function (evt) { const itemEl = evt.item; const toList = evt.to; const fromList = evt.from; if (toList && fromList && toList !== fromList) { const playerId = itemEl.dataset.playerId; const newCourtId = toList.dataset.courtId; const currentBlockId = toList.closest('.block-player-groups')?.dataset.blockId; if (!playerId || !newCourtId || !currentBlockId) { console.error("Missing data for API call:", {playerId, newCourtId, currentBlockId}); showStatusMessage("Error: Could not get data to save assignment.", true); return; } if (currentBlockId !== blockId) { console.warn("Attempted move between different blocks - ignoring."); return; } const dataToSend = { player_id: playerId, time_block_id: currentBlockId, court_number: newCourtId }; fetch(updateApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken }, body: JSON.stringify(dataToSend) }).then(response => { if (!response.ok) { return response.json().then(errData => { throw new Error(errData.message || `Server error! Status: ${response.status}`); }).catch(() => { throw new Error(`Server error! Status: ${response.status}`); }); } return response.json(); }).then(data => { console.log('Assignment Success:', data); showStatusMessage(data.message || 'Assignment saved successfully!', false); const blockHeader = document.querySelector(`h5:has(.clear-assignments-btn[data-block-id="${currentBlockId}"])`) || document.querySelector(`h3:has(+ .block-player-groups[data-block-id="${currentBlockId}"])`); let clearButton = blockHeader ? blockHeader.querySelector('.clear-assignments-btn') : null; if (!clearButton && blockHeader) { clearButton = document.createElement('button'); clearButton.className = 'clear-assignments-btn'; clearButton.dataset.blockId = currentBlockId; clearButton.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Use Auto Grouping'; clearButton.addEventListener('click', handleClearButtonClick); blockHeader.appendChild(document.createTextNode(' ')); blockHeader.appendChild(clearButton); console.log("Clear button added dynamically."); } }).catch((error) => { console.error('Error saving assignment:', error); showStatusMessage(`Error saving: ${error.message}`, true); }); } } }); }); });
 
-                courtLists.forEach(list => {
-                    new Sortable(list, {
-                        group: `block-${blockId}`,
-                        animation: 150,
-                        ghostClass: 'sortable-ghost',
-                        dragClass: 'sortable-drag',
-                        onEnd: function (evt) {
-                            const itemEl = evt.item;
-                            const toList = evt.to;
-                            const fromList = evt.from;
-
-                            if (toList && fromList && toList !== fromList) {
-                                const playerId = itemEl.dataset.playerId;
-                                const newCourtId = toList.dataset.courtId;
-                                const currentBlockId = toList.closest('.block-player-groups')?.dataset.blockId;
-
-                                if (!playerId || !newCourtId || !currentBlockId) {
-                                    console.error("Missing data for API call:", {playerId, newCourtId, currentBlockId});
-                                    showStatusMessage("Error: Could not get data to save assignment.", true);
-                                    return;
-                                }
-                                if (currentBlockId !== blockId) {
-                                     console.warn("Attempted move between different blocks - ignoring.");
-                                     return;
-                                }
-                                const dataToSend = { player_id: playerId, time_block_id: currentBlockId, court_number: newCourtId };
-
-                                fetch(updateApiUrl, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
-                                    body: JSON.stringify(dataToSend)
-                                })
-                                .then(response => {
-                                    if (!response.ok) {
-                                        return response.json().then(errData => { throw new Error(errData.message || `Server error! Status: ${response.status}`); })
-                                               .catch(() => { throw new Error(`Server error! Status: ${response.status}`); });
-                                    }
-                                    return response.json();
-                                })
-                                .then(data => {
-                                    console.log('Assignment Success:', data);
-                                    showStatusMessage(data.message || 'Assignment saved successfully!', false);
-                                    const blockHeader = document.querySelector(`h5:has(.clear-assignments-btn[data-block-id="${currentBlockId}"])`)
-                                                     || document.querySelector(`h5:has(+ .block-player-groups[data-block-id="${currentBlockId}"])`);
-                                    let clearButton = blockHeader ? blockHeader.querySelector('.clear-assignments-btn') : null;
-                                    if (!clearButton && blockHeader) {
-                                        clearButton = document.createElement('button');
-                                        clearButton.className = 'clear-assignments-btn';
-                                        clearButton.dataset.blockId = currentBlockId;
-                                        clearButton.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Use Auto Grouping';
-                                        clearButton.addEventListener('click', handleClearButtonClick);
-                                        blockHeader.appendChild(document.createTextNode(' '));
-                                        blockHeader.appendChild(clearButton);
-                                        console.log("Clear button added dynamically.");
-                                    }
-                                })
-                                .catch((error) => {
-                                    console.error('Error saving assignment:', error);
-                                    showStatusMessage(`Error saving: ${error.message}`, true);
-                                });
-                            }
-                        } // End onEnd
-                    }); // End new Sortable
-                }); // End courtLists.forEach
-            }); // End blockContainers.forEach
-
-            // --- Function to handle clear button click (defined once) ---
-            function handleClearButtonClick() {
-                const blockId = this.dataset.blockId;
-                 if (!blockId) { showStatusMessage("Error: Could not identify block to clear.", true); return; }
-                 if (!confirm("Are you sure you want to clear manual assignments for this block and revert to automatic grouping?")) { return; }
-                 const clearUrl = `${clearApiUrlBase}${blockId}/`;
-
-                 fetch(clearUrl, {
-                     method: 'POST',
-                     headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' },
-                 })
-                 .then(response => {
-                     if (!response.ok) {
-                          return response.json().then(errData => { throw new Error(errData.message || `HTTP error! Status: ${response.status}`); })
-                                 .catch(() => { throw new Error(`HTTP error! Status: ${response.status}`); });
-                     }
-                     return response.json();
-                 })
-                 .then(data => {
-                     console.log('Clear Success:', data);
-                     showStatusMessage(data.message || 'Manual assignments cleared. Reloading...', false);
-                     setTimeout(() => { window.location.reload(); }, 1500);
-                 })
-                 .catch(error => {
-                     console.error('Error clearing assignments:', error);
-                     showStatusMessage(`Error clearing: ${error.message}`, true);
-                 });
+            function handleClearButtonClick() { 
+                const blockId = this.dataset.blockId; if (!blockId) { showStatusMessage("Error: Could not identify block to clear.", true); return; } if (!confirm("Are you sure you want to clear manual assignments for this block and revert to automatic grouping?")) { return; } const clearUrl = `${clearApiUrlBase}${blockId}/`; fetch(clearUrl, { method: 'POST', headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' }, }).then(response => { if (!response.ok) { return response.json().then(errData => { throw new Error(errData.message || `HTTP error! Status: ${response.status}`); }).catch(() => { throw new Error(`HTTP error! Status: ${response.status}`); }); } return response.json(); }).then(data => { console.log('Clear Success:', data); showStatusMessage(data.message || 'Manual assignments cleared. Reloading...', false); setTimeout(() => { window.location.reload(); }, 1500); }).catch(error => { console.error('Error clearing assignments:', error); showStatusMessage(`Error clearing: ${error.message}`, true); });
             }
-
-            // --- Add Event Listeners for Existing Clear Buttons ---
             const clearButtons = document.querySelectorAll('.clear-assignments-btn');
-            clearButtons.forEach(button => {
-                button.addEventListener('click', handleClearButtonClick);
-            }); // End clearButtons.forEach
-
-        }); // End DOMContentLoaded
+            clearButtons.forEach(button => { button.addEventListener('click', handleClearButtonClick); }); 
+        });
     </script>
-    {# --- END JavaScript --- #}
 {% endblock %}
-```
-
-This version should be much shorter and only contain the necessary template logic, extending the base template correct

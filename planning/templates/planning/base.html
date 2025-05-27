@@ -1,15 +1,10 @@
-{% load static %} {# Load the static tag library first #}
+{% load static %}
 <!DOCTYPE html>
-{# Add class immediately based on localStorage to prevent FOUC #}
-<html lang="en" class=""> {# Class added by script below #}
+<html lang="en" class="">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    {# Block for the page title - Defaults to SquashSync if not overridden #}
     <title>{% block title %}SquashSync{% endblock %}</title>
-
-    {# *** SCRIPT TO PREVENT FOUC *** #}
     <script>
       (function() {
         try {
@@ -19,174 +14,169 @@
           } else {
             document.documentElement.classList.remove('dark-mode');
           }
-        } catch (e) {
-          console.error('Error applying initial theme:', e);
-        }
+        } catch (e) { console.error('Error applying initial theme:', e); }
       })();
     </script>
-    {# *** END SCRIPT TO PREVENT FOUC *** #}
-
-
-    {# Common CSS links #}
-    <link rel="stylesheet" href="{% static 'planning/style.css' %}"> {# Link to your main stylesheet #}
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"> {# Bootstrap Icons CDN #}
-
-    {# --- ADD FAVICON LINK --- #}
+    <link rel="stylesheet" href="{% static 'planning/style.css' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="icon" type="image/png" href="{% static 'planning/images/favicon.png' %}">
-    {# --- END FAVICON LINK --- #}
-
-
     <style>
-        /* Styles for Django messages block */
-        .django-messages {
-            position: fixed;
-            top: 70px; /* Adjust based on your header height */
-            right: 20px;
-            z-index: 1050; /* Ensure it's above other content */
-            max-width: 350px;
-            width: auto;
-        }
-        .django-messages .alert {
-            padding: 10px 15px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            color: white; /* Default text color for messages */
-            opacity: 0.95; /* Slight transparency */
-            transition: opacity 0.5s ease-out;
-            position: relative; /* For close button positioning */
-        }
-        .django-messages .alert .close-message {
-            float: right;
-            background: none;
-            border: none;
-            font-size: 1.2em;
-            line-height: 1;
-            color: inherit; /* Inherit color from parent alert div */
-            opacity: 0.7;
-            margin-left: 15px;
-            padding: 0;
-            cursor: pointer;
-        }
-        .django-messages .alert .close-message:hover {
-            opacity: 1;
-        }
-
-        /* Message type specific styling using CSS variables */
+        /* Styles for Django messages block (existing) */
+        .django-messages { position: fixed; top: 70px; right: 20px; z-index: 1050; max-width: 350px; width: auto; }
+        .django-messages .alert { padding: 10px 15px; margin-bottom: 10px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); color: white; opacity: 0.95; transition: opacity 0.5s ease-out; position: relative; }
+        .django-messages .alert .close-message { float: right; background: none; border: none; font-size: 1.2em; line-height: 1; color: inherit; opacity: 0.7; margin-left: 15px; padding: 0; cursor: pointer; }
+        .django-messages .alert .close-message:hover { opacity: 1; }
         .alert-success { background-color: var(--action-add-bg, #28a745); color: var(--action-add-text, white); border: 1px solid var(--action-add-border, #1e7e34); }
         .alert-info    { background-color: var(--link-color, #17a2b8); color: white; border: 1px solid var(--link-hover-color, #117a8b); }
-        .alert-warning { background-color: #ffc107; color: #333 !important; border: 1px solid #d39e00;} /* Yellow (darker text for light mode) */
+        .alert-warning { background-color: #ffc107; color: #333 !important; border: 1px solid #d39e00;}
         .alert-error   { background-color: var(--action-del-bg, #dc3545); color: var(--action-del-text, white); border: 1px solid var(--action-del-border, #b02a37); }
-
         html.dark-mode .alert-success { background-color: var(--action-add-bg); color: var(--action-add-text); border-color: var(--action-add-border); }
         html.dark-mode .alert-info    { background-color: var(--link-color); }
         html.dark-mode .alert-warning { background-color: #d39e00; color: #f0f0f0 !important; border-color: #b88a00;}
         html.dark-mode .alert-error   { background-color: var(--action-del-bg); color: var(--action-del-text); border-color: var(--action-del-border); }
-    
-        /* Style for logout form/button to look like a link */
-        .logout-form {
-            display: inline; /* Make form inline with other items */
-            margin: 0;
-            padding: 0;
+        
+        /* Style for logout form/button (existing) */
+        .logout-form { display: inline; margin: 0; padding: 0; }
+        .logout-button { background: none; border: none; color: var(--link-color); font-size: 0.9em; text-decoration: underline; cursor: pointer; padding: 0; margin: 0; font-family: inherit; }
+        .logout-button:hover { color: var(--link-hover-color); }
+        .logout-button i { margin-right: 3px; }
+
+        /* --- Mobile Navigation Styles --- */
+        .main-header nav {
+            display: flex; /* Keep nav itself as flex for alignment of logo and right-items */
+            justify-content: space-between; /* Pushes logo left, right-items right */
+            align-items: center;
+            width: 100%;
         }
-        .logout-button {
+        .nav-logo-link { /* For the SquashSync logo */
+            font-size: 1.2em;
+            text-decoration: none;
+            color: var(--heading-color);
+            margin-right: 15px; /* Space between logo and nav links/toggle */
+        }
+        .nav-links-container { /* This will hold the collapsible links */
+            display: flex;
+            gap: 15px; /* Original gap for desktop */
+            align-items: center;
+        }
+        .nav-right-items { /* For theme toggle, user info, logout */
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-left: auto; /* Pushes this group to the right on desktop if nav-links are also flexed */
+        }
+        .mobile-nav-toggle {
+            display: none; /* Hidden by default on larger screens */
             background: none;
             border: none;
-            color: var(--link-color); /* Use your theme's link color */
-            font-size: 0.9em; /* Match existing logout link font size */
-            text-decoration: underline;
+            color: var(--heading-color);
+            font-size: 1.8em; /* Larger icon for tapping */
             cursor: pointer;
-            padding: 0; /* Remove default button padding */
-            margin: 0;
-            font-family: inherit; /* Inherit font from parent */
+            padding: 5px;
         }
-        .logout-button:hover {
-            color: var(--link-hover-color); /* Use your theme's link hover color */
+
+        @media (max-width: 992px) { /* Breakpoint for mobile navigation - adjust as needed */
+            .nav-links-container {
+                display: none; /* Hide links by default on mobile */
+                flex-direction: column; /* Stack links vertically when shown */
+                position: absolute;
+                top: 60px; /* Adjust based on your header height */
+                left: 0;
+                right: 0;
+                background-color: var(--container-light-bg, #f8f9fa); /* Background for dropdown */
+                padding: 10px 0;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                z-index: 1000; /* Ensure it's above other content */
+                border-top: 1px solid var(--border-color);
+            }
+            .nav-links-container.active {
+                display: flex; /* Show when active */
+            }
+            .nav-links-container li {
+                width: 100%;
+                text-align: center;
+                padding: 10px 0;
+                border-bottom: 1px solid var(--border-light);
+            }
+            .nav-links-container li:last-child {
+                border-bottom: none;
+            }
+            .nav-links-container a {
+                display: block; /* Make entire area clickable */
+                width: 100%;
+            }
+            .mobile-nav-toggle {
+                display: block; /* Show hamburger on mobile */
+                order: -1; /* Move toggle to the left of other items if nav is flex */
+                margin-right: 10px; /* Space between toggle and logo */
+            }
+            .main-header nav {
+                /* Adjust nav if logo and right items need to be spaced differently on mobile */
+            }
+             .nav-right-items {
+                margin-left: auto; /* Ensure right items stay to the right */
+            }
         }
-        .logout-button i { /* Style for icon within the button */
-            margin-right: 3px;
+        /* Ensure header itself has some padding */
+        .main-header {
+            padding: 10px 20px; /* Original padding from your style.css */
         }
 
     </style>
-
-    {# Block for any page-specific head elements (extra CSS, meta tags, inline styles) #}
     {% block extra_head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
 
-    {# --- Main Navigation Header --- #}
     <header class="main-header">
         <nav>
-            <ul style="list-style: none; padding: 0; margin: 0; display: flex; gap: 15px; align-items: center;"> {# Reduced gap #}
-                {# SquashSync Logo/Brand link - points to coach dashboard homepage #}
-                <li><strong style="font-size: 1.2em;"><a href="{% url 'homepage' %}" style="text-decoration: none; color: var(--heading-color);">SquashSync</a></strong></li>
+            {# Mobile Navigation Toggle (Hamburger Button) #}
+            <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Toggle navigation" aria-expanded="false">
+                <i class="bi bi-list"></i>
+            </button>
 
+            {# SquashSync Logo/Brand link #}
+            <a href="{% url 'homepage' %}" class="nav-logo-link"><strong>SquashSync</strong></a>
+            
+            {# Container for navigation links that will be toggled #}
+            <ul class="nav-links-container" id="navLinksContainer" style="list-style: none; padding: 0; margin: 0;">
                 {% if request.user.is_authenticated and request.user.is_staff %}
-                    {# Links for logged-in coaches (staff) #}
                     <li><a href="{% url 'homepage' %}" style="color: var(--link-color);"><i class="bi bi-house-door-fill"></i> Home</a></li>
                     <li><a href="{% url 'planning:session_calendar' %}" style="color: var(--link-color);"><i class="bi bi-calendar-event"></i> Sessions</a></li>
                     <li><a href="{% url 'planning:players_list' %}" style="color: var(--link-color);"><i class="bi bi-people-fill"></i> Players</a></li>
-                    <li>
-                        <a href="{% url 'planning:my_availability' %}" style="color: var(--link-color);">
-                            <i class="bi bi-calendar-check"></i> My Availability
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{% url 'planning:pending_assessments' %}" style="color: var(--link-color);">
-                            <i class="bi bi-clipboard-data"></i> Pending Assessments
-                        </a>
-                    </li>
+                    <li><a href="{% url 'planning:my_availability' %}" style="color: var(--link-color);"><i class="bi bi-calendar-check"></i> My Availability</a></li>
+                    <li><a href="{% url 'planning:pending_assessments' %}" style="color: var(--link-color);"><i class="bi bi-clipboard-data"></i> Pending Assessments</a></li>
                     {% if request.user.is_superuser %}
-                    <li>
-                        <a href="{% url 'planning:session_staffing' %}" style="color: var(--link-color);">
-                            <i class="bi bi-person-check-fill"></i> Staffing
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{% url 'planning:coach_completion_report' %}" style="color: var(--link-color);">
-                            <i class="bi bi-cash-coin"></i> Completion Report
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{% url 'admin:planning_payslip_changelist' %}" style="color: var(--link-color);">
-                            <i class="bi bi-receipt"></i> Payslip Management
-                        </a>
-                    </li>
+                    <li><a href="{% url 'planning:session_staffing' %}" style="color: var(--link-color);"><i class="bi bi-person-check-fill"></i> Staffing</a></li>
+                    <li><a href="{% url 'planning:coach_completion_report' %}" style="color: var(--link-color);"><i class="bi bi-cash-coin"></i> Completion Report</a></li>
+                    <li><a href="{% url 'admin:planning_payslip_changelist' %}" style="color: var(--link-color);"><i class="bi bi-receipt"></i> Payslip Management</a></li>
                     {% endif %}
                 {% elif request.user.is_authenticated %}
                      <li><a href="{% url 'planning:serve_react_pwa_base' %}" style="color: var(--link-color);"><i class="bi bi-controller"></i> SoloSync App</a></li>
-                {% else %}
                 {% endif %}
-
-
-                {# --- Theme Toggle Button & Login/Logout --- #}
-                <li style="margin-left: auto; display: flex; align-items: center; gap: 15px;">
-                    <button id="theme-toggle" title="Toggle theme">
-                        <i class="bi bi-sun-fill"></i> {# Icon updated by JS #}
-                    </button>
-                    {% if request.user.is_authenticated %}
-                        <span style="color: var(--subheading-color); font-size: 0.9em;">Hi, {{ request.user.username }}</span>
-                        {# --- MODIFIED LOGOUT LINK TO A FORM --- #}
-                        <form method="post" action="{% url 'logout' %}" class="logout-form">
-                            {% csrf_token %}
-                            <button type="submit" class="logout-button">
-                                <i class="bi bi-box-arrow-right"></i> Logout
-                            </button>
-                        </form>
-                        {# --- END MODIFIED LOGOUT --- #}
-                    {% else %}
-                        <a href="{% url 'login' %}" style="color: var(--link-color); font-size: 0.9em; text-decoration: underline;">
-                            <i class="bi bi-box-arrow-in-right"></i> Login
-                        </a>
-                    {% endif %}
-                </li>
-                {# --- END Theme Toggle Button & Login/Logout --- #}
             </ul>
+
+            {# Right-aligned items: Theme Toggle & Login/Logout #}
+            <div class="nav-right-items">
+                <button id="theme-toggle" title="Toggle theme" style="background: none; border: none; color: var(--heading-color); font-size: 1.4em; cursor: pointer; padding: 5px;">
+                    <i class="bi bi-sun-fill"></i> {# Icon updated by JS #}
+                </button>
+                {% if request.user.is_authenticated %}
+                    <span style="color: var(--subheading-color); font-size: 0.9em; white-space: nowrap;">Hi, {{ request.user.username }}</span>
+                    <form method="post" action="{% url 'logout' %}" class="logout-form">
+                        {% csrf_token %}
+                        <button type="submit" class="logout-button">
+                            <i class="bi bi-box-arrow-right"></i> Logout
+                        </button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'login' %}" style="color: var(--link-color); font-size: 0.9em; text-decoration: underline;">
+                        <i class="bi bi-box-arrow-in-right"></i> Login
+                    </a>
+                {% endif %}
+            </div>
         </nav>
     </header>
-    {# --- End Main Navigation Header --- #}
 
-    {# Display Django Messages #}
     {% if messages %}
         <div class="django-messages">
             {% for message in messages %}
@@ -207,38 +197,24 @@
         </script>
     {% endif %}
 
-
-    {# --- Main Content Area --- #}
     <div class="container">
-        {% block content %}
-        {% endblock %}
+        {% block content %}{% endblock %}
     </div>
-    {# --- End Main Content Area --- #}
 
-
-    {# --- Footer --- #}
     <footer class="main-footer">
         {% block footer %}
             <p>&copy; {% now "Y" %} SquashSync. Designed for Squash Coaches.</p>
         {% endblock %}
     </footer>
-    {# --- End Footer --- #}
 
+    {% block extra_scripts %}{% endblock %}
 
-    {# --- Common JavaScript links --- #}
-    {# <script src="{% static 'planning/global.js' %}"></script> #}
-
-    {# --- Block for any page-specific JavaScript files or inline scripts --- #}
-    {% block extra_scripts %}
-    {% endblock %}
-
-    {# --- DARK MODE JAVASCRIPT (Button Handler) --- #}
     <script>
+        // Theme Toggle JS (existing)
         const themeToggleButton = document.getElementById('theme-toggle');
         const htmlElement = document.documentElement; 
         const sunIconClass = 'bi-sun-fill';
         const moonIconClass = 'bi-moon-stars-fill';
-
         function updateButtonIcon() {
             if(themeToggleButton) { 
                 if (htmlElement.classList.contains('dark-mode')) {
@@ -248,21 +224,27 @@
                 }
             }
         }
-
         if (themeToggleButton) { 
             updateButtonIcon();
             themeToggleButton.addEventListener('click', () => {
                 htmlElement.classList.toggle('dark-mode');
-                if (htmlElement.classList.contains('dark-mode')) {
-                    localStorage.setItem('theme', 'dark');
-                } else {
-                    localStorage.setItem('theme', 'light');
-                }
+                localStorage.setItem('theme', htmlElement.classList.contains('dark-mode') ? 'dark' : 'light');
                 updateButtonIcon();
             });
         }
-    </script>
-    {# --- END DARK MODE JAVASCRIPT --- #}
 
+        // Mobile Navigation Toggle JS
+        const mobileNavToggle = document.getElementById('mobileNavToggle');
+        const navLinksContainer = document.getElementById('navLinksContainer');
+        if (mobileNavToggle && navLinksContainer) {
+            mobileNavToggle.addEventListener('click', function() {
+                navLinksContainer.classList.toggle('active');
+                const isExpanded = navLinksContainer.classList.contains('active');
+                mobileNavToggle.setAttribute('aria-expanded', isExpanded);
+                // Optional: Change hamburger icon to close (X) icon when open
+                mobileNavToggle.innerHTML = isExpanded ? '<i class="bi bi-x"></i>' : '<i class="bi bi-list"></i>';
+            });
+        }
+    </script>
 </body>
 </html>

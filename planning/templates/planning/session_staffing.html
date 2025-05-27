@@ -1,12 +1,13 @@
 {% extends 'planning/base.html' %}
 {% load static %}
+{% load i18n %}
 
 {% block title %}{{ page_title|default:"Session Staffing" }} - SquashSync{% endblock %}
 
 {% block extra_head %}
     <style>
-        .content-wrapper { /* Reusing style from other forms */
-            max-width: 1100px; /* Wider for more info */
+        .content-wrapper {
+            max-width: 1200px; 
             margin: 20px auto;
             padding: 25px;
             background-color: var(--container-bg, white);
@@ -22,34 +23,97 @@
         .session-staffing-card {
             background-color: var(--container-light-bg, #f8f9fa);
             border: 1px solid var(--border-light);
-            border-left: 4px solid var(--link-color); /* Accent border */
-            padding: 20px;
+            /* border-left: 4px solid var(--link-color); Removed to use summary indicator */
+            padding: 0; /* Padding will be inside summary and details body */
             margin-bottom: 20px;
             border-radius: 5px;
         }
         html.dark-mode .session-staffing-card {
             background-color: var(--input-bg);
             border-color: var(--border-color);
-            border-left-color: var(--link-color);
         }
-        .session-staffing-card h2 {
+
+        /* Styling for the <summary> element to act as a header */
+        .session-staffing-card summary {
+            padding: 15px 20px;
+            cursor: pointer;
+            list-style: none; /* Remove default marker */
+            display: flex;
+            flex-wrap: wrap; /* Allow wrapping for status icons */
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-light); /* Separator when collapsed */
+        }
+        .session-staffing-card details[open] summary {
+            border-bottom-color: var(--link-color); /* Accent when open */
+        }
+        .session-staffing-card summary::-webkit-details-marker {
+            display: none; /* Hide default marker in WebKit */
+        }
+        .session-summary-content {
+            flex-grow: 1;
+        }
+        .session-staffing-card summary h2 {
             font-size: 1.2em;
             color: var(--heading-color);
-            margin-top: 0;
-            margin-bottom: 8px;
+            margin: 0 0 5px 0; /* Adjusted margin */
+            display: inline-block; /* Keep it inline with other summary items */
         }
-        .session-staffing-card p.session-time { /* Specific class for time paragraph */
+        .session-staffing-card summary .session-time {
             font-size: 0.9em;
             color: var(--subheading-color);
-            margin: 3px 0;
+            margin: 0;
+            display: block; /* Ensure it's on its own line or flows well */
         }
+        .session-status-indicators {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-left: 15px; /* Space from main title */
+            font-size: 0.9em;
+        }
+        .status-indicator {
+            display: inline-flex; /* Changed to inline-flex */
+            align-items: center;
+            gap: 4px;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .indicator-pending {
+            background-color: var(--alert-warning-bg, #fff3cd); /* Using alert warning color vars */
+            color: var(--alert-warning-text, #664d03);
+            border: 1px solid var(--alert-warning-border, #ffecb5);
+        }
+        html.dark-mode .indicator-pending {
+            background-color: var(--alert-warning-bg-dark, #664d03);
+            color: var(--alert-warning-text-dark, #ffecb5);
+            border-color: var(--alert-warning-border-dark, #ffc107);
+        }
+        .indicator-declined {
+            background-color: var(--action-del-bg, #f8d7da);
+            color: var(--action-del-text, #721c24);
+            border: 1px solid var(--action-del-border, #f5c6cb);
+        }
+        html.dark-mode .indicator-declined {
+             background-color: var(--action-del-bg-dark, #58151c);
+             color: var(--action-del-text-dark, #f1aeb5);
+             border-color: var(--action-del-border-dark, #f17c89);
+        }
+
+
+        .session-details-body { /* Content inside <details> when open */
+            padding: 20px;
+            border-top: 1px solid var(--border-light); /* Separator if summary has no bottom border when open */
+        }
+
         .staffing-details-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 20px;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px dashed var(--border-light);
+            /* margin-top: 15px; Removed, now part of .session-details-body padding */
+            /* padding-top: 15px; Removed */
+            /* border-top: 1px dashed var(--border-light); Removed */
         }
         .staffing-column h4 {
             font-size: 1em;
@@ -66,50 +130,52 @@
             font-size: 0.9em;
         }
         .staffing-column li {
-            margin-bottom: 4px;
-            padding: 3px 0;
-            display: flex; /* Align icon and text */
+            margin-bottom: 5px; 
+            padding: 4px 0; 
+            display: flex; 
             align-items: center;
-            gap: 6px;
+            gap: 8px; 
         }
-        .availability-notes {
+        .availability-notes, .confirmation-notes { 
             font-size: 0.8em;
             color: var(--text-color-muted, #6c757d);
             margin-left: 5px;
             font-style: italic;
         }
-        html.dark-mode .availability-notes { color: var(--subheading-color); }
+        html.dark-mode .availability-notes, html.dark-mode .confirmation-notes { 
+            color: var(--subheading-color); 
+        }
 
         .assignment-form { margin-top: 15px; }
         .assignment-form label {
-            display: block; /* Each checkbox on a new line */
-            margin-bottom: 6px; /* Spacing */
+            display: block; 
+            margin-bottom: 6px; 
             font-weight: normal;
             cursor: pointer;
-            display: flex; /* Align checkbox, label, icon */
+            display: flex; 
             align-items: center;
             gap: 8px;
         }
         .assignment-form input[type="checkbox"] {
-            width: 1.1em; /* Slightly larger checkbox */
+            width: 1.1em; 
             height: 1.1em;
             vertical-align: middle;
             accent-color: var(--link-color);
             cursor: pointer;
-            flex-shrink: 0; /* Prevent checkbox from shrinking */
+            flex-shrink: 0; 
         }
         .assignment-form .coach-name {
-             flex-grow: 1; /* Allow name to take space */
+             flex-grow: 1; 
         }
         .assignment-form .availability-icon {
              font-size: 0.9em;
-             flex-shrink: 0; /* Prevent icon from shrinking */
+             flex-shrink: 0; 
         }
 
         .submit-button {
             padding: 8px 15px;
             font-size: 0.95em;
-            margin-top: 15px; /* More space above button */
+            margin-top: 15px; 
             border: none;
             border-radius: 5px;
             background-color: var(--link-color, #007bff);
@@ -120,15 +186,28 @@
          .submit-button:hover {
              background-color: var(--link-hover-color, #0056b3);
          }
-        .no-sessions-msg {
+        .no-sessions-msg, .no-content-msg { 
              color: var(--subheading-color, #666);
              font-style: italic;
+             padding: 10px 0; 
+        }
+        .no-sessions-msg { 
              text-align: center;
              padding: 30px;
              background-color: var(--container-light-bg);
              border: 1px dashed var(--border-light);
              border-radius: 5px;
         }
+        .status-icon {
+            font-size: 1em; 
+        }
+        .status-confirmed { color: var(--action-add-text, #155724); } 
+        html.dark-mode .status-confirmed { color: #28a745; }
+        .status-declined { color: var(--action-del-text, #721c24); } 
+        html.dark-mode .status-declined { color: #dc3545; }
+        .status-pending { color: var(--subheading-color, #6c757d); } 
+        html.dark-mode .status-pending { color: #adb5bd; }
+
     </style>
 {% endblock %}
 
@@ -136,94 +215,134 @@
 <div class="content-wrapper">
     <h1><i class="bi bi-person-check-fill"></i> {{ page_title|default:"Session Staffing" }}</h1>
     <p class="helptext" style="margin-bottom: 20px;">
-        View upcoming sessions, see which coaches are available, and assign them using the checkboxes.
-        Coaches manage their own availability on the "My Availability" page.
+        View upcoming sessions, see coach availability and their final confirmation status. Assign or update coaches using the checkboxes. Click session headers to expand/collapse details.
     </p>
 
     {% if sessions_for_staffing %}
         {% for item in sessions_for_staffing %}
-            <div class="session-staffing-card">
-                <h2>
-                    {% if item.session_obj.school_group %}
-                        {{ item.session_obj.school_group.name }}
-                    {% else %}
-                        General Session
-                    {% endif %}
-                    <a href="{% url 'planning:session_detail' item.session_obj.id %}" title="View Session Plan" style="font-size: 0.7em; margin-left: 10px; font-weight: normal;">(View Plan)</a>
-                </h2>
-                <p class="session-time">
-                    <i class="bi bi-calendar-event"></i> {{ item.session_obj.session_date|date:"l, d F Y" }}
-                    &nbsp;&nbsp; <i class="bi bi-clock"></i> {{ item.session_obj.session_start_time|time:"H:i" }}
-                    ({{ item.session_obj.planned_duration_minutes }} min)
-                </p>
-
-                <div class="staffing-details-grid">
-                    <div class="staffing-column">
-                        <h4>Currently Assigned Coaches:</h4>
-                        {% if item.currently_assigned_coaches %}
-                            <ul>
-                                {% for coach in item.currently_assigned_coaches %}
-                                    <li><i class="bi bi-person-fill-check"></i> {{ coach.name }}</li>
-                                {% endfor %}
-                            </ul>
-                        {% else %}
-                            <p class="no-content-msg">None assigned yet.</p>
-                        {% endif %}
-                    </div>
-
-                    <div class="staffing-column">
-                        <h4>Available Coaches:</h4>
-                        {% if item.available_coach_profiles %}
-                            <ul>
-                                {% for coach_profile in item.available_coach_profiles %}
-                                    <li>
-                                        <i class="bi bi-check-circle-fill" style="color: #28a745;"></i>
-                                        {{ coach_profile.name }} {# Display Coach name #}
-                                        {# *** UPDATED: Access attached note *** #}
-                                        {% if coach_profile.availability_note %}
-                                            <span class="availability-notes">({{ coach_profile.availability_note }})</span>
-                                        {% endif %}
-                                    </li>
-                                {% endfor %}
-                            </ul>
-                        {% else %}
-                            <p class="no-content-msg">No coaches have marked themselves available yet.</p>
-                        {% endif %}
-                    </div>
-
-                    <div class="staffing-column">
-                        <h4>Assign/Update Coaches:</h4>
-                        <form method="post" class="assignment-form">
-                            {% csrf_token %}
-                            <input type="hidden" name="session_id" value="{{ item.session_obj.id }}">
-                            {% for coach_profile in all_coaches %} {# Loop through Coach model instances #}
-                                <label title="{% if coach_profile in item.available_coach_profiles %}Available{% else %}Not Marked Available / Unavailable{% endif %}">
-                                    <input type="checkbox" name="coaches_for_session_{{ item.session_obj.id }}" value="{{ coach_profile.id }}"
-                                        {% if coach_profile in item.currently_assigned_coaches %}checked{% endif %}
-                                    >
-                                    <span class="coach-name">{{ coach_profile.name }}</span>
-                                    {# Icon indicating availability status #}
-                                    {% if coach_profile in item.available_coach_profiles %}
-                                        <i class="bi bi-hand-thumbs-up-fill availability-icon" style="color: #28a745;" title="Marked as available"></i>
-                                    {% else %}
-                                         <i class="bi bi-hand-thumbs-down availability-icon" style="color: #6c757d;" title="Not marked as available / Unavailable"></i>
-                                    {% endif %}
-                                </label>
-                            {% empty %}
-                                <p class="no-content-msg">No active coaches found in the system to assign.</p>
-                            {% endfor %}
-                            {% if all_coaches %}
-                                <button type="submit" class="submit-button">Update Assignments</button>
+            <details class="session-staffing-card">
+                <summary>
+                    <div class="session-summary-content">
+                        <h2>
+                            {% if item.session_obj.school_group %}
+                                {{ item.session_obj.school_group.name }}
+                            {% else %}
+                                General Session
                             {% endif %}
-                        </form>
+                            <a href="{% url 'planning:session_detail' item.session_obj.id %}" title="View Session Plan" style="font-size: 0.7em; margin-left: 10px; font-weight: normal;">(View Plan)</a>
+                            {% if item.session_obj.is_cancelled %}
+                                <span style="color: var(--action-del-text); font-weight: bold; font-size: 0.8em; margin-left: 10px;">(CANCELLED)</span>
+                            {% endif %}
+                        </h2>
+                        <p class="session-time">
+                            <i class="bi bi-calendar-event"></i> {{ item.session_obj.session_date|date:"l, d M Y" }}
+                            &nbsp;&nbsp; <i class="bi bi-clock"></i> {{ item.session_obj.session_start_time|time:"H:i" }}
+                            ({{ item.session_obj.planned_duration_minutes }} min)
+                            {% if item.session_obj.venue_name %}&nbsp;&nbsp; <i class="bi bi-geo-alt-fill"></i> {{ item.session_obj.venue_name }}{% endif %}
+                        </p>
                     </div>
-                </div>
-            </div>
+                    <div class="session-status-indicators">
+                        {% if item.has_pending_confirmations %}
+                            <span class="status-indicator indicator-pending" title="One or more assigned coaches have not confirmed/declined.">
+                                <i class="bi bi-hourglass-split"></i> Pending
+                            </span>
+                        {% endif %}
+                        {% if item.has_declined_coaches %}
+                             <span class="status-indicator indicator-declined" title="One or more assigned coaches have declined.">
+                                <i class="bi bi-x-circle"></i> Declined
+                            </span>
+                        {% endif %}
+                    </div>
+                </summary>
+
+                <div class="session-details-body"> {# Content that gets expanded #}
+                    <div class="staffing-details-grid">
+                        <div class="staffing-column">
+                            <h4>Currently Assigned Coaches & Confirmation:</h4>
+                            {% if item.assigned_coaches_with_status %}
+                                <ul>
+                                    {% for assigned_info in item.assigned_coaches_with_status %}
+                                        <li>
+                                            {% if assigned_info.is_confirmed %}
+                                                <i class="bi bi-check-circle-fill status-icon status-confirmed" title="Confirmed"></i>
+                                            {% elif assigned_info.is_declined %}
+                                                <i class="bi bi-x-circle-fill status-icon status-declined" title="Declined"></i>
+                                            {% else %}
+                                                <i class="bi bi-hourglass-split status-icon status-pending" title="Pending Response"></i>
+                                            {% endif %}
+                                            {{ assigned_info.coach_profile.name }} - <span class="status-{{ assigned_info.status|lower|slugify }}">{{ assigned_info.status }}</span>
+                                            {% if assigned_info.notes %}
+                                                <span class="confirmation-notes">({{ assigned_info.notes }})</span>
+                                            {% endif %}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="no-content-msg">None assigned yet.</p>
+                            {% endif %}
+                        </div>
+
+                        <div class="staffing-column">
+                            <h4>Available Coaches (Marked via 'My Availability'):</h4>
+                            {% if item.available_coaches_for_assignment %}
+                                <ul>
+                                    {% for coach_avail_info in item.available_coaches_for_assignment %}
+                                        <li>
+                                            <i class="bi bi-hand-thumbs-up-fill availability-icon" style="color: #28a745;" title="Marked as available"></i>
+                                            {{ coach_avail_info.coach_profile.name }}
+                                            {% if coach_avail_info.notes %}
+                                                <span class="availability-notes">({{ coach_avail_info.notes }})</span>
+                                            {% endif %}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="no-content-msg">No coaches have marked themselves available for this session's date yet.</p>
+                            {% endif %}
+                        </div>
+
+                        <div class="staffing-column">
+                            <h4>Assign/Update Coaches for this Session:</h4>
+                            <form method="post" class="assignment-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="session_id" value="{{ item.session_obj.id }}">
+                                {% for coach_for_form in all_coaches_for_form %}
+                                    {% with coach_id_to_check=coach_for_form.id %}
+                                        {% for avail_coach_info in item.available_coaches_for_assignment %}
+                                            {% if avail_coach_info.coach_profile.id == coach_id_to_check %}
+                                                {% with is_available_for_session_true=True coach_availability_note_val=avail_coach_info.notes %}{% endwith %}
+                                            {% endif %}
+                                        {% endfor %}
+                                        <label title="{% if is_available_for_session_true %}Available{% if coach_availability_note_val %} ({{ coach_availability_note_val }}){% endif %}{% else %}Not Marked Available / Status Unknown{% endif %}">
+                                            <input type="checkbox" name="coaches_for_session_{{ item.session_obj.id }}" value="{{ coach_for_form.id }}"
+                                                {% for assigned_coach_info in item.assigned_coaches_with_status %}
+                                                    {% if assigned_coach_info.coach_profile.id == coach_for_form.id %}checked{% endif %}
+                                                {% endfor %}
+                                            >
+                                            <span class="coach-name">{{ coach_for_form.name }}</span>
+                                            
+                                            {% if is_available_for_session_true %}
+                                                <i class="bi bi-calendar-check-fill availability-icon" style="color: #198754;" title="Marked as available for this session day"></i>
+                                            {% else %}
+                                                <i class="bi bi-calendar-minus availability-icon" style="color: #6c757d;" title="Not marked as available / Status Unknown"></i>
+                                            {% endif %}
+                                        </label>
+                                    {% endwith %}
+                                {% empty %}
+                                    <p class="no-content-msg">No active coaches found in the system to assign.</p>
+                                {% endfor %}
+                                {% if all_coaches_for_form %}
+                                    <button type="submit" class="submit-button">Update Assignments</button>
+                                {% endif %}
+                            </form>
+                        </div>
+                    </div>
+                </div> {# End of session-details-body #}
+            </details> {# End of session-staffing-card as details #}
         {% endfor %}
     {% else %}
         <p class="no-sessions-msg">No upcoming sessions found in the next 8 weeks to staff.</p>
     {% endif %}
-
 </div>
 {% endblock %}
 
