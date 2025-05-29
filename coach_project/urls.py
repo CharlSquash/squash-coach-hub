@@ -37,7 +37,7 @@ urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     # Assuming your solosync_api urls are namespaced if include has a namespace argument
-    path('api/solosync/', include('solosync_api.urls')), # Or 'solosync_api.urls' without namespace if not defined in solosync_api/urls.py
+    path('api/solo/', include('solosync_api.urls')), # Or 'solosync_api.urls' without namespace if not defined in solosync_api/urls.py
 
     # PWA assets - A more common way is to serve these via Django's static files mechanism
     # by putting them in a static directory or configuring STATICFILES_DIRS.
