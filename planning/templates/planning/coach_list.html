@@ -1,0 +1,115 @@
+{% extends "planning/base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title|default:"Coaches" }} - SquashSync{% endblock %}
+
+{% block extra_head %}
+<style>
+    .page-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-light, #eee);
+    }
+    .page-header h1 { /* Changed from h2 to h1 for main page title */
+        margin-top: 0;
+        margin-bottom: 0;
+        color: var(--heading-color);
+    }
+    .coach-list .list-group-item {
+        background-color: var(--container-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 0.375rem;
+        margin-bottom: 0.75rem;
+        padding: 1rem 1.25rem;
+        transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+        display: flex;
+        align-items: center; /* Vertically align items */
+        gap: 15px; /* Space between photo and info */
+    }
+    .coach-list .list-group-item:hover {
+        background-color: var(--container-light-bg);
+        transform: translateY(-2px);
+        box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,0.1);
+    }
+    .coach-list .coach-photo img {
+        width: 50px; /* Size for thumbnail */
+        height: 50px;
+        border-radius: 50%; /* Circular photo */
+        object-fit: cover;
+        border: 2px solid var(--border-light);
+    }
+    .coach-list .coach-info h5 {
+        margin-bottom: 0.25rem;
+        font-size: 1.1rem;
+        color: var(--link-color);
+    }
+    .coach-list .list-group-item:hover .coach-info h5 {
+        color: var(--link-hover-color);
+    }
+    .coach-list .coach-info .coach-meta {
+        font-size: 0.85rem;
+        color: var(--subheading-color);
+    }
+    .coach-list .action-icon {
+        font-size: 1.2rem;
+        color: var(--subheading-color);
+        margin-left: auto; /* Push icon to the far right */
+    }
+    .coach-list .list-group-item:hover .action-icon {
+        color: var(--link-hover-color);
+    }
+    .no-coaches-alert {
+        background-color: var(--container-light-bg);
+        border: 1px dashed var(--border-color);
+        color: var(--subheading-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <h1><i class="bi bi-person-badge me-2"></i>{{ page_title|default:"Coaches" }}</h1>
+        {% if request.user.is_superuser %}
+            <a href="{% url 'admin:planning_coach_add' %}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle me-1"></i>Add New Coach
+            </a>
+        {% endif %}
+    </div>
+
+    {% if coaches %}
+        <div class="list-group coach-list">
+            {% for coach in coaches %}
+                <a href="{% url 'planning:coach_profile_detail' coach.id %}" class="list-group-item list-group-item-action">
+                    <div class="coach-photo">
+                        {% if coach.profile_photo %}
+                            <img src="{{ coach.profile_photo.url }}" alt="Photo of {{ coach.name }}">
+                        {% else %}
+                            <img src="{% static 'planning/images/default_avatar.png' %}" alt="Default avatar"> {# Placeholder for default avatar #}
+                        {% endif %}
+                    </div>
+                    <div class="coach-info">
+                        <h5 class="mb-1">{{ coach.name|default:"Unnamed Coach" }}</h5>
+                        <div class="coach-meta">
+                            {% if coach.user %}
+                                <i class="bi bi-person-circle"></i> {{ coach.user.username }} | 
+                            {% endif %}
+                            <i class="bi bi-envelope"></i> {{ coach.email|default:"N/A" }}
+                        </div>
+                    </div>
+                    <span class="action-icon">
+                        <i class="bi bi-chevron-right"></i>
+                    </span>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert no-coaches-alert mt-3" role="alert">
+            No active coaches found.
+            {% if request.user.is_superuser %}
+                Consider <a href="{% url 'admin:planning_coach_add' %}" class="alert-link">adding one via the admin panel</a>.
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

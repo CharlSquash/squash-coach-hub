@@ -5,173 +5,79 @@
 
 {% block extra_head %}
 <style>
-    .content-wrapper {
-        max-width: 900px;
-        margin: 20px auto;
-        padding: 20px 25px;
-        background-color: var(--container-bg, white);
-        border: 1px solid var(--border-color, #ddd);
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    .content-wrapper h1 {
-        margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid var(--heading-color, #004085);
-        padding-bottom: 10px; color: var(--heading-color, #004085); font-size: 1.6em;
-        display: flex; align-items: center; gap: 10px;
-    }
-    .helptext {
-        font-size: 0.9em;
-        color: var(--subheading-color);
-        margin-bottom: 20px;
-        background-color: var(--container-light-bg);
-        padding: 10px;
-        border-radius: 4px;
-        border-left: 3px solid var(--link-color);
-    }
+    .content-wrapper { max-width: 900px; margin: 20px auto; padding: 20px 25px; background-color: var(--container-bg, white); border: 1px solid var(--border-color, #ddd); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .content-wrapper h1 { margin-top: 0; margin-bottom: 10px; border-bottom: 2px solid var(--heading-color, #004085); padding-bottom: 10px; color: var(--heading-color, #004085); font-size: 1.6em; display: flex; align-items: center; gap: 10px; }
+    
+    .helptext { font-size: 0.9em; color: var(--subheading-color); margin-bottom: 10px; background-color: var(--container-light-bg); padding: 10px; border-radius: 4px; border-left: 3px solid var(--link-color); }
+    .color-key { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; padding: 10px; font-size: 0.85em; background-color: var(--container-light-bg); border-radius: 4px; }
+    .color-key-item { display: flex; align-items: center; gap: 6px; }
+    .color-key-swatch { width: 15px; height: 15px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.2); }
 
-    .month-year-selector-form {
-        display: flex;
-        gap: 15px;
-        align-items: flex-end; /* Align items to bottom for button alignment */
-        margin-bottom: 25px;
-        padding: 15px;
-        background-color: var(--container-light-bg);
-        border-radius: 5px;
-    }
-    .month-year-selector-form .form-group {
-        margin-bottom: 0; /* Remove default bottom margin if any */
-    }
-    .month-year-selector-form label {
-        display: block;
-        font-size: 0.9em;
-        margin-bottom: 3px;
-        font-weight: bold;
-        color: var(--subheading-color);
-    }
-    .month-year-selector-form select {
-        padding: 8px 10px;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        background-color: var(--input-bg);
-        color: var(--text-color);
-        font-size: 0.95em;
-    }
-    .month-year-selector-form .submit-button {
-        padding: 8px 15px;
-        font-size: 0.95em;
-    }
+    .month-year-selector-form { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; margin-bottom: 25px; padding: 15px; background-color: var(--container-light-bg); border-radius: 5px; }
+    .month-year-selector-form .form-group { margin-bottom: 0; }
+    .month-year-selector-form label { display: block; font-size: 0.9em; margin-bottom: 3px; font-weight: bold; color: var(--subheading-color); }
+    .month-year-selector-form select { padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 4px; background-color: var(--input-bg); color: var(--text-color); font-size: 0.95em; }
+    .month-year-selector-form .submit-button { padding: 8px 15px; font-size: 0.95em; }
 
-    .scheduled-class-availability-card {
-        background-color: var(--container-bg);
-        border: 1px solid var(--border-light);
-        padding: 15px;
-        margin-bottom: 15px;
-        border-radius: 5px;
-    }
-    html.dark-mode .scheduled-class-availability-card {
-        background-color: var(--input-bg); /* Slightly different from main card for contrast */
-        border-color: var(--border-color);
-    }
-    .scheduled-class-availability-card h3 {
-        font-size: 1.1em;
-        color: var(--heading-color);
-        margin-top: 0;
-        margin-bottom: 5px;
-    }
-    .scheduled-class-availability-card p.class-details {
-        font-size: 0.85em;
-        color: var(--subheading-color);
-        margin-bottom: 10px;
-    }
-    .availability-options {
-        display: flex;
-        flex-wrap: wrap; /* Allow wrapping on small screens */
-        gap: 15px;
-        margin-bottom: 10px;
-        align-items: center;
-    }
-    .availability-options label {
-        font-weight: normal;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 0.9em;
-    }
-    .availability-options input[type="radio"] {
-        width: auto;
-        accent-color: var(--link-color);
-        cursor: pointer;
-        margin-right: 3px;
-    }
-    .availability-notes-field textarea {
-        width: 100%;
-        padding: 8px;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        font-size: 0.9em;
-        box-sizing: border-box;
-        background-color: var(--input-bg);
-        color: var(--text-color);
-        min-height: 40px; /* Smaller text area */
-    }
-    .availability-notes-field label {
-        display: block;
-        font-size: 0.85em;
-        margin-bottom: 3px;
-        color: var(--subheading-color);
-    }
+    .day-accordion-item { border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 1rem; overflow: hidden; }
+    .day-accordion-item summary { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background-color: var(--container-light-bg); font-size: 1.2em; font-weight: 500; color: var(--heading-color); cursor: pointer; list-style: none; }
+    .day-accordion-item summary::-webkit-details-marker { display: none; }
+    .day-accordion-item summary .arrow::before { content: '►'; font-size: 0.8em; transition: transform 0.2s ease-in-out; display: inline-block; }
+    .day-accordion-item[open] > summary .arrow::before { transform: rotate(90deg); }
+    .day-accordion-item .sessions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding: 15px; background-color: var(--container-bg); }
 
-    .main-submit-button-container {
-        margin-top: 25px;
-        text-align: center;
-    }
-    .main-submit-button {
-        padding: 12px 25px;
-        font-size: 1.1em;
-    }
-    .no-rules-msg {
-        color: var(--subheading-color);
-        font-style: italic;
-        text-align: center;
-        padding: 20px;
-    }
+    /* Tappable Availability Item Styles */
+    .availability-item { padding: 10px; padding-top: 20px; /* More top padding for icon */ border-radius: 5px; text-align: center; cursor: pointer; border: 1px solid; transition: all 0.2s ease; font-size: 0.9em; line-height: 1.3; font-weight: 500; position: relative; }
+    .availability-item strong { display: block; font-size: 1.1em; margin-bottom: 3px; }
+    
+    /* Info Icon for Description */
+    .description-trigger { position: absolute; top: 5px; right: 7px; font-size: 1.1em; color: rgba(255, 255, 255, 0.7); cursor: help; transition: color 0.2s ease; z-index: 5; }
+    .description-trigger:hover { color: rgba(255, 255, 255, 1); }
+    html.dark-mode .status-no-change .description-trigger { color: rgba(255, 255, 255, 0.7); }
+    html.dark-mode .status-no-change .description-trigger:hover { color: #fff; }
+    html.dark-mode .status-available .description-trigger, html.dark-mode .status-unavailable .description-trigger, html.dark-mode .status-emergency .description-trigger { color: rgba(0, 0, 0, 0.6); }
+    html.dark-mode .status-available .description-trigger:hover, html.dark-mode .status-unavailable .description-trigger:hover, html.dark-mode .status-emergency .description-trigger:hover { color: #000; }
 
-    /* Mobile adjustments */
-    @media (max-width: 600px) {
-        .content-wrapper h1 { font-size: 1.4em; }
-        .month-year-selector-form {
-            flex-direction: column;
-            align-items: stretch; /* Full width for select and button */
-        }
-        .month-year-selector-form .form-group,
-        .month-year-selector-form select,
-        .month-year-selector-form .submit-button {
-            width: 100%;
-            margin-bottom: 10px; /* Spacing when stacked */
-        }
-        .availability-options {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 8px;
-        }
-    }
+    /* Color Statuses */
+    .availability-item.status-no-change { background-color: #6c757d; border-color: #565e64; color: white; }
+    .availability-item.status-available { background-color: #198754; border-color: #146c43; color: white; }
+    .availability-item.status-unavailable { background-color: #dc3545; border-color: #b02a37; color: white; }
+    .availability-item.status-emergency { background-color: #0d6efd; border-color: #0a58ca; color: white; }
+    html.dark-mode .availability-item.status-no-change { background-color: #5a6268; border-color: #495057; }
+    html.dark-mode .availability-item.status-available { background-color: #20c997; border-color: #1baa80; color: #000; }
+    html.dark-mode .availability-item.status-unavailable { background-color: #f1aeb5; border-color: #d99da7; color: #000; }
+    html.dark-mode .availability-item.status-emergency { background-color: #6ea8fe; border-color: #428efc; color: #000; }
 
+    /* Modal Styles */
+    .description-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); z-index: 1050; display: none; justify-content: center; align-items: center; }
+    .description-modal-content { background-color: var(--container-bg); padding: 20px; border-radius: 8px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; }
+    .description-modal-content h4 { margin-top: 0; color: var(--heading-color); border-bottom: 1px solid var(--border-light); padding-bottom: 10px; margin-bottom: 15px; }
+    .description-modal-content p { white-space: pre-wrap; line-height: 1.6; }
+    .description-modal-close { position: absolute; top: 10px; right: 15px; font-size: 1.5rem; font-weight: bold; color: var(--subheading-color); cursor: pointer; border: none; background: none; }
+    .description-modal-close:hover { color: var(--text-color); }
+
+    .main-submit-button-container { margin-top: 25px; text-align: center; }
+    .main-submit-button { padding: 12px 25px; font-size: 1.1em; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="content-wrapper">
     <h1><i class="bi bi-calendar2-week"></i> {{ page_title }}</h1>
+
+    <div class="color-key">
+        <strong>Key:</strong>
+        <span class="color-key-item"><div class="color-key-swatch" style="background-color: #198754;"></div> Available</span>
+        <span class="color-key-item"><div class="color-key-swatch" style="background-color: #dc3545;"></div> Unavailable</span>
+        <span class="color-key-item"><div class="color-key-swatch" style="background-color: #0d6efd;"></div> Emergency Only</span>
+        <span class="color-key-item"><div class="color-key-swatch" style="background-color: #6c757d;"></div> No Preference</span>
+    </div>
+
     <p class="helptext">
-        Select a month and year, then indicate your general availability for each recurring scheduled class.
-        This will set your availability for all future sessions generated from these rules within the selected month.
-        You can still fine-tune availability for individual sessions on the "My Availability" page.
+        <small>Tap a session block to cycle its status. Tap the <i class="bi bi-info-circle-fill"></i> icon to view the group description. Your preference will be applied to all sessions generated from that rule for the selected month.</small>
     </p>
 
-    {# Month/Year Selection Form #}
     <form method="GET" action="{% url 'planning:set_bulk_availability' %}" class="month-year-selector-form">
-        {# No CSRF needed for GET form #}
         <div class="form-group">
             <label for="{{ month_year_form.month.id_for_label }}">{{ month_year_form.month.label }}:</label>
             {{ month_year_form.month }}
@@ -180,77 +86,146 @@
             <label for="{{ month_year_form.year.id_for_label }}">{{ month_year_form.year.label }}:</label>
             {{ month_year_form.year }}
         </div>
-        <button type="submit" class="submit-button btn-sm">View Schedules</button>
+        <button type="submit" class="submit-button btn-sm btn-secondary">View Schedules</button>
     </form>
     <hr>
 
-    {# Form to submit bulk availability preferences #}
     <form method="POST" action="{% url 'planning:set_bulk_availability' %}">
         {% csrf_token %}
-        {# Hidden fields to pass selected month and year with the POST #}
         <input type="hidden" name="month" value="{{ selected_month }}">
         <input type="hidden" name="year" value="{{ selected_year }}">
 
-        <h2>Set Availability for: {{ selected_month_display }}</h2>
+        <h2>Availability for Recurring Schedules in: {{ selected_month_display }} {{ selected_year }}</h2>
 
-        {% if scheduled_classes %}
-            {% for rule in scheduled_classes %}
-                <div class="scheduled-class-availability-card">
-                    <h3>
-                        {{ rule.school_group.name }} - {{ rule.get_day_of_week_display }}s at {{ rule.start_time|time:"H:i" }}
-                    </h3>
-                    <p class="class-details">
-                        Duration: {{ rule.default_duration_minutes }} min
-                        {% if rule.default_venue %}| Default Venue: {{ rule.default_venue.name }}{% endif %}
-                        <br>
-                        Typical Coaches: 
-                        {% for coach in rule.default_coaches.all %}
-                            {{ coach.name }}{% if not forloop.last %}, {% endif %}
-                        {% empty %}
-                            None specified
+        {% for day_name, classes in grouped_classes.items %}
+            {% if classes %}
+                <details class="day-accordion-item" open>
+                    <summary>
+                        <span>{{ day_name }}</span>
+                        <span class="arrow"></span>
+                    </summary>
+                    <div class="sessions-grid">
+                        {% for rule in classes %}
+                            <div class="availability-item status-no-change" 
+                                 data-rule-id="{{ rule.id }}" 
+                                 data-status="NO_CHANGE"
+                                 data-group-description="{{ rule.school_group.description|escapejs }}"
+                                 data-group-name="{{ rule.school_group.name }}"
+                                 tabindex="0" 
+                                 role="button" 
+                                 aria-label="Set availability for {{ rule.school_group.name }} at {{ rule.start_time|time:'H:i' }}">
+                                
+                                <i class="bi bi-info-circle-fill description-trigger" title="View group description"></i>
+
+                                <strong>{{ rule.start_time|time:"H:i" }}</strong>
+                                <span>{{ rule.school_group.name }}</span>
+                            </div>
+                            <input type="hidden" name="availability_rule_{{ rule.id }}" id="input_rule_{{ rule.id }}" value="NO_CHANGE">
                         {% endfor %}
-                    </p>
-                    
-                    <div class="availability-options">
-                        <label>
-                            <input type="radio" name="availability_rule_{{ rule.id }}" value="AVAILABLE" checked> Available
-                        </label>
-                        <label>
-                            <input type="radio" name="availability_rule_{{ rule.id }}" value="UNAVAILABLE"> Unavailable
-                        </label>
-                        <label>
-                            <input type="radio" name="availability_rule_{{ rule.id }}" value="NO_CHANGE"> No Change / Preference
-                        </label>
                     </div>
-                    <div class="availability-notes-field">
-                        <label for="notes_rule_{{ rule.id }}">Notes for this schedule (optional):</label>
-                        <textarea name="notes_rule_{{ rule.id }}" id="notes_rule_{{ rule.id }}" rows="1" placeholder="e.g., Available but prefer not to"></textarea>
-                    </div>
-                </div>
-            {% endfor %}
-            
-            <div class="main-submit-button-container">
-                <button type="submit" class="submit-button main-submit-button">
-                    <i class="bi bi-check2-square"></i> Apply My Availability for {{ selected_month_display }}
-                </button>
-            </div>
-        {% else %}
-            <p class="no-rules-msg">No active scheduled classes found to set availability for.</p>
-        {% endif %}
+                </details>
+            {% endif %}
+        {% endfor %}
+        
+        <div class="main-submit-button-container">
+            <button type="submit" class="submit-button main-submit-button btn-primary">
+                <i class="bi bi-check2-square"></i> Apply My Availability for {{ selected_month_display }}
+            </button>
+        </div>
     </form>
+</div>
+
+{# Modal for displaying the description #}
+<div id="descriptionModal" class="description-modal-overlay">
+    <div class="description-modal-content">
+        <button id="descriptionModalClose" class="description-modal-close" aria-label="Close">&times;</button>
+        <h4 id="modalGroupName">Group Description</h4>
+        <p id="modalGroupDescription">Description will be loaded here.</p>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-    // Optional: JavaScript to auto-submit month/year form on change
-    // document.addEventListener('DOMContentLoaded', function() {
-    //     const monthSelect = document.querySelector('form.month-year-selector-form select[name="month"]');
-    //     const yearSelect = document.querySelector('form.month-year-selector-form select[name="year"]');
-    //     if (monthSelect && yearSelect) {
-    //         monthSelect.addEventListener('change', function() { this.form.submit(); });
-    //         yearSelect.addEventListener('change', function() { this.form.submit(); });
-    //     }
-    // });
+document.addEventListener('DOMContentLoaded', function () {
+    const availabilityItems = document.querySelectorAll('.availability-item');
+    const descriptionModal = document.getElementById('descriptionModal');
+    const descriptionModalClose = document.getElementById('descriptionModalClose');
+    const modalGroupName = document.getElementById('modalGroupName');
+    const modalGroupDescription = document.getElementById('modalGroupDescription');
+
+    const states = [
+        { value: 'AVAILABLE',   cssClass: 'status-available' },
+        { value: 'UNAVAILABLE', cssClass: 'status-unavailable' },
+        { value: 'EMERGENCY',   cssClass: 'status-emergency' },
+        { value: 'NO_CHANGE',   cssClass: 'status-no-change' }
+    ];
+
+    function cycleStatus(item) {
+        const currentStatus = item.dataset.status;
+        const currentIndex = states.findIndex(s => s.value === currentStatus);
+        const nextIndex = (currentIndex + 1) % states.length;
+        const nextState = states[nextIndex];
+
+        item.dataset.status = nextState.value;
+        item.className = `availability-item ${nextState.cssClass}`;
+
+        const hiddenInput = document.getElementById(`input_rule_${item.dataset.ruleId}`);
+        if (hiddenInput) {
+            hiddenInput.value = nextState.value;
+        }
+    }
+
+    function showDescription(item) {
+        const description = item.dataset.groupDescription;
+        const groupName = item.dataset.groupName;
+
+        if (description) {
+            modalGroupName.textContent = `Description for: ${groupName}`;
+            modalGroupDescription.textContent = description;
+        } else {
+            modalGroupName.textContent = groupName;
+            modalGroupDescription.textContent = "No description provided for this group.";
+        }
+        descriptionModal.style.display = 'flex';
+    }
+
+    // Main event listener for the whole item
+    availabilityItems.forEach(item => {
+        item.addEventListener('click', function(event) {
+            if (event.target.classList.contains('description-trigger')) {
+                event.stopPropagation();
+                showDescription(this);
+            } else {
+                cycleStatus(this);
+            }
+        });
+
+        item.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                // Check if focused element within item is the trigger, a bit tricky without focus-visible
+                // For simplicity, we assume Enter/Space on the main block cycles status
+                this.click();
+            }
+        });
+    });
+
+    // Modal closing logic
+    function closeModal() {
+        descriptionModal.style.display = 'none';
+    }
+
+    if (descriptionModalClose) {
+        descriptionModalClose.addEventListener('click', closeModal);
+    }
+    if (descriptionModal) {
+        descriptionModal.addEventListener('click', function(event) {
+            if (event.target === descriptionModal) {
+                closeModal();
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

@@ -16,7 +16,6 @@ urlpatterns = [
     path('session/<int:session_id>/one_page_plan/', views.one_page_plan_view, name='one_page_plan'),
 
     # --- LIVE SESSION VIEW PAGE ---
-    # CORRECTED: Point to live_views.live_session_page_view
     path('session/<int:session_id>/live/', live_views.live_session_page_view, name='live_session'),
 
     # --- Activity Add/Edit/Delete ---
@@ -33,6 +32,12 @@ urlpatterns = [
     path('player/<int:player_id>/add_match/', views.add_match_result, name='add_match_result'),
     path('player/<int:player_id>/assess/latest/', views.assess_latest_session_redirect, name='assess_latest_session'),
 
+     # +++ NEW: Coach Profile URLs +++
+    path('coaches/', views.coach_list_view, name='coach_list'), # For admins to list all coaches
+    path('coach/<int:coach_id>/profile/', views.coach_profile_view, name='coach_profile_detail'), # For admins to view a specific coach
+    path('my-profile/', views.coach_profile_view, name='my_coach_profile'), # For a coach to view their own profile (no ID needed in URL)
+    # +++ END NEW Coach Profile URLs +++
+
     # --- Session Assessment Add/Edit/Delete ---
     path('session/<int:session_id>/player/<int:player_id>/assess/', views.assess_player_session, name='assess_player_session'),
     path('assessment/<int:assessment_id>/edit/', views.edit_session_assessment, name='edit_session_assessment'),
@@ -47,6 +52,14 @@ urlpatterns = [
     path('assessments/pending/', views.pending_assessments_view, name='pending_assessments'),
     path('session/<int:session_id>/mark-assessments-complete/', views.mark_my_assessments_complete_for_session_view, name='mark_my_assessments_complete'),
 
+    # +++ NEW: Group Assessment URLs +++
+    path('session/<int:session_id>/assess-group/', views.add_edit_group_assessment, name='add_edit_group_assessment'),
+     path('group-assessment/<int:group_assessment_id>/toggle-review/', views.toggle_group_assessment_superuser_review_status, name='toggle_group_assessment_review_status'),
+    
+    # +++ NEW: School Group List & Profile URLs +++
+    path('school-groups/', views.school_group_list, name='school_group_list'),
+    path('school-group/<int:group_id>/profile/', views.school_group_profile, name='school_group_profile'),
+    
     # --- Coach Availability Page & Related ---
     path('my-availability/', views.my_availability_view, name='my_availability'),
     path('session-staffing/', views.session_staffing_view, name='session_staffing'),
@@ -54,10 +67,9 @@ urlpatterns = [
     
     # --- Session Calendar & Export ---
     path('sessions/calendar/', views.session_calendar_view, name='session_calendar'),
-    path('sessions/export-schedule/', views.export_weekly_schedule_view, name='export_weekly_schedule'),
+    path('sessions/export-monthly-csv/', views.export_monthly_schedule_csv, name='export_monthly_schedule_csv'),
     
     # --- API Endpoints ---
-    # CORRECTED: Point to live_views.live_session_update_api
     path('api/session/<int:session_id>/live_update/', live_views.live_session_update_api, name='live_session_update_api'),
     path('api/update_assignment/', views.update_manual_assignment_api, name='update_manual_assignment_api'),
     path('api/clear_block_assignments/<int:time_block_id>/', views.clear_manual_assignments_api, name='clear_manual_assignments_api'),
@@ -79,4 +91,7 @@ urlpatterns = [
 
     # --- Bulk Availability ---
     path('set-bulk-availability/', views.set_bulk_availability_view, name='set_bulk_availability'),
+
+    # export calendar for google docs
+    path('calendar/export/ics/', views.export_sessions_ics_view, name='export_sessions_ics'),
 ]

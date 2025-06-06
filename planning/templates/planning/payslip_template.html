@@ -34,17 +34,20 @@
         }
         .info-section {
             margin-bottom: 20px;
-            display: flex; /* Using flex for side-by-side layout if needed */
+            display: flex; /* Using flex for side-by-side layout */
             justify-content: space-between;
+            flex-wrap: wrap; /* Allow wrapping if needed */
         }
         .info-section .left-info, .info-section .right-info {
             width: 48%; /* Adjust as needed if using flex */
+            min-width: 250px; /* Ensure readability if wrapped */
+            margin-bottom: 10px; /* Space if wrapped */
         }
-        .info-section p, .summary-section p {
+        .info-section p, .summary-section p, .bonus-details-section p {
             margin: 6px 0;
             line-height: 1.5;
         }
-        .info-section strong, .summary-section strong {
+        .info-section strong, .summary-section strong, .bonus-details-section strong {
             color: #444;
         }
         table {
@@ -55,8 +58,9 @@
         }
         th, td {
             border: 1px solid #ccc; /* Lightened border */
-            padding: 8px;
+            padding: 7px; /* Slightly adjusted padding */
             text-align: left;
+            vertical-align: top; /* Align content to top of cell */
         }
         th {
             background-color: #f2f2f2;
@@ -69,6 +73,9 @@
         .text-center {
             text-align: center;
         }
+        .currency::before { /* For currency symbol if needed consistently */
+            content: "R"; /* Or {{ CURRENCY_SYMBOL }} if passed in context */
+        }
         .summary-section {
             margin-top: 25px;
             padding-top: 15px;
@@ -77,6 +84,25 @@
         }
         .summary-section p {
             font-size: 11pt;
+        }
+        .bonus-details-section {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px dashed #eee; /* Dashed border for visual separation */
+        }
+        .bonus-details-section h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 10pt;
+            color: #444;
+        }
+        .bonus-details-section ul {
+            list-style-type: none;
+            padding-left: 0;
+            font-size: 9pt;
+        }
+        .bonus-details-section li {
+            margin-bottom: 4px;
         }
         .footer {
             margin-top: 30px;
@@ -99,7 +125,7 @@
                 <p><strong>Period:</strong> {{ payslip.period_month_year_display }}</p>
             </div>
             <div class="right-info text-right">
-                <p><strong>Hourly Rate:</strong> R{{ payslip.hourly_rate }}/hr</p>
+                <p><strong>Hourly Rate:</strong> <span class="currency">{{ payslip.hourly_rate }}</span>/hr</p>
                 <p><strong>Generated On:</strong> {{ payslip.generation_date|date:"F j, Y" }}</p>
             </div>
         </div>
@@ -109,24 +135,34 @@
             <thead>
                 <tr>
                     <th>Date</th>
-                    <th>School Group</th>
-                    <th class="text-center">Duration (Minutes)</th>
-                    <th class="text-center">Duration (H:M)</th>
-                    <th class="text-right">Pay for Session</th>
+                    <th>Group</th>
+                    <th class="text-center">Time</th>
+                    <th class="text-center">Duration</th>
+                    <th class="text-right">Base Pay</th>
+                    <th class="text-right">Bonus</th>
+                    <th class="text-right">Session Total</th>
                 </tr>
             </thead>
             <tbody>
-                {% for session in payslip.sessions %}
+                {% for session_item in payslip.sessions %}
                 <tr>
-                    <td>{{ session.date|date:"Y-m-d" }}</td>
-                    <td>{{ session.school_group_name }}</td>
-                    <td class="text-center">{{ session.duration_minutes }}</td>
-                    <td class="text-center">{{ session.duration_hours_str }}</td>
-                    <td class="text-right">R{{ session.pay_for_session }}</td>
+                    <td>{{ session_item.date|date:"Y-m-d" }}</td>
+                    <td>{{ session_item.school_group_name }}</td>
+                    <td class="text-center">{{ session_item.start_time }}</td>
+                    <td class="text-center">{{ session_item.duration_hours_str }}</td>
+                    <td class="text-right"><span class="currency">{{ session_item.base_pay_for_session }}</span></td>
+                    <td class="text-right">
+                        {% if session_item.bonus_for_session > 0 %}
+                            <span class="currency">{{ session_item.bonus_for_session }}</span>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="text-right"><strong><span class="currency">{{ session_item.total_pay_for_session_line }}</span></strong></td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" class="text-center">No confirmed sessions eligible for payment this period.</td>
+                    <td colspan="7" class="text-center">No confirmed sessions eligible for payment this period.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -134,9 +170,28 @@
 
         {% if payslip.sessions %}
         <div class="summary-section">
-            <p><strong>Total Hours Worked (Decimal):</strong> {{ payslip.total_hours_decimal }} hrs</p>
-            <p><strong>Total Hours Worked (H:M):</strong> {{ payslip.total_hours_str }}</p>
-            <p><strong>Total Pay for Period:</strong> R{{ payslip.total_pay }}</p>
+            <p><strong>Total Hours Worked:</strong> {{ payslip.total_hours_str }} ({{ payslip.total_hours_decimal }} decimal)</p>
+            <hr style="border: 0; border-top: 1px dotted #eee; margin: 5px 0;">
+            <p>Total Base Pay: <span class="currency">{{ payslip.total_base_pay }}</span></p>
+            {% if payslip.total_bonus_amount > 0 %}
+            <p>Bonus for specific sessions: <span class="currency">{{ payslip.total_bonus_amount }}</span></p>
+            {% endif %}
+            <hr style="border: 0; border-top: 1px solid #ccc; margin: 8px 0;">
+            <p style="font-size: 12pt;"><strong>Grand Total Pay: <span class="currency">{{ payslip.total_pay }}</span></strong></p>
+        </div>
+        {% endif %}
+
+        {% if payslip.bonus_details_list %}
+        <div class="bonus-details-section">
+            <h4>Bonuses Applied:</h4>
+            <ul>
+                {% for bonus_item in payslip.bonus_details_list %}
+                <li>
+                    {{ bonus_item.date|date:"d M Y" }} - {{ bonus_item.session_group_name }} ({{ bonus_item.session_time_str }}):
+                    <span class="currency">{{ bonus_item.amount }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
         </div>
         {% endif %}
 

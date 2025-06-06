@@ -622,8 +622,24 @@
                 startClientSideTextTimer('nextBlockTimer', data.next_time_block_preview.starts_in_seconds);
             } else { if(nextBlockPreviewInfoEl) nextBlockPreviewInfoEl.textContent = ""; }
             
-            if(data.is_rotation_alert_active && toggleSoundBtn && soundsEnabled && rotationSound) { /* ... same sound play ... */ }
-            else if (liveStatusContainer) { liveStatusContainer.classList.remove('rotation-alert-active'); }
+             if (data.is_rotation_alert_active) {
+                // Activate the flashing banner
+                if (liveStatusContainer) {
+                    liveStatusContainer.classList.add('rotation-alert-active');
+                }
+                // Play the sound if enabled
+                if (soundsEnabled && rotationSound && typeof rotationSound.play === 'function') {
+                    // Check if the sound is paused to avoid restarting if already playing due to rapid events
+                    if (rotationSound.paused) {
+                        rotationSound.play().catch(e => console.warn("Error playing rotation sound:", e));
+                    }
+                }
+            } else {
+                // Deactivate the flashing banner if the rotation alert is no longer active
+                if (liveStatusContainer) {
+                    liveStatusContainer.classList.remove('rotation-alert-active');
+                }
+            }
 
 
             const currentVisibleActivityInstanceKeys = new Set();

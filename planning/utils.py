@@ -2,7 +2,8 @@
 
 from datetime import date, timedelta, time as time_obj # Import time as time_obj to avoid conflict
 from django.utils import timezone # For timezone awareness if needed, though dates are naive here
-
+import calendar
+import re 
 # Import your models (ensure Session, SchoolGroup, Coach are imported if type hinting or direct use)
 # from .models import Session, SchoolGroup, Coach # Example
 
@@ -71,6 +72,35 @@ def get_weekly_session_data(target_date_input: date):
         'week_end_date': end_of_week,
     }
 
+
+def get_month_start_end(year: int, month: int) -> tuple[date, date]:
+    """
+    Calculates the first and last day of a given month and year.
+    """
+    # Get the number of days in the given month and year
+    _, num_days = calendar.monthrange(year, month)
+    
+    # First day of the month
+    start_date = date(year, month, 1)
+    
+    # Last day of the month
+    end_date = date(year, month, num_days)
+    
+    return start_date, end_date
+
+def get_month_choices() -> list[tuple[int, str]]:
+    """
+    Returns a list of tuples for month choices (e.g., for a form select field).
+    """
+    return [(i, calendar.month_name[i]) for i in range(1, 13)]
+
+def get_year_choices() -> list[int]:
+    """
+    Returns a list of years (e.g., for a form select field).
+    Adjust the range as needed.
+    """
+    current_year = timezone.now().year
+    return list(range(current_year - 5, current_year + 2)) # Example: 5 years back, 1 year forward
 # Example usage (for testing this function directly if needed):
 # if __name__ == '__main__':
 #   # This part would only run if you execute this utils.py file directly
@@ -81,3 +111,17 @@ def get_weekly_session_data(target_date_input: date):
 #   print(f"Schedule for week: {weekly_data['week_display_range']}")
 #   for session_data in weekly_data['sessions_data']:
 #       print(session_data)
+
+def parse_grade_from_string(grade_str: str) -> int | None:
+    """
+    Parses a grade string like 'Gr 8' or '8' and returns the corresponding integer.
+    Returns None if no valid grade number is found.
+    """
+    if not grade_str or not isinstance(grade_str, str):
+        return None
+    
+    # Find any numbers in the string
+    numbers = re.findall(r'\d+', grade_str)
+    if numbers:
+        return int(numbers[0])
+    return None

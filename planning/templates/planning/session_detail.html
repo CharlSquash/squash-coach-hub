@@ -8,7 +8,7 @@
 {% block extra_head %}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
     <style>
-        /* Styles specific to Session Detail - Keep only necessary overrides/additions */
+        /* Styles specific to Session Detail - Kept as is from your file */
         .action-button {
             font-weight: bold; padding: 8px 12px; border-radius: 4px; text-decoration: none;
             display: inline-block; margin-right: 10px; margin-bottom: 5px;
@@ -94,8 +94,8 @@
             justify-content: space-between; 
         }
         html.dark-mode .time-block-details summary {
-             background-color: var(--body-bg); 
-             border-bottom-color: var(--border-color);
+            background-color: var(--body-bg); 
+            border-bottom-color: var(--border-color);
         }
         .time-block-details summary::-webkit-details-marker { display: none; }
         .time-block-details[open] > summary {
@@ -127,17 +127,8 @@
         .formset-submit-row { margin-top: 20px; text-align: right; }
         
         /* Activity Display within Player Grouping Section */
-        .court-activities-section {
-            margin-top: 15px;
-            padding-top: 10px;
-            border-top: 1px dashed var(--border-light);
-        }
-        .court-activities-section h5 { /* Sub-heading for activities */
-            font-size: 0.95em;
-            color: var(--subheading-color);
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
+        .court-activities-section { margin-top: 15px; padding-top: 10px; border-top: 1px dashed var(--border-light); }
+        .court-activities-section h5 { font-size: 0.95em; color: var(--subheading-color); margin-bottom: 5px; font-weight: bold; }
         .court-activities-section ul { list-style: none; padding: 0; margin: 0 0 10px 0; }
         .court-activities-section li.activity-item { 
             background-color: var(--activity-bg, #e9ecef); 
@@ -159,15 +150,23 @@
         .activity-actions .delete-link { color: var(--action-del-text, #dc3545); }
         .activity-actions a:hover, .activity-actions button:hover { opacity: 0.7; }
 
-        .add-link { 
-            font-size: 0.9em; text-decoration: none; color: var(--link-color); 
-            display: inline-block; margin-top: 8px;
-            padding: 4px 8px; border: 1px solid var(--link-color); border-radius: 3px;
+        /* +++ NEW: Style for YouTube link icon +++ */
+        .youtube-link {
+            color: #FF0000; /* YouTube Red */
+            text-decoration: none !important;
+            margin-left: 5px;
+            font-size: 1.2em; /* Make icon a bit bigger */
+            vertical-align: middle;
         }
+        .youtube-link:hover {
+            color: #c4302b; /* Darker red on hover */
+            opacity: 1;
+        }
+
+        .add-link { font-size: 0.9em; text-decoration: none; color: var(--link-color); display: inline-block; margin-top: 8px; padding: 4px 8px; border: 1px solid var(--link-color); border-radius: 3px; }
         .add-link:hover { color: var(--link-hover-color); background-color: var(--container-light-bg); }
         .no-activities-msg { font-style: italic; color: var(--subheading-color); font-size: 0.9em; padding: 6px 0; margin-top:5px; }
         html.dark-mode .no-activities-msg { color: #aaa; }
-
     </style>
 {% endblock %}
 
@@ -239,14 +238,13 @@
     </div>
     <hr> 
 
-    {# Player Group Assignments section - Activities will be added here #}
     {% if session.school_group %}
     <div class="grouping-section">
         <h2>Player Group Assignments & Activities (Per Block)</h2>
         <p class="helptext">Drag players between courts for specific time blocks. Changes are saved automatically. Add activities to each court within a block.</p>
         <div id="assignment-status" class="status-message"></div>
         {% if block_data %}
-             <div> 
+            <div> 
                 {% for data_item in block_data %}
                     {% with block=data_item.block assignments=data_item.assignments has_manual=data_item.has_manual %}
                         <h3 style="margin-top: 25px; padding-bottom: 5px; border-bottom: 1px solid var(--border-color);">
@@ -261,7 +259,7 @@
                         </h3>
                         <div class="block-player-groups" data-block-id="{{ block.id }}">
                             {% for court_num_str, players in assignments.items|dictsort:0 %}
-                                {% with court_num_int=court_num_str|add:0 %} {# Convert court_num_str to int for get_item #}
+                                {% with court_num_int=court_num_str|add:0 %} 
                                 <div class="court-group-column">
                                     <strong>Court {{ court_num_int }}: Players</strong>
                                     <ul class="group-list player-group-list" data-court-id="{{ court_num_int }}">
@@ -273,7 +271,6 @@
                                             <li style="font-style: italic; cursor: default; background: none; border: none;">No players assigned</li>
                                         {% endfor %}
                                     </ul>
-                                    {# --- Activities for this court in this block --- #}
                                     <div class="court-activities-section">
                                         <h5>Activities on this Court:</h5>
                                         {% with activities_for_block=activities_by_block_and_court|get_item:block.id %}
@@ -282,7 +279,23 @@
                                                     <ul>
                                                         {% for activity in court_activities %}
                                                             <li class="activity-item">
-                                                                <span>- {% if activity.drill %}{{ activity.drill.name }}{% else %}{{ activity.custom_activity_name }}{% endif %} ({{ activity.duration_minutes }} min){% if activity.lead_coach %} [{{ activity.lead_coach.name }}]{% endif %}</span>
+                                                                <span>
+                                                                    - 
+                                                                    {# === MODIFIED DRILL NAME DISPLAY === #}
+                                                                    {% if activity.drill and activity.drill.youtube_link %}
+                                                                        <a href="{{ activity.drill.youtube_link }}" target="_blank" rel="noopener noreferrer" title="Watch on YouTube: {{ activity.drill.name }}">
+                                                                            {{ activity.drill.name }}
+                                                                            <i class="bi bi-youtube youtube-link"></i>
+                                                                        </a>
+                                                                    {% elif activity.drill %}
+                                                                        {{ activity.drill.name }}
+                                                                    {% else %}
+                                                                        {{ activity.custom_activity_name }}
+                                                                    {% endif %}
+                                                                    ({{ activity.duration_minutes }} min)
+                                                                    {% if activity.lead_coach %} [{{ activity.lead_coach.name }}]{% endif %}
+                                                                    {# === END MODIFIED DRILL NAME DISPLAY === #}
+                                                                </span>
                                                                 <span class="activity-actions">
                                                                     <a href="{% url 'planning:edit_activity' activity.id %}" class="edit-link" title="Edit Activity"><i class="bi bi-pencil-square"></i></a>
                                                                     <form method="POST" action="{% url 'planning:delete_activity' activity.id %}" onsubmit="return confirm('Are you sure you want to delete this activity?');" style="display: inline;">
@@ -302,24 +315,22 @@
                                             <i class="bi bi-plus-circle-fill"></i> Add Activity to Court {{ court_num_int }}
                                         </a>
                                     </div>
-                                    {# --- END Activities --- #}
                                 </div>
                                 {% endwith %}
                             {% endfor %}
-                        </div>
-                    {% endwith %}
-                {% endfor %}
-            </div>
-        {% elif current_attendees %}
-            <p>No time blocks defined for this session to assign players to. Please add and save time blocks using the form above.</p>
-        {% else %}
-            <p>No players marked as attending. Please update attendance first.</p>
-        {% endif %}
+                            </div>
+                        {% endwith %}
+                    {% endfor %}
+                </div>
+            {% elif current_attendees %}
+                <p>No time blocks defined for this session to assign players to. Please add and save time blocks using the form above.</p>
+            {% else %}
+                <p>No players marked as attending. Please update attendance first.</p>
+            {% endif %}
     </div>
     <hr> 
     {% endif %} 
 
-    {# --- MOVED: TimeBlock Formset Section (Collapsible) --- #}
     <div class="timeblock-formset-section">
         <h2>Session Time Blocks</h2>
         <p class="helptext">Click on a block header to expand and edit its details. Add new blocks using the "Add New Time Block" form at the end.</p>
@@ -327,7 +338,6 @@
             {% csrf_token %}
             {{ timeblock_formset.management_form }}
             {% for form in timeblock_formset %}
-                {# MODIFIED: Removed 'open' attribute to make all collapsed by default #}
                 <details class="time-block-details"> 
                     <summary>
                         <span class="summary-main-info">
@@ -387,8 +397,6 @@
             </div>
         </form>
     </div>
-    {# --- END MOVED TimeBlock Formset Section --- #}
-
 {% endblock %}
 
 
@@ -419,7 +427,7 @@
                 courtLists.forEach(list => { new Sortable(list, { group: `block-${blockId}`, animation: 150, ghostClass: 'sortable-ghost', dragClass: 'sortable-drag', onEnd: function (evt) { const itemEl = evt.item; const toList = evt.to; const fromList = evt.from; if (toList && fromList && toList !== fromList) { const playerId = itemEl.dataset.playerId; const newCourtId = toList.dataset.courtId; const currentBlockId = toList.closest('.block-player-groups')?.dataset.blockId; if (!playerId || !newCourtId || !currentBlockId) { console.error("Missing data for API call:", {playerId, newCourtId, currentBlockId}); showStatusMessage("Error: Could not get data to save assignment.", true); return; } if (currentBlockId !== blockId) { console.warn("Attempted move between different blocks - ignoring."); return; } const dataToSend = { player_id: playerId, time_block_id: currentBlockId, court_number: newCourtId }; fetch(updateApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken }, body: JSON.stringify(dataToSend) }).then(response => { if (!response.ok) { return response.json().then(errData => { throw new Error(errData.message || `Server error! Status: ${response.status}`); }).catch(() => { throw new Error(`Server error! Status: ${response.status}`); }); } return response.json(); }).then(data => { console.log('Assignment Success:', data); showStatusMessage(data.message || 'Assignment saved successfully!', false); const blockHeader = document.querySelector(`h5:has(.clear-assignments-btn[data-block-id="${currentBlockId}"])`) || document.querySelector(`h3:has(+ .block-player-groups[data-block-id="${currentBlockId}"])`); let clearButton = blockHeader ? blockHeader.querySelector('.clear-assignments-btn') : null; if (!clearButton && blockHeader) { clearButton = document.createElement('button'); clearButton.className = 'clear-assignments-btn'; clearButton.dataset.blockId = currentBlockId; clearButton.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Use Auto Grouping'; clearButton.addEventListener('click', handleClearButtonClick); blockHeader.appendChild(document.createTextNode(' ')); blockHeader.appendChild(clearButton); console.log("Clear button added dynamically."); } }).catch((error) => { console.error('Error saving assignment:', error); showStatusMessage(`Error saving: ${error.message}`, true); }); } } }); }); });
 
             function handleClearButtonClick() { 
-                const blockId = this.dataset.blockId; if (!blockId) { showStatusMessage("Error: Could not identify block to clear.", true); return; } if (!confirm("Are you sure you want to clear manual assignments for this block and revert to automatic grouping?")) { return; } const clearUrl = `${clearApiUrlBase}${blockId}/`; fetch(clearUrl, { method: 'POST', headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' }, }).then(response => { if (!response.ok) { return response.json().then(errData => { throw new Error(errData.message || `HTTP error! Status: ${response.status}`); }).catch(() => { throw new Error(`HTTP error! Status: ${response.status}`); }); } return response.json(); }).then(data => { console.log('Clear Success:', data); showStatusMessage(data.message || 'Manual assignments cleared. Reloading...', false); setTimeout(() => { window.location.reload(); }, 1500); }).catch(error => { console.error('Error clearing assignments:', error); showStatusMessage(`Error clearing: ${error.message}`, true); });
+                const blockId = this.dataset.blockId; if (!blockId) { showStatusMessage("Error: Could not identify block to clear.", true); return; } if (!confirm("Are you sure you want to clear manual assignments for this block and revert to automatic grouping?")) { return; } const clearUrl = `<span class="math-inline">\{clearApiUrlBase\}</span>{blockId}/`; fetch(clearUrl, { method: 'POST', headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' }, }).then(response => { if (!response.ok) { return response.json().then(errData => { throw new Error(errData.message || `HTTP error! Status: ${response.status}`); }).catch(() => { throw new Error(`HTTP error! Status: ${response.status}`); }); } return response.json(); }).then(data => { console.log('Clear Success:', data); showStatusMessage(data.message || 'Manual assignments cleared. Reloading...', false); setTimeout(() => { window.location.reload(); }, 1500); }).catch(error => { console.error('Error clearing assignments:', error); showStatusMessage(`Error clearing: ${error.message}`, true); });
             }
             const clearButtons = document.querySelectorAll('.clear-assignments-btn');
             clearButtons.forEach(button => { button.addEventListener('click', handleClearButtonClick); }); 

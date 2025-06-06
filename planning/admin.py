@@ -5,8 +5,8 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.utils import timezone
 from django.urls import reverse
-from django.utils.html import format_html
-from datetime import date, timedelta # For default dates in the form
+from django.utils.html import format_html, mark_safe # Import mark_safe for image thumbnail
+from datetime import date, timedelta 
 
 from django.contrib.auth import get_user_model
 
@@ -17,17 +17,20 @@ from .models import (
     ManualCourtAssignment, CoachAvailability, Payslip,
     ScheduledClass,
     CoachSessionCompletion,
-    Venue
+    Venue,
+    GroupAssessment,
+    Event  # <<< Make sure Event is imported
 )
 
 # Import the service function for generating sessions
-from .session_generation_service import generate_sessions_for_rules # Adjust path if it's in utils.py
+from .session_generation_service import generate_sessions_for_rules 
 
 User = get_user_model()
 
 
-# --- Form for Payslip Generation (remains the same) ---
+# --- Forms ---
 class PeriodCoachSelectionForm(forms.Form):
+    # ... (code for this form remains unchanged)
     year = forms.IntegerField(label="Year", initial=timezone.now().year, help_text="Enter the year for payslip generation (e.g., 2025).")
     month = forms.IntegerField(label="Month", min_value=1, max_value=12, initial=timezone.now().month, help_text="Enter the month for payslip generation (1-12).")
     specific_coach = forms.ModelChoiceField(
@@ -36,10 +39,10 @@ class PeriodCoachSelectionForm(forms.Form):
     )
     force_regeneration = forms.BooleanField(label="Force Regeneration", required=False, initial=False, help_text="If checked, any existing payslip for the selected coach(es) and period will be deleted and regenerated.")
 
-# --- NEW Form for Session Generation Date Range ---
 class GenerateSessionsForm(forms.Form):
+    # ... (code for this form remains unchanged) ...
     default_start_date = timezone.now().date()
-    default_end_date = default_start_date + timedelta(weeks=4) # Default to 4 weeks from today
+    default_end_date = default_start_date + timedelta(weeks=4)
 
     start_date = forms.DateField(
         label="Start Date",
@@ -71,11 +74,11 @@ class GenerateSessionsForm(forms.Form):
 
 
 # --- Admin Registrations ---
+
 @admin.register(Venue)
 class VenueAdmin(admin.ModelAdmin):
     list_display = ('name', 'address', 'notes', 'is_active')
     list_filter = ('is_active',); search_fields = ('name', 'address', 'notes')
-    fields = ('name', 'address', 'notes', 'is_active')
 
 @admin.register(SchoolGroup)
 class SchoolGroupAdmin(admin.ModelAdmin):
@@ -87,19 +90,50 @@ class PlayerAdmin(admin.ModelAdmin):
     list_filter = ('skill_level', 'is_active', 'school_groups'); search_fields = ('first_name', 'last_name')
     filter_horizontal = ('school_groups',)
 
+# --- UPDATED CoachAdmin ---
 @admin.register(Coach)
-class CoachAdmin(admin.ModelAdmin): # CoachAdmin (remains the same)
-    list_display = ('name', 'user_link', 'email', 'phone', 'is_active', 'hourly_rate')
-    search_fields = ('name', 'email', 'user__username', 'user__first_name', 'user__last_name')
-    list_filter = ('is_active', 'user'); fields = ('user', 'name', 'phone', 'email', 'is_active', 'hourly_rate')
-    raw_id_fields = ('user',); actions = ['trigger_payslip_generation_action']
+class CoachAdmin(admin.ModelAdmin):
+    list_display = (
+        'name',
+        'profile_photo_thumbnail', # Display thumbnail in list
+        'user_link',
+        'email',
+        'phone',
+        'is_active',
+        'qualification_wsf_level',
+        'qualification_ssa_level',
+    )
+    search_fields = ('name', 'email', 'user__username', 'user__first_name', 'user__last_name', 'experience_notes')
+    list_filter = ('is_active', 'user__is_staff', 'qualification_wsf_level', 'qualification_ssa_level')
+    
+    fieldsets = (
+        (None, {'fields': ('user', 'name', 'is_active')}),
+        ('Contact Information', {'fields': ('email', 'phone', 'whatsapp_phone_number', 'whatsapp_opt_in')}),
+        ('Profile & Qualifications', {'fields': ('profile_photo', 'profile_photo_thumbnail', 'experience_notes', 'qualification_wsf_level', 'qualification_ssa_level')}),
+        ('Financial', {'fields': ('hourly_rate',)}),
+    )
+    readonly_fields = ('profile_photo_thumbnail',) # Make thumbnail display-only
+    raw_id_fields = ('user',)
+    actions = ['trigger_payslip_generation_action']
+
+    @admin.display(description='Photo')
+    def profile_photo_thumbnail(self, obj):
+        if obj.profile_photo:
+            return format_html('<img src="{}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover;" />', obj.profile_photo.url)
+        return "No photo"
+    profile_photo_thumbnail.short_description = 'Photo'
+
     @admin.display(description='Linked User Account')
     def user_link(self, obj):
-        if obj.user: url = reverse('admin:auth_user_change', args=[obj.user.pk]); return format_html('<a href="{}">{}</a>', url, obj.user.username)
+        if obj.user:
+            url = reverse('admin:auth_user_change', args=[obj.user.pk])
+            return format_html('<a href="{}">{}</a>', url, obj.user.username)
         return "-"
     user_link.admin_order_field = 'user__username'
-    def trigger_payslip_generation_action(self, request, queryset): # Payslip action logic (remains the same)
-        from .payslip_services import generate_payslip_for_single_coach # Local import
+
+    def trigger_payslip_generation_action(self, request, queryset):
+        # ... (This function remains unchanged) ...
+        from .payslip_services import generate_payslip_for_single_coach, create_all_payslips_for_period
         if request.method == 'POST' and 'process_payslips' in request.POST:
             form = PeriodCoachSelectionForm(request.POST) 
             if form.is_valid():
@@ -125,27 +159,29 @@ class CoachAdmin(admin.ModelAdmin): # CoachAdmin (remains the same)
         return render(request, 'admin/payslip_generation_form_template.html', context)
     trigger_payslip_generation_action.short_description = "Generate Payslip(s) for Period"
 
+
 @admin.register(Drill)
-class DrillAdmin(admin.ModelAdmin): # DrillAdmin (remains the same)
+class DrillAdmin(admin.ModelAdmin):
     list_display = ('name', 'duration_minutes_default', 'ideal_num_players', 'suitable_for_any')
     list_filter = ('suitable_for_any',); search_fields = ('name', 'description')
-    fieldsets = ((None, {'fields': ('name', 'description', 'duration_minutes_default')}), ('Player Suitability', {'fields': ('ideal_num_players', 'suitable_for_any')}),)
+    fieldsets = ((None, {'fields': ('name', 'description', 'youtube_link', 'duration_minutes_default')}), ('Player Suitability', {'fields': ('ideal_num_players', 'suitable_for_any')}),) # Added youtube_link
 
-class TimeBlockInline(admin.TabularInline): # TimeBlockInline (remains the same)
+class TimeBlockInline(admin.TabularInline): 
     model = TimeBlock; extra = 1
     fields = ('start_offset_minutes', 'duration_minutes', 'number_of_courts', 'rotation_interval_minutes', 'block_focus')
     ordering = ('start_offset_minutes',)
 
 @admin.register(Session)
-class SessionAdmin(admin.ModelAdmin): # SessionAdmin (remains largely the same, with venue FK)
+class SessionAdmin(admin.ModelAdmin):
+    # ... (SessionAdmin remains unchanged) ...
     list_display = ('__str__', 'session_date', 'session_start_time', 'school_group', 'venue', 'planned_duration_minutes', 'get_assigned_coaches_display', 'is_cancelled', 'assessments_complete', 'generated_from_rule_display')
     list_filter = ('session_date', 'is_cancelled', 'venue', 'school_group', 'coaches_attending', 'assessments_complete', 'generated_from_rule')
     search_fields = ('notes', 'school_group__name', 'venue__name', 'coaches_attending__name')
     date_hierarchy = 'session_date'; filter_horizontal = ('coaches_attending', 'attendees',) 
     inlines = [TimeBlockInline] ; readonly_fields = ('assessments_complete',) 
     fields = ('school_group', 'session_date', 'session_start_time', 'planned_duration_minutes', 'venue', 'is_cancelled', 'coaches_attending', 'attendees', 'notes', 'assessments_complete', 'generated_from_rule')
-    autocomplete_fields = ['venue', 'school_group', 'generated_from_rule'] # Added generated_from_rule
-    def save_model(self, request, obj, form, change): # save_model (remains the same)
+    autocomplete_fields = ['venue', 'school_group', 'generated_from_rule']
+    def save_model(self, request, obj, form, change): 
         super().save_model(request, obj, form, change)
         if obj.school_group and (not change or (change and not Session.objects.get(pk=obj.pk).school_group)):
             players_in_group = obj.school_group.players.filter(is_active=True); obj.attendees.set(players_in_group)
@@ -155,7 +191,8 @@ class SessionAdmin(admin.ModelAdmin): # SessionAdmin (remains largely the same, 
     def generated_from_rule_display(self, obj): return str(obj.generated_from_rule) if obj.generated_from_rule else "-"
 
 @admin.register(SessionAssessment)
-class SessionAssessmentAdmin(admin.ModelAdmin): # SessionAssessmentAdmin (remains the same)
+class SessionAssessmentAdmin(admin.ModelAdmin):
+    # ... (SessionAssessmentAdmin remains unchanged) ...
     list_display = ('player', 'session_date_display', 'submitted_by_user', 'effort_rating', 'focus_rating', 'is_hidden', 'superuser_reviewed', 'date_recorded')
     list_filter = ('session__session_date', 'player', 'submitted_by', 'is_hidden', 'superuser_reviewed', 'effort_rating', 'focus_rating')
     search_fields = ('player__first_name', 'player__last_name', 'session__school_group__name', 'submitted_by__username', 'submitted_by__first_name', 'submitted_by__last_name', 'coach_notes')
@@ -197,8 +234,63 @@ class SessionAssessmentAdmin(admin.ModelAdmin): # SessionAssessmentAdmin (remain
         if request.user.is_superuser: return qs 
         return qs.filter(is_hidden=False)
 
-# --- UPDATED ScheduledClassAdmin with Action ---
+@admin.register(GroupAssessment)
+# ... (GroupAssessmentAdmin remains unchanged) ...
+class GroupAssessmentAdmin(admin.ModelAdmin):
+    list_display = ('session_display', 'school_group_display', 'assessing_coach_display', 'assessment_datetime_display', 'is_hidden_from_other_coaches', 'superuser_reviewed', 'notes_snippet')
+    list_filter = ('assessment_datetime', 'assessing_coach', 'session__school_group__name', 'is_hidden_from_other_coaches', 'superuser_reviewed')
+    search_fields = ('session__school_group__name', 'assessing_coach__username', 'assessing_coach__first_name', 'assessing_coach__last_name', 'general_notes')
+    readonly_fields = ('assessment_datetime',)
+    fieldsets = ((None, {'fields': ('session', 'assessing_coach')}), ('Assessment Details', {'fields': ('general_notes', 'is_hidden_from_other_coaches', 'superuser_reviewed')}), ('Metadata', {'fields': ('assessment_datetime',), 'classes': ('collapse',)}))
+    raw_id_fields = ('session', 'assessing_coach')
+    list_select_related = ('session', 'session__school_group', 'assessing_coach')
+    @admin.display(description='Session Date & Time', ordering='session__session_date')
+    def session_display(self, obj):
+        if obj.session: return f"{obj.session.session_date.strftime('%Y-%m-%d')} {obj.session.session_start_time.strftime('%H:%M')}"
+        return None
+    @admin.display(description='School Group', ordering='session__school_group__name')
+    def school_group_display(self, obj):
+        if obj.session and obj.session.school_group: return obj.session.school_group.name
+        return "N/A"
+    @admin.display(description='Assessing Coach', ordering='assessing_coach__username')
+    def assessing_coach_display(self, obj):
+        if obj.assessing_coach: return obj.assessing_coach.get_full_name() or obj.assessing_coach.username
+        return "N/A"
+    @admin.display(description='Assessed On', ordering='assessment_datetime')
+    def assessment_datetime_display(self, obj):
+        if obj.assessment_datetime: return obj.assessment_datetime.strftime('%Y-%m-%d %H:%M')
+        return None
+    @admin.display(description='Notes Snippet')
+    def notes_snippet(self, obj):
+        if obj.general_notes: return (obj.general_notes[:75] + '...') if len(obj.general_notes) > 75 else obj.general_notes
+        return "N/A"
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj is None and request.user.is_staff:
+            if 'assessing_coach' in form.base_fields: form.base_fields['assessing_coach'].initial = request.user
+        elif obj and 'assessing_coach' in form.base_fields:
+            form.base_fields['assessing_coach'].disabled = True
+        if not request.user.is_superuser:
+            if 'is_hidden_from_other_coaches' in form.base_fields: form.base_fields['is_hidden_from_other_coaches'].disabled = True
+            if 'superuser_reviewed' in form.base_fields: form.base_fields['superuser_reviewed'].disabled = True 
+        return form
+    def save_model(self, request, obj, form, change):
+        if not obj.pk and not obj.assessing_coach : obj.assessing_coach = request.user
+        super().save_model(request, obj, form, change)
+    def has_change_permission(self, request, obj=None):
+        if not obj: return super().has_change_permission(request, obj)
+        if request.user.is_superuser: return True
+        if obj.assessing_coach == request.user: return True
+        return False
+    def has_delete_permission(self, request, obj=None):
+        if not obj: return super().has_delete_permission(request, obj)
+        if request.user.is_superuser: return True
+        if obj.assessing_coach == request.user: return True
+        return False
+
+# ... (ScheduledClassAdmin and other admin classes as before) ...
 @admin.register(ScheduledClass)
+# ...
 class ScheduledClassAdmin(admin.ModelAdmin):
     list_display = ('__str__', 'school_group', 'day_of_week', 'start_time', 'default_duration_minutes', 'default_venue', 'is_active', 'display_default_coaches')
     list_filter = ('school_group', 'day_of_week', 'is_active', 'default_venue', 'default_coaches')
@@ -210,72 +302,61 @@ class ScheduledClassAdmin(admin.ModelAdmin):
         ('Notes', {'fields': ('notes_for_rule',), 'classes': ('collapse',)}),
     )
     autocomplete_fields = ['school_group', 'default_venue']
-    actions = ['generate_sessions_action'] # <-- Added action
+    actions = ['generate_sessions_action'] 
 
     def display_default_coaches(self, obj):
         return ", ".join([coach.name for coach in obj.default_coaches.all()])
     display_default_coaches.short_description = 'Default Coaches'
 
     def generate_sessions_action(self, request, queryset):
-        """
-        Admin action to generate sessions for the selected ScheduledClass rules.
-        """
-        form = GenerateSessionsForm(request.POST or None) # Use our new form
-
-        if 'generate_sessions_submit' in request.POST: # Check for our form's submit button
+        form = GenerateSessionsForm(request.POST or None)
+        if 'generate_sessions_submit' in request.POST:
             if form.is_valid():
                 start_date = form.cleaned_data['start_date']
                 end_date = form.cleaned_data['end_date']
                 overwrite = form.cleaned_data['overwrite_clashing_manual_sessions']
-                
-                # Call the service function
                 results = generate_sessions_for_rules(queryset, start_date, end_date, overwrite)
-
-                # Display messages
                 self.message_user(request, f"Session Generation Complete: {results['created']} created, {results['skipped_exists']} skipped (already exist/clashed), {results['errors']} errors.", messages.SUCCESS if results['errors'] == 0 else messages.WARNING)
                 for detail in results['details']:
                     self.message_user(request, detail, messages.INFO)
-                
-                return HttpResponseRedirect(request.get_full_path()) # Redirect to avoid re-POST on refresh
+                return HttpResponseRedirect(request.get_full_path())
             else:
-                # Form is not valid, errors will be displayed by the template
                 self.message_user(request, "Please correct the errors below.", messages.ERROR)
-        
-        # If not POSTing the generation form, or if form was invalid, display the intermediate page
         context = {
             **self.admin_site.each_context(request),
             'title': 'Generate Sessions from Rules',
-            'queryset': queryset, # The selected ScheduledClass rules
-            'form': form, # The date range form
+            'queryset': queryset,
+            'form': form,
             'opts': self.model._meta,
-            'action_checkbox_name': admin.helpers.ACTION_CHECKBOX_NAME, # Needed by admin template
+            'action_checkbox_name': admin.helpers.ACTION_CHECKBOX_NAME,
         }
-        # You'll need to create this template: admin/planning/scheduledclass/generate_sessions_form.html
         return render(request, 'admin/planning/scheduledclass/generate_sessions_intermediate.html', context)
     generate_sessions_action.short_description = "Generate Sessions for selected rules"
-# --- END UPDATED ScheduledClassAdmin ---
 
-# Other admin registrations remain the same
-admin.site.register(CourtSprintRecord); admin.site.register(VolleyRecord)
-admin.site.register(BackwallDriveRecord); admin.site.register(MatchResult)
+admin.site.register(CourtSprintRecord)
+admin.site.register(VolleyRecord)
+admin.site.register(BackwallDriveRecord)
+admin.site.register(MatchResult)
 admin.site.register(ManualCourtAssignment)
 
 @admin.register(CoachAvailability)
-class CoachAvailabilityAdmin(admin.ModelAdmin): # CoachAvailabilityAdmin (remains the same)
-    list_display = ('coach_username', 'session_display', 'is_available', 'timestamp', 'last_action', 'status_updated_at') 
-    list_filter = ('is_available', 'session__session_date', 'coach__username', 'last_action') 
+# ...
+class CoachAvailabilityAdmin(admin.ModelAdmin): 
+    list_display = ('coach_username', 'session_display', 'is_available', 'timestamp', 'last_action', 'status_updated_at')
+    list_filter = ('is_available', 'session__session_date', 'coach__username', 'last_action')
     search_fields = ('coach__username', 'session__school_group__name', 'notes')
-    list_select_related = ('coach', 'session', 'session__school_group') 
-    readonly_fields = ('timestamp', 'status_updated_at', 'last_action') 
-    fields = ('coach', 'session', 'is_available', 'notes', 'timestamp', 'last_action', 'status_updated_at') 
+    list_select_related = ('coach', 'session', 'session__school_group')
+    readonly_fields = ('timestamp', 'status_updated_at', 'last_action')
+    fields = ('coach', 'session', 'is_available', 'notes', 'timestamp', 'last_action', 'status_updated_at')
     raw_id_fields = ('coach', 'session',)
-    def coach_username(self, obj): return obj.coach.username if obj.coach else None 
+    def coach_username(self, obj): return obj.coach.username if obj.coach else None
     coach_username.admin_order_field = 'coach__username'
     def session_display(self, obj): return str(obj.session)
     session_display.admin_order_field = 'session__session_date'
 
 @admin.register(Payslip)
-class PayslipAdmin(admin.ModelAdmin): # PayslipAdmin (remains the same)
+# ...
+class PayslipAdmin(admin.ModelAdmin): 
     list_display = ('__str__', 'coach_display_name', 'month', 'year', 'total_amount', 'generated_at', 'generated_by_username', 'file')
     list_filter = ('year', 'month', 'coach', 'generated_by__username')
     search_fields = ('coach__name', 'coach__user__username', 'year')
@@ -290,12 +371,13 @@ class PayslipAdmin(admin.ModelAdmin): # PayslipAdmin (remains the same)
     def has_change_permission(self, request, obj=None): return request.user.is_superuser
     def has_delete_permission(self, request, obj=None): return request.user.is_superuser
 
-@admin.register(CoachSessionCompletion) 
-class CoachSessionCompletionAdmin(admin.ModelAdmin): # CoachSessionCompletionAdmin (remains the same)
+@admin.register(CoachSessionCompletion)
+# ...
+class CoachSessionCompletionAdmin(admin.ModelAdmin): 
     list_display = ('coach', 'session_display', 'assessments_submitted', 'confirmed_for_payment', 'last_updated')
     list_filter = ('session__session_date', 'coach__name', 'assessments_submitted', 'confirmed_for_payment')
     search_fields = ('coach__name', 'session__school_group__name')
     list_select_related = ('coach', 'session', 'session__school_group')
-    readonly_fields = ('last_updated',); fields = ('coach', 'session', 'assessments_submitted', 'confirmed_for_payment', 'last_updated') 
+    readonly_fields = ('last_updated',); fields = ('coach', 'session', 'assessments_submitted', 'confirmed_for_payment', 'last_updated')
     def session_display(self, obj): return str(obj.session)
     session_display.short_description = 'Session'; session_display.admin_order_field = 'session__session_date'

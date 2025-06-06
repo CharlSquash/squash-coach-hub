@@ -1,0 +1,110 @@
+{% extends "planning/base.html" %}
+{% load static %}
+
+{% block title %}School Groups - SquashSync{% endblock %}
+
+{% block extra_head %}
+<style>
+    .page-header { /* Standard page header styling */
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-light, #eee);
+    }
+    .page-header h2 {
+        margin-top: 0;
+        margin-bottom: 0; /* Remove default h2 margin if page-header handles spacing */
+        color: var(--heading-color);
+    }
+    .page-header .btn { /* Style for button in header */
+        font-size: 0.9rem;
+    }
+
+    .school-group-list .list-group-item {
+        background-color: var(--container-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 0.375rem; /* Bootstrap's default rounded corners for items */
+        margin-bottom: 0.75rem; /* Space between items */
+        padding: 1rem 1.25rem; /* Increase padding for better touch targets and visual space */
+        transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+        display: flex; /* Use flex for better alignment of content and icon */
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .school-group-list .list-group-item:hover {
+        background-color: var(--container-light-bg); /* Subtle hover effect */
+        text-decoration: none; /* Ensure link doesn't get underlined if not desired */
+        transform: translateY(-2px); /* Slight lift on hover */
+        box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,0.1); /* Add shadow on hover */
+    }
+
+    .school-group-list .group-info h5 {
+        margin-bottom: 0.25rem;
+        font-size: 1.15rem; /* Slightly larger group name */
+        color: var(--link-color); /* Make name look like a link by default */
+    }
+    
+    .school-group-list .list-group-item:hover .group-info h5 {
+        color: var(--link-hover-color); /* Change color on hover for the whole item */
+    }
+
+    .school-group-list .group-info .group-description {
+        font-size: 0.85rem;
+        color: var(--subheading-color);
+        margin-bottom: 0;
+    }
+
+    .school-group-list .action-icon {
+        font-size: 1.2rem; /* Size of the chevron/arrow */
+        color: var(--subheading-color);
+        transition: color 0.2s ease-in-out;
+    }
+    .school-group-list .list-group-item:hover .action-icon {
+        color: var(--link-hover-color);
+    }
+
+    .no-groups-alert { /* Styling for the "no groups" message */
+        background-color: var(--container-light-bg);
+        border: 1px dashed var(--border-color);
+        color: var(--subheading-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <h2><i class="bi bi-diagram-3 me-2"></i>School Groups</h2>
+        {% if request.user.is_superuser %} {# Changed from perms check to direct superuser check for simplicity #}
+            <a href="{% url 'admin:planning_schoolgroup_add' %}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle me-1"></i>Add New Group
+            </a>
+        {% endif %}
+    </div>
+
+    {% if school_groups %}
+        <div class="list-group school-group-list">
+            {% for group in school_groups %}
+                <a href="{% url 'planning:school_group_profile' group.id %}" class="list-group-item list-group-item-action">
+                    <div class="group-info">
+                        <h5 class="mb-1">{{ group.name }}</h5>
+                        {% if group.description %}
+                            <p class="group-description">{{ group.description|truncatewords:15 }}</p>
+                        {% endif %}
+                    </div>
+                    <span class="action-icon">
+                        <i class="bi bi-chevron-right"></i>
+                    </span>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert no-groups-alert mt-3" role="alert">
+            No school groups found.
+            {% if request.user.is_superuser %}
+                Consider <a href="{% url 'admin:planning_schoolgroup_add' %}" class="alert-link">adding one via the admin panel</a>.
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

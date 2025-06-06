@@ -6,12 +6,14 @@ from django.utils import timezone
 from django.forms import widgets, inlineformset_factory # Keep inlineformset_factory
 from django.contrib.auth import get_user_model # Import get_user_model
 import json # Import json for cleaning metrics
+from datetime import timedelta
+from .utils import get_month_choices, get_year_choices 
 
 # Import planning models (keep existing)
 from .models import (
     Player, SchoolGroup, Session, ActivityAssignment, Drill,
     Coach, SessionAssessment, CourtSprintRecord,
-    VolleyRecord, BackwallDriveRecord, MatchResult, CoachFeedback
+    VolleyRecord, BackwallDriveRecord, MatchResult, CoachFeedback, GroupAssessment
 )
 
 UserModel = get_user_model() # Get the active user model
@@ -158,5 +160,82 @@ class CoachFeedbackForm(forms.ModelForm):
         }
         help_texts = { 'session': 'Optional: Link this feedback to a specific session.', }
 
+class GroupAssessmentForm(forms.ModelForm):
+    class Meta:
+        model = GroupAssessment
+        fields = ['general_notes', 'is_hidden_from_other_coaches']
+        widgets = {
+            'general_notes': forms.Textarea(attrs={'rows': 5, 'placeholder': 'Enter overall session feedback regarding the group, venue, parents, etc.'}),
+        }
+        labels = {
+            'general_notes': 'Overall Session & Group Notes',
+            'is_hidden_from_other_coaches': 'Hide this assessment from other coaches (visible only to you and admins)?'
+        }
+        help_texts = {
+            'general_notes': 'This feedback is for the session as a whole, focusing on the group, venue, or parent interactions rather than individual players.',
+            'is_hidden_from_other_coaches': 'Check this box if you want this specific assessment to be private.'
+        }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # All fields are optional as per your requirements
+        self.fields['general_notes'].required = False
+        self.fields['is_hidden_from_other_coaches'].required = False
 
+class AttendancePeriodFilterForm(forms.Form):
+    # Default to last 90 days
+    default_start = timezone.now().date() - timedelta(days=90)
+    default_end = timezone.now().date()
+
+    start_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control form-control-sm'}),
+        required=False,
+        label="From",
+        initial=default_start.strftime('%Y-%m-%d') # Format for initial value
+    )
+    end_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control form-control-sm'}),
+        required=False,
+        label="To",
+        initial=default_end.strftime('%Y-%m-%d') # Format for initial value
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get("start_date")
+        end_date = cleaned_data.get("end_date")
+
+        if start_date and end_date and end_date < start_date:
+            raise forms.ValidationError("End date cannot be before start date.")
+        return cleaned_data
+
+class MonthYearFilterForm(forms.Form):
+    # Get current month and year for defaults
+    current_year = timezone.now().year
+    current_month = timezone.now().month
+
+    month = forms.ChoiceField(
+        choices=get_month_choices(),  # Assumes get_month_choices() returns [(1, 'January'), (2, 'February'), ...]
+        initial=current_month,
+        label="Month",
+        widget=forms.Select(attrs={'class': 'form-select form-select-sm'})
+    )
+    year = forms.ChoiceField(
+        choices=get_year_choices(),  # Assumes get_year_choices() returns a list of years like [2023, 2024, 2025]
+        initial=current_year,
+        label="Year",
+        widget=forms.Select(attrs={'class': 'form-select form-select-sm'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # If get_year_choices doesn't return (value, display) tuples, adjust here or in the function
+        # Example if get_year_choices just returns a list of year numbers:
+        if self.fields['year'].choices and not isinstance(self.fields['year'].choices[0], (tuple, list)):
+             self.fields['year'].choices = [(year, str(year)) for year in self.fields['year'].choices]
+        
+        # Ensure initial values are set correctly if they come from GET params
+        if 'initial' in kwargs and 'month' in kwargs['initial']:
+            self.fields['month'].initial = kwargs['initial']['month']
+        if 'initial' in kwargs and 'year' in kwargs['initial']:
+            self.fields['year'].initial = kwargs['initial']['year']

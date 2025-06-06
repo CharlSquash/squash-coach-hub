@@ -5,6 +5,7 @@ from pathlib import Path
 import dj_database_url
 from dotenv import load_dotenv
 from datetime import timedelta
+import datetime
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -19,7 +20,14 @@ else:
 # Determine environment
 DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
+
+BONUS_SESSION_START_TIME = datetime.time(6, 0, 0)  # 6:00 AM
+BONUS_SESSION_AMOUNT = 22.00
+
+
 # React App Path
+
+
 if DEBUG:
     REACT_APP_DIR      = BASE_DIR / 'solosync-pwa'
     FRONTEND_BUILD_DIR = REACT_APP_DIR / 'build'
@@ -73,6 +81,8 @@ INSTALLED_APPS = [
     'planning.apps.PlanningConfig',
     'solosync_api',
     'django_filters',
+    'crispy_forms',
+    "crispy_bootstrap5"
 ]
 
 # --- Middleware ---
@@ -88,6 +98,9 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'coach_project.urls'
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # --- Templates ---
 TEMPLATES = [

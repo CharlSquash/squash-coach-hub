@@ -43,7 +43,8 @@
          /* Custom buttons in toolbar */
         #sessionCalendar .fc-button.fc-prevMonthButton-button, /* Target generated class */
         #sessionCalendar .fc-button.fc-nextMonthButton-button, /* Target generated class */
-        #sessionCalendar .fc-button.fc-downloadCsvButton-button { /* Target generated class */
+        #sessionCalendar .fc-button.fc-downloadCsvButton-button, /* Target generated class */
+        #sessionCalendar .fc-button.fc-downloadIcsButton-button { /* TARGET NEW BUTTON */
             font-size: 0.75em !important; /* Smaller custom buttons */
             padding: .3em .5em !important;
             line-height: 1.4 !important;
@@ -52,13 +53,14 @@
             color: var(--container-bg, #fff) !important;
             text-transform: none !important; /* Keep text as is */
         }
-        #sessionCalendar .fc-button.fc-prevMonthButton-button:hover, /* Target generated class */
-        #sessionCalendar .fc-button.fc-nextMonthButton-button:hover, /* Target generated class */
-        #sessionCalendar .fc-button.fc-downloadCsvButton-button:hover { /* Target generated class */
+        #sessionCalendar .fc-button.fc-prevMonthButton-button:hover, 
+        #sessionCalendar .fc-button.fc-nextMonthButton-button:hover, 
+        #sessionCalendar .fc-button.fc-downloadCsvButton-button:hover,
+        #sessionCalendar .fc-button.fc-downloadIcsButton-button:hover { /* TARGET NEW BUTTON */
             background-color: var(--link-hover-color) !important;
         }
         #sessionCalendar .fc-button .fc-icon {
-             font-size: 1em; /* Ensure icons are not overly large */
+            font-size: 1em; /* Ensure icons are not overly large */
         }
 
         #sessionCalendar .fc-toolbar-title {
@@ -99,10 +101,10 @@
             font-size: 0.7em; 
         }
         #sessionCalendar .fc-col-header-cell-cushion { /* Sun, Mon, Tue headers */
-             color: var(--subheading-color) !important;
-             font-weight: normal; 
-             padding: 3px 0; 
-             font-size: 0.7em; 
+            color: var(--subheading-color) !important;
+            font-weight: normal; 
+            padding: 3px 0; 
+            font-size: 0.7em; 
         }
         #sessionCalendar .fc-day-today { 
             background-color: var(--action-add-bg, rgba(212, 237, 218, 0.2)) !important; 
@@ -170,9 +172,10 @@
             }
             #sessionCalendar .fc-toolbar-title { font-size: 1.5em !important; }
             #sessionCalendar .fc-button,
-            #sessionCalendar .fc-button.fc-prevMonthButton-button, /* Target generated class */
-            #sessionCalendar .fc-button.fc-nextMonthButton-button, /* Target generated class */
-            #sessionCalendar .fc-button.fc-downloadCsvButton-button { /* Target generated class */
+            #sessionCalendar .fc-button.fc-prevMonthButton-button, 
+            #sessionCalendar .fc-button.fc-nextMonthButton-button, 
+            #sessionCalendar .fc-button.fc-downloadCsvButton-button,
+            #sessionCalendar .fc-button.fc-downloadIcsButton-button { /* TARGET NEW BUTTON */
                 padding: .3em .5em !important; 
                 font-size: 0.9em !important; 
             }
@@ -228,6 +231,8 @@
     <script>
         // Pass Django context to JavaScript
         const IS_STAFF_USER = {{ is_staff_user|yesno:"true,false" }}; 
+        const currentYearForExport = {{ current_year }};
+        const currentMonthForExport = {{ current_month }};
 
         document.addEventListener('DOMContentLoaded', function() {
             const calendarEl = document.getElementById('sessionCalendar');
@@ -243,38 +248,38 @@
                 headerToolbar: {
                     left: 'prevMonthButton,nextMonthButton today',
                     center: 'title',
-                    right: 'downloadCsvButton dayGridMonth,timeGridWeek,listWeek' 
+                    right: 'downloadCsvButton downloadIcsButton dayGridMonth,timeGridWeek,listWeek' // ADDED downloadIcsButton
                 },
                 customButtons: {
                     prevMonthButton: {
                         text: '‹ Prev', 
                         click: function() {
-                            // Construct URL using current_year and prev_month from Django context
                             window.location.href = `{% url 'planning:session_calendar' %}?year={{ prev_year }}&month={{ prev_month }}`;
                         }
                     },
                     nextMonthButton: {
                         text: 'Next ›', 
                         click: function() {
-                            // Construct URL using current_year and next_month from Django context
                             window.location.href = `{% url 'planning:session_calendar' %}?year={{ next_year }}&month={{ next_month }}`;
                         }
                     },
                     downloadCsvButton: {
-                        text: 'CSV', // Shorter text for mobile
-                        // icon: 'download', // Optional: if you have a way to add icons to FC buttons
+                        text: 'CSV', 
                         click: function() {
-                            let currentDate = calendar.getDate(); 
-                            let dayOfWeek = currentDate.getDay(); 
-                            let diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; 
-                            let mondayOfCurrentWeek = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + diffToMonday);
-                            const year = mondayOfCurrentWeek.getFullYear();
-                            const month = mondayOfCurrentWeek.getMonth() + 1; 
-                            const day = mondayOfCurrentWeek.getDate();
-                            const exportUrl = `{% url 'planning:export_weekly_schedule' %}?year=${year}&month=${month}&day=${day}`;
-                            window.location.href = exportUrl; 
+                            const exportUrl = `{% url 'planning:export_monthly_schedule_csv' %}?year={{ current_year }}&month={{ current_month }}`;
+                            window.location.href = exportUrl;
+                        }
+                    },
+                    // --- NEW ICS EXPORT BUTTON ---
+                    downloadIcsButton: {
+                        text: 'Export .ics', // You can change the text
+                        click: function() {
+                            // Uses the year and month passed from Django context for the current view
+                            const exportUrl = `{% url 'planning:export_sessions_ics' %}?year=${currentYearForExport}&month=${currentMonthForExport}`;
+                            window.location.href = exportUrl;
                         }
                     }
+                    // --- END NEW ICS EXPORT BUTTON ---
                 },
                 buttonText: { 
                     today: 'Today', month: 'Month', week: 'Week', list: 'List'
@@ -286,28 +291,25 @@
                 eventMinHeight: 16, 
                 eventShortHeight: 16,
                 slotEventOverlap: true,
-                displayEventTime: false, // Ensure this is false
+                displayEventTime: false, 
 
                 eventDidMount: function(info) {
                     if (info.event.extendedProps.is_cancelled_bool) {
                         info.el.style.textDecoration = 'line-through';
                     }
-                    // Apply background, border, and text color from event data
-                    // FullCalendar uses 'backgroundColor' for the 'color' property from the event source
                     if (info.event.backgroundColor) { 
                         info.el.style.backgroundColor = info.event.backgroundColor;
                     }
-                    if (info.event.borderColor) { // Ensure border color is also set
+                    if (info.event.borderColor) { 
                         info.el.style.borderColor = info.event.borderColor;
                     }
                     if (info.event.textColor) {
-                       // Try to target the inner text element more reliably
-                       const titleEl = info.el.querySelector('.fc-event-title, .fc-list-event-title, .fc-event-main > *, .fc-event-main'); 
-                       if (titleEl) {
-                           titleEl.style.color = info.event.textColor;
-                       } else {
-                           info.el.style.color = info.event.textColor; 
-                       }
+                        const titleEl = info.el.querySelector('.fc-event-title, .fc-list-event-title, .fc-event-main > *, .fc-event-main'); 
+                        if (titleEl) {
+                            titleEl.style.color = info.event.textColor;
+                        } else {
+                            info.el.style.color = info.event.textColor; 
+                        }
                     }
                 },
 
@@ -315,7 +317,6 @@
                     info.jsEvent.preventDefault(); 
                     const event = info.event;
                     const props = event.extendedProps;
-                    // (Modal population logic remains the same)
                     document.getElementById('modalTitle').textContent = `${props.school_group_name} Session`;
                     const startDate = new Date(event.startStr); 
                     document.getElementById('modalDate').textContent = startDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });

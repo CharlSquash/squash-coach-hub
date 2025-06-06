@@ -51,7 +51,7 @@
     .players-to-assess-list .player-name {
         color: var(--text-color);
     }
-    .assess-player-link, .btn-mark-complete {
+    .assess-link, .btn-mark-complete { /* Combined common styles */
         display: inline-block;
         padding: 6px 12px;
         font-size: 0.9em;
@@ -60,13 +60,14 @@
         text-align: center;
         cursor: pointer;
         border: 1px solid transparent;
+        margin-top: 5px; /* Added for spacing between buttons */
     }
-    .assess-player-link {
+    .assess-link { /* Specific style for assess player/group */
         background-color: var(--link-color);
         color: var(--container-bg, #fff);
         border-color: var(--link-color);
     }
-    .assess-player-link:hover {
+    .assess-link:hover {
         background-color: var(--link-hover-color);
         border-color: var(--link-hover-color);
         color: var(--container-bg, #fff);
@@ -75,7 +76,7 @@
         background-color: var(--action-add-bg); /* Using add button style */
         color: var(--action-add-text);
         border-color: var(--action-add-border);
-        width: 100%; /* Make button full width on mobile for easier tapping */
+        width: 100%; 
         margin-top: 10px;
     }
     .btn-mark-complete:hover {
@@ -89,6 +90,11 @@
         border-radius: 5px;
         color: var(--subheading-color);
     }
+    .assessment-section { /* For spacing group assessment part */
+        margin-top: 15px;
+        padding-top: 10px;
+        border-top: 1px dashed var(--border-light, #eee);
+    }
 
     @media (max-width: 600px) {
         .players-to-assess-list li {
@@ -98,71 +104,90 @@
         .players-to-assess-list .player-name {
             margin-bottom: 8px;
         }
-        .assess-player-link {
-            width: 100%; /* Full width button for player assess link on mobile */
+        .assess-link { /* assess-player-link renamed to assess-link */
+            width: 100%; 
         }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>{{ page_title }}</h1>
-</div>
-
-{% if pending_items %}
-    {% for item in pending_items %}
-        <div class="pending-session-card">
-            <div class="pending-session-header">
-                <h3>
-                    {{ item.session.session_date|date:"D, d M Y" }} - 
-                    {% if item.session.school_group %}
-                        {{ item.session.school_group.name }}
-                    {% else %}
-                        General Session
-                    {% endif %}
-                </h3>
-                <p>
-                    Time: {{ item.session.session_start_time|time:"H:i" }}
-                    {% if item.session.venue_name %}| Venue: {{ item.session.venue_name }}{% endif %}
-                    {% if item.session.is_cancelled %}| <strong style="color: var(--action-del-text);">CANCELLED</strong>{% endif %}
-                </p>
-            </div>
-
-            {% if item.players_to_assess %}
-                <h4>Players to Assess:</h4>
-                <ul class="players-to-assess-list">
-                    {% for player in item.players_to_assess %}
-                        <li>
-                            <span class="player-name">{{ player.full_name }}</span>
-                            {# Assuming you have a URL pattern named 'assess_player_for_session' #}
-                            {# that takes session_id and player_id, or similar to your 'assess_player_session' view #}
-                            <a href="{% url 'planning:assess_player_session' session_id=item.session.id player_id=player.id %}" class="assess-player-link">
-                                Assess <i class="bi bi-pencil-square"></i>
-                            </a>
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p><em>All players in this session have been assessed by you.</em></p>
-            {% endif %}
-
-            {# Button to mark all assessments for this session as complete by this coach #}
-            {# Show this button if 'coach_can_mark_complete' is true from the view context for this item #}
-            {% if item.coach_can_mark_complete %}
-                <form method="POST" action="{% url 'planning:mark_my_assessments_complete' item.session.id %}" style="margin-top: 15px;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn-mark-complete">
-                        <i class="bi bi-check2-circle"></i> Mark My Assessments Complete for this Session
-                    </button>
-                </form>
-            {% endif %}
-        </div>
-    {% endfor %}
-{% else %}
-    <div class="no-pending-message">
-        <p><i class="bi bi-check2-all"></i> Great job! You have no pending assessments in the recent period.</p>
+<div class="container mt-4"> {# Added container for better spacing #}
+    <div class="page-header">
+        <h1>{{ page_title }}</h1>
     </div>
-{% endif %}
 
+    {% if pending_items %}
+        {% for item in pending_items %}
+            <div class="pending-session-card">
+                <div class="pending-session-header">
+                    <h3>
+                        {{ item.session.session_date|date:"D, d M Y" }} - 
+                        {% if item.session.school_group %}
+                            {{ item.session.school_group.name }}
+                        {% else %}
+                            General Session
+                        {% endif %}
+                    </h3>
+                    <p>
+                        Time: {{ item.session.session_start_time|time:"H:i" }}
+                        {% if item.session.venue %}| Venue: {{ item.session.venue.name }}{% else %}{% if item.session.venue_name %}| Venue: {{ item.session.venue_name }}{% endif %}{% endif %}
+                        {% if item.session.is_cancelled %}| <strong style="color: var(--action-del-text);">CANCELLED</strong>{% endif %}
+                    </p>
+                </div>
+
+                {% if item.players_to_assess %}
+                    <h4>Players to Assess:</h4>
+                    <ul class="players-to-assess-list">
+                        {% for player in item.players_to_assess %}
+                            <li>
+                                <span class="player-name">{{ player.full_name }}</span>
+                                <a href="{% url 'planning:assess_player_session' session_id=item.session.id player_id=player.id %}" class="assess-link">
+                                    Assess Player <i class="bi bi-pencil-square"></i>
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% elif not item.session.player_assessments_done_by_coach %} 
+                    {# This condition means there might be players, but they are all assessed by this coach OR no players attended #}
+                    <p><em>All players assigned to you in this session have been assessed, or no players attended.</em></p>
+                {% endif %}
+                
+                {# Button to mark all PLAYER assessments for this session as complete by this coach #}
+                {% if item.coach_can_mark_player_assessments_complete and not item.session.player_assessments_done_by_coach %}
+                    <form method="POST" action="{% url 'planning:mark_my_assessments_complete' item.session.id %}" style="margin-top: 10px; margin-bottom:10px;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-mark-complete">
+                            <i class="bi bi-check2-circle"></i> Mark My Player Assessments Complete for this Session
+                        </button>
+                    </form>
+                {% elif item.session.player_assessments_done_by_coach %}
+                     <p class="text-success"><i class="bi bi-check-circle-fill"></i> Player assessments marked as complete by you for this session.</p>
+                {% endif %}
+
+                {# --- NEW: Group Assessment Section --- #}
+                <div class="assessment-section">
+                    <h4>Group Assessment:</h4>
+                    {% if item.group_assessment_submitted %}
+                        <p class="text-success"><i class="bi bi-check-circle-fill"></i> You have submitted a group assessment for this session.</p>
+                        <a href="{% url 'planning:add_edit_group_assessment' session_id=item.session.id %}" class="assess-link btn btn-sm btn-outline-secondary">
+                            View/Edit Group Assessment <i class="bi bi-pencil"></i>
+                        </a>
+                    {% else %}
+                        <p><em>A group assessment for this session is pending.</em></p>
+                        <a href="{% url 'planning:add_edit_group_assessment' session_id=item.session.id %}" class="assess-link">
+                            Assess Group / Session <i class="bi bi-journal-text"></i>
+                        </a>
+                    {% endif %}
+                </div>
+                {# --- END: Group Assessment Section --- #}
+
+            </div> {# End pending-session-card #}
+        {% endfor %}
+    {% else %}
+        <div class="no-pending-message">
+            <p><i class="bi bi-check2-all"></i> Great job! You have no pending player or group assessments in the recent period.</p>
+        </div>
+    {% endif %}
+</div>
 {% endblock %}
