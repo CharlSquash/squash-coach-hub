@@ -142,3 +142,46 @@ def send_availability_change_alert_to_admins(session, coach, reason):
     except Exception as e:
         # Log the error if sending fails
         print(f"ERROR: Could not send cancellation alert email. Error: {e}")
+
+def send_weekly_schedule_email(coach_user, week_start_date, sessions_by_day):
+    """
+    Sends a coach their personalized session schedule for the upcoming week.
+    """
+    if not coach_user.email:
+        print(f"Cannot send weekly schedule: Coach user {coach_user.username} has no email address.")
+        return False
+
+    week_end_date = week_start_date + timedelta(days=6)
+    
+    subject = f"Your SquashSync Schedule for {week_start_date.strftime('%d %b')} - {week_end_date.strftime('%d %b %Y')}"
+
+    # We build the full URL to the calendar in the context
+    calendar_url = f"{settings.APP_SITE_URL}{reverse('planning:session_calendar')}"
+
+    context = {
+        'coach_name': coach_user.first_name or coach_user.username,
+        'week_start_date': week_start_date,
+        'week_end_date': week_end_date,
+        'sessions_by_day': sessions_by_day,
+        'calendar_url': calendar_url,
+        'site_name': "SquashSync",
+    }
+
+    html_message = render_to_string('planning/emails/weekly_schedule_email.html', context)
+    plain_message = strip_tags(html_message) # Basic plain text version
+    from_email = settings.DEFAULT_FROM_EMAIL
+
+    try:
+        send_mail(
+            subject,
+            plain_message,
+            from_email,
+            [coach_user.email],
+            html_message=html_message,
+            fail_silently=False
+        )
+        print(f"Sent weekly schedule email to {coach_user.email}")
+        return True
+    except Exception as e:
+        print(f"Error sending weekly schedule email to {coach_user.email}: {e}")
+        return False

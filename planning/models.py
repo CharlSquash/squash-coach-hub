@@ -63,6 +63,11 @@ class Coach(models.Model):
         default=False,
         help_text="Has the coach opted-in to receive WhatsApp notifications?"
     )
+    receive_weekly_schedule_email = models.BooleanField(
+        default=True,
+        verbose_name="Receive Weekly Schedule Email",
+        help_text="If checked, this coach will receive the weekly schedule summary email every Sunday."
+    )
 
     # +++ NEW FIELDS for Coach Profile +++
     profile_photo = models.ImageField(

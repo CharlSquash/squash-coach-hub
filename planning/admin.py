@@ -95,24 +95,35 @@ class PlayerAdmin(admin.ModelAdmin):
 class CoachAdmin(admin.ModelAdmin):
     list_display = (
         'name',
-        'profile_photo_thumbnail', # Display thumbnail in list
+        'profile_photo_thumbnail',
         'user_link',
         'email',
         'phone',
         'is_active',
+        'receive_weekly_schedule_email', # <<< ADDED HERE
         'qualification_wsf_level',
         'qualification_ssa_level',
     )
     search_fields = ('name', 'email', 'user__username', 'user__first_name', 'user__last_name', 'experience_notes')
-    list_filter = ('is_active', 'user__is_staff', 'qualification_wsf_level', 'qualification_ssa_level')
+    list_filter = (
+        'is_active', 
+        'receive_weekly_schedule_email', # <<< ADDED HERE
+        'user__is_staff', 
+        'qualification_wsf_level', 
+        'qualification_ssa_level'
+    )
     
     fieldsets = (
         (None, {'fields': ('user', 'name', 'is_active')}),
-        ('Contact Information', {'fields': ('email', 'phone', 'whatsapp_phone_number', 'whatsapp_opt_in')}),
+        ('Contact & Notifications', {'fields': ( # Renamed section for clarity
+            'email', 'phone', 
+            'whatsapp_phone_number', 'whatsapp_opt_in', 
+            'receive_weekly_schedule_email' # <<< ADDED HERE
+        )}),
         ('Profile & Qualifications', {'fields': ('profile_photo', 'profile_photo_thumbnail', 'experience_notes', 'qualification_wsf_level', 'qualification_ssa_level')}),
         ('Financial', {'fields': ('hourly_rate',)}),
     )
-    readonly_fields = ('profile_photo_thumbnail',) # Make thumbnail display-only
+    readonly_fields = ('profile_photo_thumbnail',)
     raw_id_fields = ('user',)
     actions = ['trigger_payslip_generation_action']
 
@@ -131,8 +142,8 @@ class CoachAdmin(admin.ModelAdmin):
         return "-"
     user_link.admin_order_field = 'user__username'
 
+    # ... (trigger_payslip_generation_action method remains unchanged) ...
     def trigger_payslip_generation_action(self, request, queryset):
-        # ... (This function remains unchanged) ...
         from .payslip_services import generate_payslip_for_single_coach, create_all_payslips_for_period
         if request.method == 'POST' and 'process_payslips' in request.POST:
             form = PeriodCoachSelectionForm(request.POST) 
@@ -158,7 +169,6 @@ class CoachAdmin(admin.ModelAdmin):
         context = {**self.admin_site.each_context(request), 'title': 'Generate Payslip(s) for Period', 'form': form, 'opts': self.model._meta, 'action_checkbox_name': admin.helpers.ACTION_CHECKBOX_NAME, 'queryset': queryset, }
         return render(request, 'admin/payslip_generation_form_template.html', context)
     trigger_payslip_generation_action.short_description = "Generate Payslip(s) for Period"
-
 
 @admin.register(Drill)
 class DrillAdmin(admin.ModelAdmin):
