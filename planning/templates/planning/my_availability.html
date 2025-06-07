@@ -26,58 +26,17 @@
     .day-accordion-item[open] > summary .arrow::before { transform: rotate(90deg); }
     .day-accordion-item .sessions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; padding: 15px; background-color: var(--container-bg); }
     
-    /* === UPDATED: Availability Item Styles === */
-    .availability-item { 
-        padding: 10px; 
-        padding-top: 15px; /* Add more top padding to make space for the icon */
-        border-radius: 5px; 
-        text-align: center; 
-        cursor: pointer; 
-        border: 1px solid; 
-        transition: all 0.2s ease; 
-        font-size: 0.9em; 
-        line-height: 1.3; 
-        font-weight: 500; 
-        position: relative; /* This is the anchor for the icon */
-    }
+    .availability-item { padding: 10px; padding-top: 15px; border-radius: 5px; text-align: center; cursor: pointer; border: 1px solid; transition: all 0.2s ease; font-size: 0.9em; line-height: 1.3; font-weight: 500; position: relative; }
     .availability-item strong { display: block; font-size: 1.1em; margin-bottom: 3px; }
     .availability-item .assigned-indicator { font-size: 0.8em; font-style: italic; opacity: 0.8; display: block; margin-top: 4px; }
     
-    /* === UPDATED: Info Icon Styling === */
-    .description-trigger {
-        position: absolute; /* Position relative to the parent .availability-item */
-        top: 5px;
-        right: 7px;
-        font-size: 1.1em; /* Make icon noticeable */
-        color: rgba(255, 255, 255, 0.7); /* White with some transparency */
-        cursor: help;
-        transition: color 0.2s ease;
-        z-index: 5; /* Ensure it's above the main block content */
-    }
-    .description-trigger:hover {
-        color: rgba(255, 255, 255, 1); /* Fully opaque on hover */
-    }
-    /* Special color for dark mode on default gray button */
-    html.dark-mode .status-no-change .description-trigger {
-        color: rgba(255, 255, 255, 0.7);
-    }
-    html.dark-mode .status-no-change .description-trigger:hover {
-        color: #fff;
-    }
-    /* For high-contrast dark mode buttons, make icon dark */
-    html.dark-mode .status-available .description-trigger,
-    html.dark-mode .status-unavailable .description-trigger,
-    html.dark-mode .status-emergency .description-trigger {
-        color: rgba(0, 0, 0, 0.6);
-    }
-     html.dark-mode .status-available .description-trigger:hover,
-    html.dark-mode .status-unavailable .description-trigger:hover,
-    html.dark-mode .status-emergency .description-trigger:hover {
-        color: #000;
-    }
-
-
-    /* Color classes remain the same */
+    .description-trigger { position: absolute; top: 5px; right: 7px; font-size: 1.1em; color: rgba(255, 255, 255, 0.7); cursor: help; transition: color 0.2s ease; z-index: 5; }
+    .description-trigger:hover { color: rgba(255, 255, 255, 1); }
+    html.dark-mode .status-no-change .description-trigger { color: rgba(255, 255, 255, 0.7); }
+    html.dark-mode .status-no-change .description-trigger:hover { color: #fff; }
+    html.dark-mode .status-available .description-trigger, html.dark-mode .status-unavailable .description-trigger, html.dark-mode .status-emergency .description-trigger { color: rgba(0, 0, 0, 0.6); }
+    html.dark-mode .status-available .description-trigger:hover, html.dark-mode .status-unavailable .description-trigger:hover, html.dark-mode .status-emergency .description-trigger:hover { color: #000; }
+    
     .availability-item.status-no-change { background-color: #6c757d; border-color: #565e64; color: white; }
     .availability-item.status-available { background-color: #198754; border-color: #146c43; color: white; }
     .availability-item.status-unavailable { background-color: #dc3545; border-color: #b02a37; color: white; }
@@ -87,13 +46,16 @@
     html.dark-mode .availability-item.status-unavailable { background-color: #f1aeb5; border-color: #d99da7; color: #000; }
     html.dark-mode .availability-item.status-emergency { background-color: #6ea8fe; border-color: #428efc; color: #000; }
 
-    /* Modal Styles remain the same */
-    .description-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); z-index: 1050; display: none; justify-content: center; align-items: center; }
-    .description-modal-content { background-color: var(--container-bg); padding: 20px; border-radius: 8px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; }
-    .description-modal-content h4 { margin-top: 0; color: var(--heading-color); border-bottom: 1px solid var(--border-light); padding-bottom: 10px; margin-bottom: 15px; }
-    .description-modal-content p { white-space: pre-wrap; line-height: 1.6; }
-    .description-modal-close { position: absolute; top: 10px; right: 15px; font-size: 1.5rem; font-weight: bold; color: var(--subheading-color); cursor: pointer; border: none; background: none; }
-    .description-modal-close:hover { color: var(--text-color); }
+    /* Modal Styles */
+    .custom-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); z-index: 1050; display: none; justify-content: center; align-items: center; }
+    .custom-modal-content { background-color: var(--container-bg); padding: 20px; border-radius: 8px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; }
+    .custom-modal-content h4 { margin-top: 0; color: var(--heading-color); border-bottom: 1px solid var(--border-light); padding-bottom: 10px; margin-bottom: 15px; }
+    .custom-modal-content p { white-space: pre-wrap; line-height: 1.6; }
+    .custom-modal-content .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
+    .custom-modal-content .form-group textarea { width: 100%; min-height: 80px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background-color: var(--input-bg); color: var(--text-color); }
+    .custom-modal-close { position: absolute; top: 10px; right: 15px; font-size: 1.5rem; font-weight: bold; color: var(--subheading-color); cursor: pointer; border: none; background: none; }
+    .custom-modal-close:hover { color: var(--text-color); }
+    .custom-modal-actions { margin-top: 15px; text-align: right; }
 
     .main-submit-button-container { margin-top: 25px; text-align: center; }
     .main-submit-button { padding: 12px 25px; font-size: 1.1em; }
@@ -117,7 +79,7 @@
         <span class="color-key-item"><div class="color-key-swatch" style="background-color: #0d6efd;"></div> Emergency Only</span>
         <span class="color-key-item"><div class="color-key-swatch" style="background-color: #6c757d;"></div> No Preference</span>
     </div>
-    <p class="helptext"><small>Tap the main colored block to cycle availability. Tap the <i class="bi bi-info-circle-fill"></i> icon to view the group description.</small></p>
+    <p class="helptext"><small>Tap a block to cycle availability. Tap the <i class="bi bi-info-circle-fill"></i> icon for group info. A reason is required if marking 'Unavailable' for an assigned session.</small></p>
 
     <div class="week-navigation">
         <a href="?week={{ prev_week_offset }}" class="btn btn-sm btn-secondary"><i class="bi bi-arrow-left"></i> Previous Week</a>
@@ -140,6 +102,7 @@
                             <div class="availability-item status-{{ item.current_status|lower }}" 
                                  data-session-id="{{ item.session_obj.id }}" 
                                  data-status="{{ item.current_status }}"
+                                 data-is-assigned="{{ item.is_assigned|yesno:'true,false' }}"
                                  data-group-description="{{ item.group_description|escapejs }}"
                                  data-group-name="{{ item.session_obj.school_group.name }}"
                                  tabindex="0" 
@@ -155,6 +118,8 @@
                                 {% endif %}
                             </div>
                             <input type="hidden" name="availability_session_{{ item.session_obj.id }}" id="input_session_{{ item.session_obj.id }}" value="{{ item.current_status }}">
+                            {# NEW: Hidden input for notes/reason #}
+                            <input type="hidden" name="notes_session_{{ item.session_obj.id }}" id="notes_session_{{ item.session_obj.id }}" value="">
                         {% endfor %}
                     </div>
                 </details>
@@ -169,99 +134,149 @@
     </form>
 </div>
 
-{# Modal for displaying the description #}
-<div id="descriptionModal" class="description-modal-overlay">
-    <div class="description-modal-content">
-        <button id="descriptionModalClose" class="description-modal-close" aria-label="Close">&times;</button>
+{# Modal for Group Description #}
+<div id="descriptionModal" class="custom-modal-overlay">
+    <div class="custom-modal-content">
+        <button id="descriptionModalClose" class="custom-modal-close" aria-label="Close">&times;</button>
         <h4 id="modalGroupName">Group Description</h4>
         <p id="modalGroupDescription">Description will be loaded here.</p>
+    </div>
+</div>
+
+{# NEW: Modal for Cancellation Reason #}
+<div id="reasonModal" class="custom-modal-overlay">
+    <div class="custom-modal-content">
+        <button id="reasonModalCancel" class="custom-modal-close" aria-label="Cancel">&times;</button>
+        <h4>Reason for Cancellation</h4>
+        <p>You are assigned to this session. Please provide a reason for marking yourself as unavailable.</p>
+        <div class="form-group">
+            <label for="cancellationReasonText">Reason:</label>
+            <textarea id="cancellationReasonText" rows="3" class="form-control"></textarea>
+            <div id="reasonError" style="color: var(--action-del-text); font-size: 0.8em; display: none; margin-top: 5px;">A reason is required.</div>
+        </div>
+        <div class="custom-modal-actions">
+            <button type="button" id="reasonModalSubmit" class="btn btn-primary btn-sm">Confirm Unavailability</button>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-    // The JavaScript from the previous step remains the same and will work correctly
-    // with the updated CSS and HTML structure. No changes needed here.
-    document.addEventListener('DOMContentLoaded', function () {
-        const availabilityItems = document.querySelectorAll('.availability-item');
-        const descriptionModal = document.getElementById('descriptionModal');
-        const descriptionModalClose = document.getElementById('descriptionModalClose');
-        const modalGroupName = document.getElementById('modalGroupName');
-        const modalGroupDescription = document.getElementById('modalGroupDescription');
+document.addEventListener('DOMContentLoaded', function () {
+    // --- Existing Description Modal Logic ---
+    const descriptionModal = document.getElementById('descriptionModal');
+    const descriptionModalClose = document.getElementById('descriptionModalClose');
+    const modalGroupName = document.getElementById('modalGroupName');
+    const modalGroupDescription = document.getElementById('modalGroupDescription');
 
-        const states = [
-            { value: 'AVAILABLE',   cssClass: 'status-available' },
-            { value: 'UNAVAILABLE', cssClass: 'status-unavailable' },
-            { value: 'EMERGENCY',   cssClass: 'status-emergency' },
-            { value: 'NO_CHANGE',   cssClass: 'status-no-change' }
-        ];
+    // --- NEW: Cancellation Reason Modal Logic ---
+    const reasonModal = document.getElementById('reasonModal');
+    const reasonModalCancel = document.getElementById('reasonModalCancel');
+    const reasonModalSubmit = document.getElementById('reasonModalSubmit');
+    const reasonTextarea = document.getElementById('cancellationReasonText');
+    const reasonError = document.getElementById('reasonError');
+    let activeItemForReason = null; // To keep track of which item triggered the modal
 
-        function cycleStatus(item) {
-            const currentStatus = item.dataset.status;
-            const currentIndex = states.findIndex(s => s.value === currentStatus);
-            const nextIndex = (currentIndex + 1) % states.length;
-            const nextState = states[nextIndex];
+    const states = [
+        { value: 'AVAILABLE',   cssClass: 'status-available' },
+        { value: 'UNAVAILABLE', cssClass: 'status-unavailable' },
+        { value: 'EMERGENCY',   cssClass: 'status-emergency' },
+        { value: 'NO_CHANGE',   cssClass: 'status-no-change' }
+    ];
 
-            item.dataset.status = nextState.value;
-            item.className = `availability-item ${nextState.cssClass}`;
+    function showDescription(item) {
+        const description = item.dataset.groupDescription;
+        const groupName = item.dataset.groupName;
+        if (description) {
+            modalGroupName.textContent = `Description for: ${groupName}`;
+            modalGroupDescription.textContent = description;
+        } else {
+            modalGroupName.textContent = groupName;
+            modalGroupDescription.textContent = "No description provided for this group.";
+        }
+        if(descriptionModal) descriptionModal.style.display = 'flex';
+    }
 
-            const hiddenInput = document.getElementById(`input_session_${item.dataset.sessionId}`);
-            if (hiddenInput) {
-                hiddenInput.value = nextState.value;
+    function changeItemStatus(item, newState) {
+        item.dataset.status = newState.value;
+        item.className = `availability-item ${newState.cssClass}`;
+        const availabilityInput = document.getElementById(`input_session_${item.dataset.sessionId}`);
+        if (availabilityInput) {
+            availabilityInput.value = newState.value;
+        }
+    }
+
+    function handleTap(item) {
+        const isAssigned = item.dataset.isAssigned === 'true';
+        const currentStatus = item.dataset.status;
+        const currentIndex = states.findIndex(s => s.value === currentStatus);
+        const nextIndex = (currentIndex + 1) % states.length;
+        const nextState = states[nextIndex];
+
+        // Check for the special case: assigned coach marking as unavailable
+        if (isAssigned && nextState.value === 'UNAVAILABLE') {
+            activeItemForReason = item; // Store the item that needs a reason
+            reasonTextarea.value = ''; // Clear previous reason
+            reasonError.style.display = 'none';
+            if(reasonModal) reasonModal.style.display = 'flex';
+        } else {
+            // For all other cases, just cycle the status
+            changeItemStatus(item, nextState);
+             // Clear any previously set reason if status is changed to something else
+            const notesInput = document.getElementById(`notes_session_${item.dataset.sessionId}`);
+            if (notesInput) {
+                notesInput.value = (nextState.value === 'EMERGENCY') ? "Emergency only" : "";
             }
         }
+    }
 
-        function showDescription(item) {
-            const description = item.dataset.groupDescription;
-            const groupName = item.dataset.groupName;
-
-            if (description) {
-                modalGroupName.textContent = `Description for: ${groupName}`;
-                modalGroupDescription.textContent = description;
+    document.querySelectorAll('.availability-item').forEach(item => {
+        item.addEventListener('click', function(event) {
+            if (event.target.classList.contains('description-trigger')) {
+                event.stopPropagation();
+                showDescription(this);
             } else {
-                modalGroupName.textContent = groupName;
-                modalGroupDescription.textContent = "No description provided for this group.";
+                handleTap(this);
             }
-            descriptionModal.style.display = 'flex';
-        }
-
-        availabilityItems.forEach(item => {
-            item.addEventListener('click', function(event) {
-                if (event.target.classList.contains('description-trigger')) {
-                    event.stopPropagation();
-                    showDescription(this);
-                } else {
-                    cycleStatus(this);
-                }
-            });
-
-            item.addEventListener('keydown', function(event) {
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    if (document.activeElement && document.activeElement.classList.contains('description-trigger')) {
-                        showDescription(this);
-                    } else {
-                        this.click();
-                    }
-                }
-            });
         });
-
-        function closeModal() {
-            descriptionModal.style.display = 'none';
-        }
-
-        if (descriptionModalClose) {
-            descriptionModalClose.addEventListener('click', closeModal);
-        }
-        if (descriptionModal) {
-            descriptionModal.addEventListener('click', function(event) {
-                if (event.target === descriptionModal) {
-                    closeModal();
-                }
-            });
-        }
     });
+
+    // --- Event Listeners for Modals ---
+    function closeModal(modal) {
+        if (modal) modal.style.display = 'none';
+    }
+
+    if (descriptionModalClose) descriptionModalClose.addEventListener('click', () => closeModal(descriptionModal));
+    if (descriptionModal) descriptionModal.addEventListener('click', e => { if (e.target === descriptionModal) closeModal(descriptionModal); });
+    
+    if (reasonModalCancel) reasonModalCancel.addEventListener('click', () => closeModal(reasonModal));
+    if (reasonModal) reasonModal.addEventListener('click', e => { if (e.target === reasonModal) closeModal(reasonModal); });
+
+    if (reasonModalSubmit) {
+        reasonModalSubmit.addEventListener('click', function() {
+            const reason = reasonTextarea.value.trim();
+            if (reason === '') {
+                reasonError.style.display = 'block';
+                return;
+            }
+
+            if (activeItemForReason) {
+                // Update status to UNAVAILABLE
+                const unavailableState = states.find(s => s.value === 'UNAVAILABLE');
+                changeItemStatus(activeItemForReason, unavailableState);
+                
+                // Set the hidden input for the notes
+                const notesInput = document.getElementById(`notes_session_${activeItemForReason.dataset.sessionId}`);
+                if (notesInput) {
+                    notesInput.value = reason;
+                }
+                
+                closeModal(reasonModal);
+                activeItemForReason = null;
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

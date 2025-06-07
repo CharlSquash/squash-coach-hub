@@ -34,6 +34,7 @@
         .week-navigation h4 {
             margin: 0;
             font-size: 1.1em;
+            text-align: center;
             color: var(--heading-color);
         }
         .week-navigation .btn {
@@ -66,14 +67,17 @@
             transition: transform 0.2s ease-in-out;
             display: inline-block;
         }
+        .day-accordion-item[open] > summary {
+            border-bottom: 1px solid var(--border-color);
+        }
         .day-accordion-item[open] > summary .arrow::before {
             transform: rotate(90deg);
         }
         .day-accordion-item .day-content {
-            padding: 0 15px 15px 15px;
+            padding: 10px 15px 15px 15px;
         }
         
-        /* Session Item Styles (Nested Details/Summary) */
+        /* Nested Session Item Styles */
         .session-staffing-item {
             border: 1px solid var(--border-light);
             border-radius: 5px;
@@ -91,17 +95,11 @@
             gap: 10px;
         }
         .session-staffing-item > summary::-webkit-details-marker { display: none; }
-        
-        .session-summary-info h3 {
-            font-size: 1.1em;
-            color: var(--heading-color);
-            margin: 0 0 5px 0;
+        .session-staffing-item[open] > summary {
+            border-bottom: 1px solid var(--border-light);
         }
-        .session-summary-info .session-meta {
-            font-size: 0.85em;
-            color: var(--subheading-color);
-            margin: 0;
-        }
+        .session-summary-info h3 { font-size: 1.1em; color: var(--heading-color); margin: 0 0 5px 0; }
+        .session-summary-info .session-meta { font-size: 0.85em; color: var(--subheading-color); margin: 0; }
         .session-status-indicators { display: flex; gap: 10px; font-size: 0.8em; }
         .status-indicator { display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px; border-radius: 3px; font-weight: bold; }
         .indicator-pending { background-color: #fff3cd; color: #664d03; border: 1px solid #ffecb5; }
@@ -114,6 +112,24 @@
         .staffing-column li { margin-bottom: 5px; padding: 4px 0; display: flex; align-items: center; gap: 8px; }
         
         .availability-notes, .confirmation-notes { font-size: 0.8em; color: var(--text-color-muted, #6c757d); margin-left: 5px; font-style: italic; }
+        
+        /* +++ NEW: Styles for the emergency label +++ */
+        .emergency-label {
+            font-size: 0.8em;
+            font-style: italic;
+            color: var(--link-color); /* Blue color to match icon */
+            margin-left: 5px;
+        }
+        html.dark-mode .emergency-label {
+            color: #6ea8fe; /* Lighter blue for dark mode */
+        }
+        .availability-icon.emergency {
+            color: var(--link-color) !important; /* Blue color for icon */
+        }
+        html.dark-mode .availability-icon.emergency {
+            color: #6ea8fe !important;
+        }
+
         .assignment-form label { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; cursor: pointer; }
         .assignment-form input[type="checkbox"] { width: 1.1em; height: 1.1em; accent-color: var(--link-color); }
         .submit-button { padding: 8px 15px; font-size: 0.95em; margin-top: 15px; border: none; border-radius: 5px; background-color: var(--link-color, #007bff); color: white; cursor: pointer; font-weight: bold; }
@@ -125,7 +141,7 @@
 
 {% block content %}
 <div class="content-wrapper">
-    <h1><i class="bi bi-person-check-fill"></i> {{ page_title }}</h1>
+    <h1><i class="bi bi-person-check-fill"></i> {{ page_title|default:"Session Staffing" }}</h1>
     
     <div class="week-navigation">
         <a href="?week={{ prev_week_offset }}" class="btn btn-sm btn-secondary"><i class="bi bi-arrow-left"></i> Previous Week</a>
@@ -188,18 +204,30 @@
                                             <p class="no-content-msg">None assigned.</p>
                                         {% endif %}
                                     </div>
+
                                     <div class="staffing-column">
                                         <h4>Available Coaches</h4>
-                                        {% if item.available_coaches_profiles %}
+                                        {% if item.available_coaches_for_assignment %}
                                             <ul>
-                                                {% for coach in item.available_coaches_profiles %}
-                                                    <li><i class="bi bi-hand-thumbs-up-fill text-success"></i> {{ coach.name }}</li>
+                                                {% for coach_avail_info in item.available_coaches_for_assignment %}
+                                                    <li>
+                                                        {# --- UPDATED: Display logic for available coaches --- #}
+                                                        {% if coach_avail_info.is_emergency_only %}
+                                                            <i class="bi bi-hand-thumbs-up-fill availability-icon emergency" title="Available for Emergency Only"></i>
+                                                            {{ coach_avail_info.coach_profile.name }}
+                                                            <span class="emergency-label">(in emergency)</span>
+                                                        {% else %}
+                                                            <i class="bi bi-hand-thumbs-up-fill availability-icon" style="color: #198754;" title="Marked as available"></i>
+                                                            {{ coach_avail_info.coach_profile.name }}
+                                                        {% endif %}
+                                                    </li>
                                                 {% endfor %}
                                             </ul>
                                         {% else %}
-                                            <p class="no-content-msg">No other coaches marked as available.</p>
+                                            <p class="no-content-msg">No coaches have marked themselves available.</p>
                                         {% endif %}
                                     </div>
+
                                     <div class="staffing-column">
                                         <h4>Assign / Update</h4>
                                         <form method="post" class="assignment-form">
@@ -215,7 +243,7 @@
                                                     <span class="coach-name">{{ coach.name }}</span>
                                                 </label>
                                             {% endfor %}
-                                            <button type="submit" class="submit-button">Save Assignments</button>
+                                            <button type="submit" class="submit-button">Update Assignments</button>
                                         </form>
                                     </div>
                                 </div>
@@ -227,7 +255,7 @@
         {% endif %}
     {% endfor %}
 
-    {% if not sessions_with_availability and not display_week %}
+    {% if not display_week or not display_week|first|last %}
         <p class="no-sessions-msg">No sessions scheduled for this week.</p>
     {% endif %}
 </div>

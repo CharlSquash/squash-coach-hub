@@ -8,8 +8,11 @@ from django.conf import settings
 from django.core.signing import TimestampSigner, BadSignature, SignatureExpired
 from django.utils.html import strip_tags
 from datetime import timedelta
+from django.contrib.auth import get_user_model
 
 from planning.models import Session, CoachAvailability  # your models
+
+User = get_user_model() # <<< AND THIS
 
 
 # Initialize a TimestampSigner for session confirmations
@@ -87,3 +90,55 @@ def verify_confirmation_token(token):
     except Exception as e:
         print(f"Unexpected error during token verification: {e}")
         return None
+
+def send_availability_change_alert_to_admins(session, coach, reason):
+    """
+    Sends an email alert to all superusers when an assigned coach
+    marks themselves as unavailable for an upcoming session.
+    """
+    # Find all superusers to notify
+    admin_users = User.objects.filter(is_superuser=True, is_active=True)
+    
+    # Get a list of their email addresses, filtering out any who don't have one
+    admin_emails = [user.email for user in admin_users if user.email]
+
+    if not admin_emails:
+        print("ADMIN ALERT: No admin emails found to send cancellation notification.")
+        return # Exit if no admin emails are configured
+
+    subject = f"[SquashSync ALERT] Coach Availability Change for Session on {session.session_date.strftime('%a, %d %b')}"
+    
+    context = {
+        'coach': coach,
+        'session': session,
+        'reason': reason,
+        'site_url': settings.APP_SITE_URL, # Assumes APP_SITE_URL is in your settings
+        'staffing_page_url': reverse('planning:session_staffing'),
+    }
+
+    html_message = render_to_string('planning/emails/availability_change_alert.html', context)
+    plain_text_message = (
+        f"Coach Availability Change Alert\n\n"
+        f"Coach: {coach.name or coach.user.username}\n"
+        f"Has marked themselves as UNAVAILABLE for an assigned session.\n\n"
+        f"Session Details:\n"
+        f"  Group: {session.school_group.name if session.school_group else 'N/A'}\n"
+        f"  Date: {session.session_date.strftime('%A, %d %B %Y')}\n"
+        f"  Time: {session.session_start_time.strftime('%H:%M')}\n\n"
+        f"Reason Provided:\n{reason}\n\n"
+        f"Please review the session staffing here: {settings.APP_SITE_URL}{reverse('planning:session_staffing')}\n"
+    )
+
+    try:
+        send_mail(
+            subject,
+            plain_text_message,
+            settings.DEFAULT_FROM_EMAIL, # Your sender email
+            admin_emails, # List of recipients
+            html_message=html_message,
+            fail_silently=False,
+        )
+        print(f"Successfully sent cancellation alert to {len(admin_emails)} admin(s) for session {session.id}.")
+    except Exception as e:
+        # Log the error if sending fails
+        print(f"ERROR: Could not send cancellation alert email. Error: {e}")

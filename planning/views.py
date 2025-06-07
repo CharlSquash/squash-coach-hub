@@ -23,6 +23,7 @@ from django.forms import inlineformset_factory
 from .live_session_utils import _calculate_skill_priority_groups
 from ics import Calendar, Event
 from .utils import get_month_start_end, get_month_choices, get_year_choices
+from .notifications import send_availability_change_alert_to_admins
 
 User = get_user_model()
 
@@ -185,50 +186,47 @@ def coach_completion_report_view(request):
 @login_required
 @user_passes_test(is_superuser, login_url='login') 
 def session_staffing_view(request):
-    # --- POST request handling for assigning coaches ---
-    # This logic remains the same as your current view
+    # --- POST request handling remains the same ---
     if request.method == 'POST':
+        # ... (Your existing POST logic for updating assignments)
+        # No changes needed here for this feature
         session_id = request.POST.get('session_id')
         assigned_coach_ids_str = request.POST.getlist(f'coaches_for_session_{session_id}')
-        if not session_id:
+        if not session_id: 
             messages.error(request, "Invalid request: Missing session ID.")
             return redirect('planning:session_staffing')
         try:
             session_to_update = get_object_or_404(Session, pk=int(session_id))
             previously_assigned_coach_users = {coach.user for coach in session_to_update.coaches_attending.all() if coach.user}
-            
-            selected_coaches_qs = Coach.objects.none()
+            selected_coaches_qs = Coach.objects.none() 
             if assigned_coach_ids_str:
                 valid_coach_ids = [int(cid) for cid in assigned_coach_ids_str if cid.isdigit()]
-                if valid_coach_ids:
+                if valid_coach_ids: 
                     selected_coaches_qs = Coach.objects.filter(pk__in=valid_coach_ids)
-            
-            session_to_update.coaches_attending.set(selected_coaches_qs)
+            session_to_update.coaches_attending.set(selected_coaches_qs) 
             messages.success(request, f"Coach assignments updated for session on {session_to_update.session_date.strftime('%d %b %Y')}.")
-            
             current_assigned_coach_users = {coach.user for coach in selected_coaches_qs if coach.user}
             for coach_user_assigned in current_assigned_coach_users:
                 is_newly_assigned = coach_user_assigned not in previously_assigned_coach_users
                 existing_availability = CoachAvailability.objects.filter(coach=coach_user_assigned, session=session_to_update).first()
                 should_reset_availability = False
-                if is_newly_assigned and existing_availability and existing_availability.is_available is False:
+                if is_newly_assigned and existing_availability: 
+                    if existing_availability.is_available is False: 
+                        should_reset_availability = True
+                elif not is_newly_assigned and existing_availability and existing_availability.is_available is False: 
                     should_reset_availability = True
-                
-                if should_reset_availability:
+                if should_reset_availability and existing_availability:
                     existing_availability.delete()
-                    messages.info(request, f"Coach {coach_user_assigned.username}'s previous 'Unavailable' status for session on {session_to_update.session_date.strftime('%d %b')} has been reset due to new assignment.")
-
-        except (ValueError, Session.DoesNotExist):
+                    messages.info(request, f"Coach {coach_user_assigned.username}'s previous availability for session on {session_to_update.session_date.strftime('%d %b')} has been reset due to reassignment.")
+        except (ValueError, Session.DoesNotExist): 
             messages.error(request, "Invalid session or data.")
-        except Exception as e:
+        except Exception as e: 
             messages.error(request, f"An error occurred: {e}")
             print(f"Error in session_staffing_view POST: {e}")
-        
-        # Redirect back to the same week view after POST
-        week_offset = request.GET.get('week', '0')
-        return redirect(f"{reverse('planning:session_staffing')}?week={week_offset}")
+        return redirect(f"{reverse('planning:session_staffing')}?week={request.GET.get('week', '0')}")
 
-    # --- GET request handling with week navigation ---
+
+    # --- GET request handling with week navigation and updated logic ---
     now = timezone.now()
     today = now.date()
     
@@ -241,7 +239,6 @@ def session_staffing_view(request):
     target_week_start = start_of_this_week + timedelta(weeks=week_offset)
     target_week_end = target_week_start + timedelta(days=6)
 
-    # Fetch sessions for the target week
     sessions_in_week_qs = Session.objects.filter(
         session_date__gte=target_week_start,
         session_date__lte=target_week_end,
@@ -257,47 +254,55 @@ def session_staffing_view(request):
     
     all_active_coaches = list(Coach.objects.filter(is_active=True).select_related('user').order_by('name'))
     
-    # Group sessions by day of the week
+    # Group sessions by day
     grouped_sessions = {i: [] for i in range(7)}
     for session_obj in sessions_in_week_qs:
-        # This logic is similar to your existing view but adapted for the loop
+        # Assigned Coaches logic (remains the same)
         assigned_coaches_with_status = []
         has_pending_confirmations_for_session = False
         has_declined_coaches_for_session = False
-        
         for coach_profile_item in session_obj.coaches_attending.all():
+            # ... (your existing logic for assigned coaches)
             coach_user_item = coach_profile_item.user
-            status = "Pending Response"
-            availability_notes = ""
-            is_confirmed = False
-            is_declined = False
-            if coach_user_item:
+            status = "Pending Response"; availability_notes = ""; is_confirmed = False; is_declined = False
+            if coach_user_item: 
                 for availability_detail in session_obj.availability_details_for_session:
                     if availability_detail.coach_id == coach_user_item.id:
-                        if availability_detail.is_available is True:
-                            status = "Confirmed"
-                            is_confirmed = True
-                        elif availability_detail.is_available is False:
-                            status = "Declined"
-                            is_declined = True
-                            has_declined_coaches_for_session = True
-                        availability_notes = availability_detail.notes
-                        break
-                if status == "Pending Response":
-                    has_pending_confirmations_for_session = True
-            
-            assigned_coaches_with_status.append({
-                'coach_profile': coach_profile_item, 'status': status,
-                'is_confirmed': is_confirmed, 'is_declined': is_declined, 'notes': availability_notes
+                        if availability_detail.is_available is True: status = "Confirmed"; is_confirmed = True
+                        elif availability_detail.is_available is False: status = "Declined"; is_declined = True; has_declined_coaches_for_session = True
+                        availability_notes = availability_detail.notes; break
+                if status == "Pending Response": has_pending_confirmations_for_session = True
+            assigned_coaches_with_status.append({'coach_profile': coach_profile_item, 'status': status, 'is_confirmed': is_confirmed, 'is_declined': is_declined, 'notes': availability_notes})
+
+        # +++ UPDATED: Logic for Available Coaches +++
+        available_coaches_for_assignment_display = []
+        for avail_detail in session_obj.availability_details_for_session:
+            # We only care about coaches who have marked themselves as available
+            if avail_detail.is_available is not True:
+                continue
+
+            # Find the corresponding Coach profile instance
+            coach_instance = next((c for c in all_active_coaches if c.user and c.user.id == avail_detail.coach_id), None)
+            if not coach_instance:
+                continue
+
+            # Check for "Emergency only" note
+            is_emergency_only = "emergency" in avail_detail.notes.lower()
+
+            available_coaches_for_assignment_display.append({
+                'coach_profile': coach_instance,
+                'notes': avail_detail.notes,
+                'is_emergency_only': is_emergency_only
             })
         
-        available_coaches_users = {avail.coach for avail in session_obj.availability_details_for_session if avail.is_available is True}
-        available_coaches_profiles = Coach.objects.filter(user__in=available_coaches_users, is_active=True)
-        
+        # Sort the list: fully available first, then emergency only
+        available_coaches_for_assignment_display.sort(key=lambda x: x['is_emergency_only'])
+        # +++ END UPDATED Logic +++
+
         session_data = {
             'session_obj': session_obj,
             'assigned_coaches_with_status': assigned_coaches_with_status,
-            'available_coaches_profiles': available_coaches_profiles,
+            'available_coaches_for_assignment': available_coaches_for_assignment_display,
             'has_pending_confirmations': has_pending_confirmations_for_session,
             'has_declined_coaches': has_declined_coaches_for_session
         }
@@ -335,15 +340,29 @@ def my_availability_view(request):
         return redirect('homepage')
 
     if request.method == 'POST':
-        # ... (POST handling logic remains the same as our working version) ...
         updated_count = 0
         for key, value in request.POST.items():
             if key.startswith('availability_session_'):
                 session_id = key.split('_')[-1]
+                notes_key = f'notes_session_{session_id}' # Corresponding notes field
+                notes = request.POST.get(notes_key, '').strip()
+
                 try:
                     session = Session.objects.get(pk=session_id)
+                    is_assigned = coach_profile in session.coaches_attending.all()
+                    
+                    # Check if status is being set to UNAVAILABLE for an assigned session
+                    if is_assigned and value == 'UNAVAILABLE':
+                        if not notes:
+                            # Backend validation: Reason is required
+                            messages.error(request, f"A reason is required to mark yourself unavailable for the assigned session on {session.session_date.strftime('%d %b')}.")
+                            continue # Skip this update and process the next item
+                        else:
+                            # Reason provided, trigger email alert
+                            send_availability_change_alert_to_admins(session=session, coach=coach_profile, reason=notes)
+
+                    # Proceed with saving the availability status
                     is_available = None
-                    notes = "Emergency only" if value == 'EMERGENCY' else ""
                     if value == 'AVAILABLE' or value == 'EMERGENCY':
                         is_available = True
                     elif value == 'UNAVAILABLE':
@@ -351,30 +370,27 @@ def my_availability_view(request):
                     
                     if value != 'NO_CHANGE':
                         CoachAvailability.objects.update_or_create(
-                            coach=request.user,
-                            session=session,
-                            defaults={
-                                'is_available': is_available,
-                                'notes': notes,
-                                'status_updated_at': timezone.now()
-                            }
+                            coach=request.user, session=session,
+                            defaults={'is_available': is_available, 'notes': notes, 'status_updated_at': timezone.now()}
                         )
                         updated_count += 1
+                
                 except Session.DoesNotExist:
                     messages.warning(request, f"Could not find session with ID {session_id} to update.")
+        
         if updated_count > 0:
             messages.success(request, f"Successfully updated your availability for {updated_count} session(s).")
+        
         return redirect(f"{reverse('planning:my_availability')}?week={request.GET.get('week', '0')}")
 
 
-    # --- GET request handling with week navigation ---
+    # The GET request logic remains the same as our working version
+    # ... (the rest of the view from the previous working step)
     now = timezone.now()
     today = now.date()
     
-    try:
-        week_offset = int(request.GET.get('week', '0'))
-    except (ValueError, TypeError):
-        week_offset = 0
+    try: week_offset = int(request.GET.get('week', '0'))
+    except (ValueError, TypeError): week_offset = 0
 
     start_of_this_week = today - timedelta(days=today.weekday())
     target_week_start = start_of_this_week + timedelta(weeks=week_offset)
@@ -386,55 +402,34 @@ def my_availability_view(request):
         is_cancelled=False
     ).select_related('school_group', 'venue').prefetch_related(
         'coaches_attending',
-        Prefetch(
-            'coach_availabilities',
-            queryset=CoachAvailability.objects.filter(coach=request.user),
-            to_attr='my_availability'
-        )
+        Prefetch('coach_availabilities', queryset=CoachAvailability.objects.filter(coach=request.user), to_attr='my_availability')
     ).order_by('session_date', 'session_start_time')
     
     grouped_sessions = {i: [] for i in range(7)}
     for session in upcoming_sessions_qs:
         availability_info = session.my_availability[0] if session.my_availability else None
-        
         current_status = 'NO_CHANGE'
         if availability_info:
-            if availability_info.is_available and "emergency" in availability_info.notes.lower():
-                current_status = 'EMERGENCY'
-            elif availability_info.is_available is True:
-                current_status = 'AVAILABLE'
-            elif availability_info.is_available is False:
-                current_status = 'UNAVAILABLE'
-
-        # +++ MODIFICATION: Add group description to session_data +++
+            if availability_info.is_available and "emergency" in availability_info.notes.lower(): current_status = 'EMERGENCY'
+            elif availability_info.is_available is True: current_status = 'AVAILABLE'
+            elif availability_info.is_available is False: current_status = 'UNAVAILABLE'
         session_data = {
-            'session_obj': session,
-            'current_status': current_status,
+            'session_obj': session, 'current_status': current_status,
             'is_assigned': coach_profile in session.coaches_attending.all(),
             'group_description': session.school_group.description if session.school_group else ""
         }
-        # +++ END MODIFICATION +++
-
         grouped_sessions[session.session_date.weekday()].append(session_data)
 
     day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
     display_week = []
     for i in range(5):
         day_date = target_week_start + timedelta(days=i)
-        display_week.append({
-            'day_name': day_names[i],
-            'date': day_date,
-            'sessions': grouped_sessions.get(i, [])
-        })
+        display_week.append({'day_name': day_names[i], 'date': day_date, 'sessions': grouped_sessions.get(i, [])})
 
     context = {
-        'page_title': "My Availability",
-        'display_week': display_week,
-        'week_start': target_week_start,
-        'week_end': target_week_end,
-        'current_week_offset': week_offset,
-        'next_week_offset': week_offset + 1,
-        'prev_week_offset': week_offset - 1,
+        'page_title': "My Availability", 'display_week': display_week, 'week_start': target_week_start,
+        'week_end': target_week_end, 'current_week_offset': week_offset,
+        'next_week_offset': week_offset + 1, 'prev_week_offset': week_offset - 1,
     }
     return render(request, 'planning/my_availability.html', context)
 

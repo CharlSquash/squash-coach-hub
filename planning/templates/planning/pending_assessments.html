@@ -5,6 +5,7 @@
 
 {% block extra_head %}
 <style>
+    /* ... (All your existing styles remain the same) ... */
     .page-header {
         margin-bottom: 20px;
         padding-bottom: 10px;
@@ -51,7 +52,7 @@
     .players-to-assess-list .player-name {
         color: var(--text-color);
     }
-    .assess-link, .btn-mark-complete { /* Combined common styles */
+    .assess-link, .btn-mark-complete { 
         display: inline-block;
         padding: 6px 12px;
         font-size: 0.9em;
@@ -60,9 +61,9 @@
         text-align: center;
         cursor: pointer;
         border: 1px solid transparent;
-        margin-top: 5px; /* Added for spacing between buttons */
+        margin-top: 5px; 
     }
-    .assess-link { /* Specific style for assess player/group */
+    .assess-link { 
         background-color: var(--link-color);
         color: var(--container-bg, #fff);
         border-color: var(--link-color);
@@ -73,7 +74,7 @@
         color: var(--container-bg, #fff);
     }
     .btn-mark-complete {
-        background-color: var(--action-add-bg); /* Using add button style */
+        background-color: var(--action-add-bg); 
         color: var(--action-add-text);
         border-color: var(--action-add-border);
         width: 100%; 
@@ -90,7 +91,7 @@
         border-radius: 5px;
         color: var(--subheading-color);
     }
-    .assessment-section { /* For spacing group assessment part */
+    .assessment-section { 
         margin-top: 15px;
         padding-top: 10px;
         border-top: 1px dashed var(--border-light, #eee);
@@ -104,7 +105,7 @@
         .players-to-assess-list .player-name {
             margin-bottom: 8px;
         }
-        .assess-link { /* assess-player-link renamed to assess-link */
+        .assess-link { 
             width: 100%; 
         }
     }
@@ -112,7 +113,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4"> {# Added container for better spacing #}
+<div class="container mt-4"> 
     <div class="page-header">
         <h1>{{ page_title }}</h1>
     </div>
@@ -149,29 +150,20 @@
                         {% endfor %}
                     </ul>
                 {% elif not item.session.player_assessments_done_by_coach %} 
-                    {# This condition means there might be players, but they are all assessed by this coach OR no players attended #}
                     <p><em>All players assigned to you in this session have been assessed, or no players attended.</em></p>
                 {% endif %}
                 
-                {# Button to mark all PLAYER assessments for this session as complete by this coach #}
-                {% if item.coach_can_mark_player_assessments_complete and not item.session.player_assessments_done_by_coach %}
-                    <form method="POST" action="{% url 'planning:mark_my_assessments_complete' item.session.id %}" style="margin-top: 10px; margin-bottom:10px;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-mark-complete">
-                            <i class="bi bi-check2-circle"></i> Mark My Player Assessments Complete for this Session
-                        </button>
-                    </form>
-                {% elif item.session.player_assessments_done_by_coach %}
+                {% if item.session.player_assessments_done_by_coach %}
                      <p class="text-success"><i class="bi bi-check-circle-fill"></i> Player assessments marked as complete by you for this session.</p>
                 {% endif %}
 
-                {# --- NEW: Group Assessment Section --- #}
+                {# --- Group Assessment Section --- #}
                 <div class="assessment-section">
                     <h4>Group Assessment:</h4>
                     {% if item.group_assessment_submitted %}
                         <p class="text-success"><i class="bi bi-check-circle-fill"></i> You have submitted a group assessment for this session.</p>
                         <a href="{% url 'planning:add_edit_group_assessment' session_id=item.session.id %}" class="assess-link btn btn-sm btn-outline-secondary">
-                            View/Edit Group Assessment <i class="bi bi-pencil"></i>
+                            View/Edit Group Assessment <i class="bi bi-pencil"></i> 
                         </a>
                     {% else %}
                         <p><em>A group assessment for this session is pending.</em></p>
@@ -181,6 +173,16 @@
                     {% endif %}
                 </div>
                 {# --- END: Group Assessment Section --- #}
+
+                {# +++ MOVED: Button to mark all PLAYER assessments as complete +++ #}
+                {% if item.coach_can_mark_player_assessments_complete and not item.session.player_assessments_done_by_coach %}
+                    <form method="POST" action="{% url 'planning:mark_my_assessments_complete' item.session.id %}" style="margin-top: 20px;"> {# Increased top margin for separation #}
+                        {% csrf_token %}
+                        <button type="submit" class="btn-mark-complete">
+                            <i class="bi bi-check2-circle"></i> Mark My Player Assessments Complete for this Session
+                        </button>
+                    </form>
+                {% endif %}
 
             </div> {# End pending-session-card #}
         {% endfor %}

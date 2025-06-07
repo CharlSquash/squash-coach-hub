@@ -1,4 +1,5 @@
 # planning/management/commands/import_schedule.py
+
 import csv
 import os
 import re
@@ -85,7 +86,7 @@ class Command(BaseCommand):
                     else:
                         self.stdout.write(self.style.WARNING(f"  Skipping schedule creation for row {row_num} due to invalid time format: '{time_str}'"))
 
-                    # --- Process Player ---
+                    # ### START of Corrected Player Processing Block ###
                     # As per your rule: "all text after the first space in the player first name column is the last name"
                     name_parts = full_name.split(' ', 1)
                     first_name = name_parts[0]
@@ -93,12 +94,35 @@ class Command(BaseCommand):
 
                     grade_val = parse_grade_from_string(grade_str)
 
-                    player_obj, created = Player.objects.get_or_create(
+                    # More robust way to handle potential duplicates in the DB
+                    matching_players = Player.objects.filter(
                         first_name__iexact=first_name,
-                        last_name__iexact=last_name,
-                        defaults={'first_name': first_name, 'last_name': last_name, 'grade': grade_val}
+                        last_name__iexact=last_name
                     )
+
+                    player_obj = None
+                    created = False
+
+                    if matching_players.count() > 1:
+                        # This is the error condition. Log it and skip this row.
+                        self.stdout.write(self.style.ERROR(f"  Skipping player '{full_name}' in row {row_num}: Found {matching_players.count()} duplicate records in the database. Please resolve this manually."))
+                        stats['rows_skipped'] += 1
+                        continue # Move to the next row in the CSV
                     
+                    elif matching_players.count() == 1:
+                        # Exactly one player found. Use it.
+                        player_obj = matching_players.first()
+                        created = False
+                    
+                    else:
+                        # No player found. Create a new one.
+                        player_obj = Player.objects.create(
+                            first_name=first_name,
+                            last_name=last_name,
+                            grade=grade_val
+                        )
+                        created = True
+
                     if created:
                         stats['players_created'] += 1
                     else: # If player already existed, update their grade if a new one is provided
@@ -111,7 +135,8 @@ class Command(BaseCommand):
                     if not player_obj.school_groups.filter(pk=school_group_obj.pk).exists():
                         player_obj.school_groups.add(school_group_obj)
                         stats['players_added_to_groups'] += 1
-                        
+                    # ### END of Corrected Player Processing Block ###
+                            
         self.stdout.write(self.style.SUCCESS('\n--- Import Complete ---'))
         for key, value in stats.items():
             self.stdout.write(f"{key.replace('_', ' ').title()}: {value}")

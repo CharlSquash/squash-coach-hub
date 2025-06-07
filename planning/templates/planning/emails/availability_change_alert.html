@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: sans-serif; line-height: 1.5; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        .header { background-color: #dc3545; color: white; padding: 10px; text-align: center; border-radius: 4px 4px 0 0; }
+        h2 { margin-top: 0; }
+        .content { padding: 20px; }
+        .reason-box { border-left: 3px solid #ddd; padding-left: 15px; font-style: italic; }
+        .cta-button { display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Coach Cancellation Alert</h2>
+        </div>
+        <div class="content">
+            <p>Hi Admin,</p>
+            <p>
+                This is an automated alert to inform you that coach <strong>{{ coach.name|default:coach.user.username }}</strong> has marked themselves as <strong>UNAVAILABLE</strong> for a session they were assigned to.
+            </p>
+            
+            <h3>Session Details:</h3>
+            <ul>
+                <li><strong>Group:</strong> {{ session.school_group.name|default:"N/A" }}</li>
+                <li><strong>Date:</strong> {{ session.session_date|date:"l, d F Y" }}</li>
+                <li><strong>Time:</strong> {{ session.session_start_time|time:"H:i" }}</li>
+                <li><strong>Venue:</strong> {{ session.venue.name|default:"N/A" }}</li>
+            </ul>
+
+            <h3>Reason Provided:</h3>
+            <div class="reason-box">
+                <p>{{ reason|linebreaksbr }}</p>
+            </div>
+
+            <p>Please review the session staffing to ensure a replacement is found if necessary.</p>
+
+            <a href="{{ site_url }}{{ staffing_page_url }}" class="cta-button">
+                Go to Session Staffing Page
+            </a>
+        </div>
+    </div>
+</body>
+</html>
