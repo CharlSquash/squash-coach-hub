@@ -246,7 +246,7 @@
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 headerToolbar: {
-                    left: 'prevMonthButton,nextMonthButton today',
+                    left: 'prev,next today', 
                     center: 'title',
                     right: 'downloadCsvButton downloadIcsButton dayGridMonth,timeGridWeek,listWeek' // ADDED downloadIcsButton
                 },
@@ -257,6 +257,23 @@
                             window.location.href = `{% url 'planning:session_calendar' %}?year={{ prev_year }}&month={{ prev_month }}`;
                         }
                     },
+                datesSet: function(dateInfo) {
+                    // This function runs whenever the calendar's date range changes
+                    const newDate = dateInfo.view.currentStart; // Get the first visible date of the new view
+                    const year = newDate.getFullYear();
+                    const month = newDate.getMonth() + 1; // getMonth() is 0-indexed
+        
+        // Build the new URL
+                    const currentUrl = new URL(window.location.href);
+                    const targetUrl = new URL(`{% url 'planning:session_calendar' %}`, window.location.origin);
+                    targetUrl.searchParams.set('year', year);
+                    target_url.searchParams.set('month', month);
+
+        // Reload the page to the new month/year, but only if it's different
+                    if (currentUrl.search !== targetUrl.search) {
+                    window.location.href = targetUrl.href;
+        }
+    },    
                     nextMonthButton: {
                         text: 'Next ›', 
                         click: function() {
