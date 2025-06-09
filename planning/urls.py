@@ -15,6 +15,9 @@ urlpatterns = [
     path('session/<int:session_id>/', views.session_detail, name='session_detail'),
     path('session/<int:session_id>/one_page_plan/', views.one_page_plan_view, name='one_page_plan'),
 
+    #Visual attendance
+    path('session/<int:session_id>/visual-attendance/', views.visual_attendance_view, name='visual_attendance'),
+
     # --- LIVE SESSION VIEW PAGE ---
     path('session/<int:session_id>/live/', live_views.live_session_page_view, name='live_session'),
 

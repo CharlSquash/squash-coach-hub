@@ -208,36 +208,43 @@
     </div>
     {% endif %}
     <div class="attendance-section">
-        <h2>Attendance ({{ current_attendees.count }} Player{{ current_attendees.count|pluralize }})</h2>
+    <h2 class="d-flex justify-content-between align-items-center">
+        <span>Attendance ({{ current_attendees.count }} Player{{ current_attendees.count|pluralize }})</span>
+        {# +++ NEW LINK to the Visual Attendance Page +++ #}
         {% if session.school_group %}
-            <div class="attendance-layout-container">
-                <div class="current-attendees-display">
-                    <strong>Currently Attending (from group: {{ session.school_group.name }}):</strong>
-                    <ul class="attendee-list">
-                        {% for player in current_attendees %}
-                            <li>
-                                <span><a href="{% url 'planning:player_profile' player.id %}">{{ player.full_name }}</a></span>
-                            </li>
-                        {% empty %}
-                            <li>No players marked as attending yet.</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                <form method="post" class="attendance-form attendance-update-form">
-                    {% csrf_token %}
-                    <p><strong>Update Attendance (Select from {{ session.school_group.name }}):</strong></p>
-                    {{ attendance_form.attendees.errors }}
-                    {{ attendance_form.attendees }}
-                    <br>
-                    <button type="submit" name="update_attendance" class="btn btn-warning btn-sm" style="margin-top:10px;">Update Attendance</button>
-                </form>
-            </div>
-        {% else %}
-            <p class="alert-warning"><strong>No School Group assigned!</strong> Please assign a School Group to this session via the admin interface to manage attendance and player groups.</p>
+            <a href="{% url 'planning:visual_attendance' session.id %}" class="btn btn-sm btn-outline-primary" title="Open Visual Attendance">
+                <i class="bi bi-people-fill"></i> Visual Attendance
+            </a>
         {% endif %}
-    </div>
-    <hr> 
-
+    </h2>
+    {% if session.school_group %}
+        <div class="attendance-layout-container">
+            <div class="current-attendees-display">
+                <strong>Currently Attending (from group: {{ session.school_group.name }}):</strong>
+                <ul class="attendee-list">
+                    {% for player in current_attendees %}
+                        <li>
+                            <span><a href="{% url 'planning:player_profile' player.id %}">{{ player.full_name }}</a></span>
+                        </li>
+                    {% empty %}
+                        <li>No players marked as attending yet.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <form method="post" class="attendance-form attendance-update-form">
+                {% csrf_token %}
+                <p><strong>Update Attendance (Select from {{ session.school_group.name }}):</strong></p>
+                {{ attendance_form.attendees.errors }}
+                {{ attendance_form.attendees }}
+                <br>
+                <button type="submit" name="update_attendance" class="btn btn-warning btn-sm" style="margin-top:10px;">Update Attendance</button>
+            </form>
+        </div>
+    {% else %}
+        <p class="alert-warning"><strong>No School Group assigned!</strong> Please assign a School Group to this session via the admin interface to manage attendance and player groups.</p>
+    {% endif %}
+</div>
+<hr>
     {% if session.school_group %}
     <div class="grouping-section">
         <h2>Player Group Assignments & Activities (Per Block)</h2>

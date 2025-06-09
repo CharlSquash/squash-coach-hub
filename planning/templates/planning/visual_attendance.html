@@ -1,0 +1,165 @@
+{% extends "planning/base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title|default:"Update Attendance" }} - SquashSync{% endblock %}
+
+{% block extra_head %}
+<style>
+    .content-wrapper {
+        max-width: 1000px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: var(--container-bg, white);
+        border: 1px solid var(--border-color, #ddd);
+        border-radius: 8px;
+    }
+    .page-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-light, #eee);
+    }
+    .page-header h1 {
+        margin-top: 0;
+        margin-bottom: 0.25rem;
+        font-size: 1.5rem;
+    }
+    .page-header p {
+        margin: 0;
+        font-size: 1rem;
+        color: var(--subheading-color);
+    }
+
+    .attendance-grid {
+        display: grid;
+        /* Creates responsive columns: 2 on small screens, up to 5 on large screens */
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+    }
+
+    .player-card {
+        background-color: var(--container-light-bg);
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        padding: 10px;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        position: relative; /* For checkbox positioning */
+    }
+    .player-card:hover {
+        border-color: var(--link-color);
+    }
+
+    .player-photo {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin: 0 auto 10px auto;
+        display: block;
+        border: 2px solid transparent;
+    }
+    
+    .player-card .player-name {
+        font-weight: 500;
+        font-size: 0.9rem;
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .player-card input[type="checkbox"] {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 20px;
+        height: 20px;
+        accent-color: #198754; /* Green accent for the checkmark */
+        cursor: pointer;
+    }
+
+    /* Style for when a player is selected (checked) */
+    .player-card.selected {
+        border-color: #198754; /* Green border */
+        background-color: #d1e7dd; /* Light green background */
+    }
+    html.dark-mode .player-card.selected {
+        background-color: #0f5132;
+    }
+    .player-card.selected .player-photo {
+        border-color: white;
+    }
+
+    .form-actions {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border-light);
+        text-align: center;
+    }
+    .form-actions .btn {
+        padding: 12px 30px;
+        font-size: 1.1em;
+    }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <div class="page-header">
+        <h1>{{ page_title }}</h1>
+        <p>{{ session.session_date|date:"l, j F Y" }} at {{ session.session_start_time|time:"H:i" }}</p>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="attendance-grid">
+            {% for item in player_list %}
+                <label class="player-card {% if item.is_attending %}selected{% endif %}" for="player_{{ item.player.id }}">
+                    <img src="{% if item.player.photo %}{{ item.player.photo.url }}{% else %}{% static 'planning/images/default_avatar.png' %}{% endif %}"
+                         alt="Photo of {{ item.player.full_name }}" class="player-photo">
+                    
+                    <span class="player-name">{{ item.player.full_name }}</span>
+
+                    <input type="checkbox" 
+                           name="attendees" 
+                           value="{{ item.player.id }}" 
+                           id="player_{{ item.player.id }}"
+                           {% if item.is_attending %}checked{% endif %}>
+                </label>
+            {% empty %}
+                <p>No players found in the group '{{ school_group.name }}'.</p>
+            {% endfor %}
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save Attendance</button>
+            <a href="{% url 'planning:session_detail' session.id %}" class="btn btn-secondary" style="margin-left: 10px;">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get all the player cards
+    const playerCheckboxes = document.querySelectorAll('.player-card input[type="checkbox"]');
+
+    playerCheckboxes.forEach(checkbox => {
+        // Find the parent card label
+        const card = checkbox.closest('.player-card');
+
+        checkbox.addEventListener('change', function() {
+            // Toggle the 'selected' class on the card when the checkbox changes
+            if (this.checked) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

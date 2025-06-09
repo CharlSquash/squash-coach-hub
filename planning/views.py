@@ -1434,6 +1434,55 @@ def session_detail(request, session_id):
     }
     return render(request, 'planning/session_detail.html', context)
 
+@login_required
+@user_passes_test(is_coach, login_url='login')
+def visual_attendance_view(request, session_id):
+    """
+    Displays a mobile-first, visual list of players for a session
+    to make taking attendance easier for coaches.
+    """
+    session = get_object_or_404(Session, pk=session_id)
+
+    # Attendance cannot be taken if no group is assigned to the session
+    if not session.school_group:
+        messages.error(request, "Attendance cannot be managed because no school group is assigned to this session.")
+        return redirect('planning:session_detail', session_id=session.id)
+
+    # --- Handle form submission ---
+    if request.method == 'POST':
+        # Get the list of player IDs that were checked in the form
+        attendee_ids = request.POST.getlist('attendees')
+
+        # Efficiently update the session's attendees
+        session.attendees.set(attendee_ids)
+
+        messages.success(request, f"Attendance for {session.school_group.name} has been updated successfully.")
+        return redirect('planning:session_detail', session_id=session.id)
+
+    # --- Prepare data for displaying the page ---
+    # Get all active players that belong to this session's group
+    all_players_in_group = session.school_group.players.filter(is_active=True).order_by('first_name', 'last_name')
+    
+    # Get a set of IDs for players who are currently marked as attending for quick lookups
+    current_attendee_ids = set(session.attendees.values_list('id', flat=True))
+    
+    # Create a list of players, annotating each with their attendance status
+    player_list_with_status = []
+    for player in all_players_in_group:
+        player_list_with_status.append({
+            'player': player,
+            'is_attending': player.id in current_attendee_ids
+        })
+
+    context = {
+        'session': session,
+        'school_group': session.school_group,
+        'player_list': player_list_with_status,
+        'page_title': f"Update Attendance: {session.school_group.name}"
+    }
+    
+    # We will create this new template in the next step
+    return render(request, 'planning/visual_attendance.html', context)
 
 @login_required
 @user_passes_test(is_coach, login_url='login')
