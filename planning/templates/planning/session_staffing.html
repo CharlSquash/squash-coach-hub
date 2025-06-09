@@ -152,7 +152,7 @@
     
     {% for day in display_week %}
         {% if day.sessions %}
-            <details class="day-accordion-item" open>
+            <details class="day-accordion-item">
                 <summary>
                     <span>{{ day.day_name }}, {{ day.date|date:"j F" }}</span>
                     <span class="arrow"></span>
