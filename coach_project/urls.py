@@ -66,7 +66,4 @@ if settings.DEBUG:
 # This regex ensures it doesn't catch /api/, /admin/, /media/ (if media is served by Django in DEBUG), etc.
 # Ensure MEDIA_URL and STATIC_URL are also excluded if not handled before this.
 # The (?!...) is a negative lookahead.
-# It's better to have your Django URLs more specific if possible, rather than a broad catch-all.
-urlpatterns += [
-    re_path(r'^(?!(api/|admin/|media/|static/)).*$', TemplateView.as_view(template_name='index.html'), name='react_app_catch_all'),
-]
+# It's better to have your Django URLs more specific if possible, rather than a broad catch-al

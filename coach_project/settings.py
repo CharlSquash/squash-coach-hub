@@ -108,7 +108,6 @@ TEMPLATES = [
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
             BASE_DIR / 'templates',
-            FRONTEND_BUILD_DIR
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -148,7 +147,7 @@ USE_TZ        = True
 
 # --- Static Files ---
 STATIC_URL        = '/static/'
-STATICFILES_DIRS  = [ str(FRONTEND_BUILD_DIR / 'static') ]
+STATICFILES_DIRS  = []
 STATIC_ROOT       = os.environ.get('STATIC_ROOT', BASE_DIR / 'staticfiles_collected')
 
 # --- Media Files ---
