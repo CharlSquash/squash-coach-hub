@@ -110,35 +110,34 @@ class SoloSessionLogViewSet(
         return SoloSessionLogOutputSerializer
 
     def get_queryset(self):
+        """
+        This method has been corrected to fix a 500 error.
+
+        The original code used 'player__user' which is incorrect because the 'player'
+        field on SoloSessionLog is a direct ForeignKey to the User model.
+
+        The corrected code uses 'player' for filtering and 'player__username' for ordering.
+        """
         user = self.request.user
         base_queryset = SoloSessionLog.objects.select_related(
-            'player__user', # Assuming your Player model has a 'user' field linked to Django's User
+            'player',  # Corrected from 'player__user'
             'routine'
         ).prefetch_related(
-            Prefetch('solosessionmetric_set', queryset=SoloSessionMetric.objects.select_related('drill')) # Use related_name
+            Prefetch('solosessionmetric_set', queryset=SoloSessionMetric.objects.select_related('drill'))
         )
+        
         if user.is_staff:
-            queryset = base_queryset.all().order_by('-completed_at', 'player__user__username')
+            # Coaches/staff can see all logs
+            # Corrected the ordering to use 'player__username'
+            queryset = base_queryset.all().order_by('-completed_at', 'player__username')
         else:
-            queryset = base_queryset.filter(player__user=user).order_by('-completed_at') # Filter by player's user
+            # Players can only see their own logs
+            # *** THIS IS THE MAIN FIX ***
+            # Changed 'player__user=user' to 'player=user'
+            queryset = base_queryset.filter(player=user).order_by('-completed_at')
+            
         return queryset
 
     def perform_create(self, serializer):
-        # To set the player for the SoloSessionLog, we need to ensure your Player model
-        # is correctly linked to the Django User model.
-        # Assuming you have a Player model that has a OneToOneField or ForeignKey to User:
-        try:
-            # This assumes your SoloSessionLog's 'player' field is a ForeignKey to your custom Player model,
-            # and your custom Player model has a 'user' field linking to Django's User model.
-            # Adjust if your Player model is directly the Django User model or linked differently.
-            player_instance = user.player_profile # Example: if User has a 'player_profile' related name to Player model
-            # Or if SoloSessionLog.player directly links to User:
-            # player_instance = user
-            serializer.save(player=player_instance) # Pass the correct player instance
-        except AttributeError:
-            # Handle case where user might not have a player profile, or if setup is different
-            # This might require fetching/creating a Player record linked to request.user
-            # For now, if SoloSessionLog.player is a FK to User, it's simpler:
-            serializer.save(player=self.request.user) # This assumes SoloSessionLog.player is FK to Django User model
-
-# *** END OF SoloSessionLogViewSet ***
+        # This part correctly saves the logged-in user as the player.
+        serializer.save(player=self.request.user)
