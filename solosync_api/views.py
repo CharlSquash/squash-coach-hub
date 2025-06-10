@@ -96,6 +96,7 @@ class AssignedRoutinesViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset
 
 
+# --- SoloSessionLog ViewSet (This is where the fix is) ---
 class SoloSessionLogViewSet(
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
@@ -112,17 +113,17 @@ class SoloSessionLogViewSet(
     def get_queryset(self):
         """
         This method has been corrected to fix the prefetch_related name.
-        The related_name on the SoloSessionMetric model's 'log' field is 'metrics',
-        not the default 'solosessionmetric_set'.
+        The related_name on the SoloSessionMetric model's 'log' field is 'metrics_logged',
+        not the default 'solosessionmetric_set' or the previously attempted 'metrics'.
         """
         user = self.request.user
         base_queryset = SoloSessionLog.objects.select_related(
             'player',
             'routine'
         ).prefetch_related(
-            # *** THIS IS THE MAIN FIX ***
-            # Changed 'solosessionmetric_set' to 'metrics' to match the related_name in models.py
-            Prefetch('metrics', queryset=SoloSessionMetric.objects.select_related('drill'))
+            # *** THIS IS THE FINAL FIX ***
+            # Changed 'metrics' to 'metrics_logged' to match the actual related_name in models.py
+            Prefetch('metrics_logged', queryset=SoloSessionMetric.objects.select_related('drill'))
         )
         
         if user.is_staff:
