@@ -111,33 +111,26 @@ class SoloSessionLogViewSet(
 
     def get_queryset(self):
         """
-        This method has been corrected to fix a 500 error.
-
-        The original code used 'player__user' which is incorrect because the 'player'
-        field on SoloSessionLog is a direct ForeignKey to the User model.
-
-        The corrected code uses 'player' for filtering and 'player__username' for ordering.
+        This method has been corrected to fix the prefetch_related name.
+        The related_name on the SoloSessionMetric model's 'log' field is 'metrics',
+        not the default 'solosessionmetric_set'.
         """
         user = self.request.user
         base_queryset = SoloSessionLog.objects.select_related(
-            'player',  # Corrected from 'player__user'
+            'player',
             'routine'
         ).prefetch_related(
-            Prefetch('solosessionmetric_set', queryset=SoloSessionMetric.objects.select_related('drill'))
+            # *** THIS IS THE MAIN FIX ***
+            # Changed 'solosessionmetric_set' to 'metrics' to match the related_name in models.py
+            Prefetch('metrics', queryset=SoloSessionMetric.objects.select_related('drill'))
         )
         
         if user.is_staff:
-            # Coaches/staff can see all logs
-            # Corrected the ordering to use 'player__username'
             queryset = base_queryset.all().order_by('-completed_at', 'player__username')
         else:
-            # Players can only see their own logs
-            # *** THIS IS THE MAIN FIX ***
-            # Changed 'player__user=user' to 'player=user'
             queryset = base_queryset.filter(player=user).order_by('-completed_at')
             
         return queryset
 
     def perform_create(self, serializer):
-        # This part correctly saves the logged-in user as the player.
         serializer.save(player=self.request.user)
