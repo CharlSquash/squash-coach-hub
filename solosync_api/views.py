@@ -112,7 +112,7 @@ class SoloSessionLogViewSet(
     def get_queryset(self):
         """
         This method has been corrected to fix the prefetch_related name.
-        The related_name on the SoloSessionMetric model's 'log' field is 'metrics',
+        The related_name on the SoloSessionMetric model's 'session_log' field is 'logged_metrics',
         as defined in solosync_api/models.py.
         """
         user = self.request.user
@@ -121,8 +121,8 @@ class SoloSessionLogViewSet(
             'routine'
         ).prefetch_related(
             # *** THIS IS THE FINAL, CORRECT FIX ***
-            # Changed to 'metrics' to match the actual related_name in the model definition.
-            Prefetch('metrics', queryset=SoloSessionMetric.objects.select_related('drill'))
+            # Changed to 'logged_metrics' to match the actual related_name in the model definition.
+            Prefetch('logged_metrics', queryset=SoloSessionMetric.objects.select_related('drill'))
         )
         
         if user.is_staff:
