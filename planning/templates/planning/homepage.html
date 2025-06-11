@@ -6,7 +6,7 @@
 
 {% block extra_head %}
 <style>
-    /* ... (your existing dashboard styles - ensure they are complete here) ... */
+    /* All of your existing dashboard styles from your previous file */
     .dashboard-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -76,33 +76,10 @@
     .card-link-button:hover { background-color: var(--link-hover-color); text-decoration: none; }
     .unstaffed-alert, .staffing-problem-alert, .confirmation-alert { background-color: var(--action-del-bg); color: var(--action-del-text); padding: 10px 15px; border-radius: 5px; margin-bottom: 15px; border: 1px solid var(--action-del-border);  }
     html.dark-mode .unstaffed-alert, html.dark-mode .staffing-problem-alert, html.dark-mode .confirmation-alert { background-color: var(--action-del-bg); color: var(--action-del-text); border-color: var(--action-del-border);  }
-    .assessment-meta { /* From previous version if still needed */
-        font-size: 0.85em;
-        color: var(--subheading-color);
-        display: block;
-        margin-top: 3px;
-        line-height: 1.4;
-    }
-    .assessment-notes { /* From previous version if still needed */
-        font-size: 0.9em;
-        color: var(--text-color);
-        margin-top: 5px;
-        padding-left: 10px;
-        border-left: 2px solid var(--border-accent);
-        white-space: pre-wrap;
-        word-break: break-word;
-    }
-     .session-time { /* Ensure .session-time used in reminders card is defined */
-        font-size: 0.85em;
-        color: var(--subheading-color);
-        display: block;
-        margin-top: 3px;
-    }
-    .no-data { /* For "No pending..." messages */
-        padding: 10px 0; /* Give it some padding */
-        font-style: italic;
-        color: var(--subheading-color);
-    }
+    .assessment-meta { font-size: 0.85em; color: var(--subheading-color); display: block; margin-top: 3px; line-height: 1.4; }
+    .assessment-notes { font-size: 0.9em; color: var(--text-color); margin-top: 5px; padding-left: 10px; border-left: 2px solid var(--border-accent); white-space: pre-wrap; word-break: break-word; }
+    .session-time { font-size: 0.85em; color: var(--subheading-color); display: block; margin-top: 3px; }
+    .no-data { padding: 10px 0; font-style: italic; color: var(--subheading-color); }
 </style>
 {% endblock %}
 
@@ -173,7 +150,6 @@
             </div>
         </div>
 
-        {% if user.is_staff %}
         <div class="dashboard-card">
             <h2><i class="bi bi-people-fill"></i> Manage Players</h2>
             <p>View player profiles, track progress, and manage group assignments.</p>
@@ -181,10 +157,8 @@
                 <a href="{% url 'planning:players_list' %}" class="card-link-button">Go to Players List</a>
             </div>
         </div>
-        {% endif %}
 
         {% if user.is_superuser %}
-            {# Player Assessments Card #}
             <div class="dashboard-card">
                 <h2><i class="bi bi-card-checklist"></i> Recent Player Assessments (To Review)</h2>
                 {% if all_coach_assessments %}
@@ -225,7 +199,6 @@
                 </div>
             </div>
 
-            {# Group Assessments Card #}
             <div class="dashboard-card">
                 <h2><i class="bi bi-journals"></i> Group Assessments (To Review)</h2>
                 {% if recent_group_assessments %}
@@ -273,7 +246,43 @@
                 </div>
             </div>
 
-        {% elif user.is_staff %} {# Regular Coach Dashboard Cards #}
+            {# SoloSync Card - Correctly placed inside superuser check #}
+            {% if solosync_imported and recent_solo_logs %}
+            <div class="dashboard-card">
+                <h2><i class="bi bi-activity"></i> Recent SoloSync Activity</h2>
+                <ul>
+                    {% for log in recent_solo_logs %}
+                    <li>
+                        <div class="list-item-content"> 
+                            <strong>
+                                {% if log.player %}
+                                    {{ log.player.full_name|default:log.player.username }}
+                                {% else %}
+                                    Unknown Player
+                                {% endif %}
+                            </strong> completed 
+                            <a href="#">"{{ log.routine.name }}"</a> 
+                            <span class="session-time">{{ log.completed_at|date:"D, d M Y H:i" }}</span>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            {# Admin & Management Card - Also inside the superuser check #}
+            <div class="dashboard-card">
+                <h2><i class="bi bi-gear-fill"></i> Admin & Management</h2>
+                <ul>
+                    <li><a href="{% url 'admin:index' %}">Full Admin Site</a></li>
+                    <li><a href="{% url 'planning:session_staffing' %}">Session Staffing</a></li>
+                    <li><a href="{% url 'admin:planning_coach_changelist' %}">Manage Coaches (Admin)</a></li>
+                     <li><a href="{% url 'planning:school_group_list' %}">Manage School Groups</a></li>
+                    <li><a href="{% url 'admin:planning_payslip_changelist' %}">Manage Payslips (Admin)</a></li>
+                </ul>
+            </div>
+
+        {% elif user.is_staff %}
             {# Card 3a: Direct Confirmation for Tomorrow's Sessions #}
             {% if sessions_for_direct_confirmation %}
             <div class="dashboard-card">
@@ -310,13 +319,13 @@
             </div>
             {% endif %}
 
-            {# Card 3b: My Pending Assessment Reminders - REVISED STRUCTURE #}
+            {# Card 3b: My Pending Assessment Reminders #}
             <div class="dashboard-card">
                 <h2><i class="bi bi-pencil-square"></i> My Assessment Reminders</h2>
                 {% if recent_sessions_for_feedback %}
-                    <ul class="list-unstyled"> {# Use list-unstyled for no bullets #}
+                    <ul class="list-unstyled">
                         {% for session in recent_sessions_for_feedback %}
-                        <li class="border-bottom pb-2 mb-2"> {# Added classes for better separation #}
+                        <li class="border-bottom pb-2 mb-2">
                             <div class="list-item-content"> 
                                 <a href="{% url 'planning:pending_assessments' %}">
                                     <strong>{{ session.session_date|date:"D, d M Y" }} - {{ session.session_start_time|time:"H:i" }}</strong>
@@ -334,46 +343,6 @@
                     <a href="{% url 'planning:pending_assessments' %}" class="card-link-button">View All My Pending Assessments</a>
                 </div>
             </div>
-        {% endif %}
-
-        {% if solosync_imported and SoloSessionLog is not None %}
-        <div class="dashboard-card">
-            <h2><i class="bi bi-activity"></i> Recent SoloSync Activity</h2>
-            {% if recent_solo_logs %}
-                <ul>
-                    {% for log in recent_solo_logs %}
-                    <li>
-                        <div class="list-item-content"> 
-                            <strong>
-                                {% if log.player %}
-                                    {{ log.player.full_name|default:log.player.username }}
-                                {% else %}
-                                    Unknown Player
-                                {% endif %}
-                            </strong> completed 
-                            <a href="#">"{{ log.routine.name }}"</a> 
-                            <span class="session-time">{{ log.completed_at|date:"D, d M Y H:i" }}</span>
-                        </div>
-                    </li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p class="no-data">No recent SoloSync activity.</p>
-            {% endif %}
-        </div>
-        {% endif %}
-        
-        {% if user.is_superuser %}
-        <div class="dashboard-card">
-            <h2><i class="bi bi-gear-fill"></i> Admin & Management</h2>
-            <ul>
-                <li><a href="{% url 'admin:index' %}">Full Admin Site</a></li>
-                <li><a href="{% url 'planning:session_staffing' %}">Session Staffing</a></li>
-                <li><a href="{% url 'admin:planning_coach_changelist' %}">Manage Coaches (Admin)</a></li>
-                 <li><a href="{% url 'planning:school_group_list' %}">Manage School Groups</a></li>
-                <li><a href="{% url 'admin:planning_payslip_changelist' %}">Manage Payslips (Admin)</a></li>
-            </ul>
-        </div>
         {% endif %}
     </div> 
 </div> 

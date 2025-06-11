@@ -41,6 +41,19 @@
         .logout-button:hover { color: var(--link-hover-color); }
         .logout-button i { margin-right: 3px; }
 
+        /* +++ NEW Style for Admin link +++ */
+        .admin-link {
+            color: var(--subheading-color);
+            font-size: 1.4em; /* Match theme toggle size */
+            text-decoration: none;
+            line-height: 1;
+            padding: 5px;
+            transition: color 0.2s ease-in-out;
+        }
+        .admin-link:hover {
+            color: var(--link-color);
+        }
+
         /* --- Mobile Navigation Styles --- */
         .main-header nav {
             display: flex; 
@@ -136,27 +149,45 @@
                     <li><a href="{% url 'homepage' %}" style="color: var(--link-color);"><i class="bi bi-house-door-fill"></i> Home</a></li>
                     <li><a href="{% url 'planning:session_calendar' %}" style="color: var(--link-color);"><i class="bi bi-calendar-event"></i> Sessions</a></li>
                     <li><a href="{% url 'planning:players_list' %}" style="color: var(--link-color);"><i class="bi bi-people-fill"></i> Players</a></li>
+                    
                     {% if request.user.is_superuser %}
-                    <li><a href="{% url 'planning:school_group_list' %}" style="color: var(--link-color);"><i class="bi bi-diagram-3"></i> School Groups</a></li>
-                    <li><a href="{% url 'planning:coach_list' %}" style="color: var(--link-color);"><i class="bi bi-person-badge"></i> Coaches</a></li> {# <<< FOR ADMINS #}
+                        {# Admin-only links #}
+                        <li><a href="{% url 'planning:school_group_list' %}" style="color: var(--link-color);"><i class="bi bi-diagram-3"></i> School Groups</a></li>
+                        <li><a href="{% url 'planning:coach_list' %}" style="color: var(--link-color);"><i class="bi bi-person-badge"></i> Coaches</a></li>
                     {% endif %}
-                    <li><a href="{% url 'planning:my_coach_profile' %}" style="color: var(--link-color);"><i class="bi bi-person-circle"></i> My Profile</a></li> {# <<< FOR COACHES #}
-                    <li><a href="{% url 'planning:my_availability' %}" style="color: var(--link-color);"><i class="bi bi-calendar-check"></i> My Availability</a></li>
+
+                    {# --- MODIFIED: Links for non-admin coaches ONLY --- #}
+                    {% if not request.user.is_superuser %}
+                        <li><a href="{% url 'planning:my_coach_profile' %}" style="color: var(--link-color);"><i class="bi bi-person-circle"></i> My Profile</a></li>
+                        <li><a href="{% url 'planning:my_availability' %}" style="color: var(--link-color);"><i class="bi bi-calendar-check"></i> My Availability</a></li>
+                    {% endif %}
+                    
                     <li><a href="{% url 'planning:pending_assessments' %}" style="color: var(--link-color);"><i class="bi bi-clipboard-data"></i> Pending Assessments</a></li>
+                    
                     {% if request.user.is_superuser %}
-                    <li><a href="{% url 'planning:session_staffing' %}" style="color: var(--link-color);"><i class="bi bi-person-check-fill"></i> Staffing</a></li>
-                    <li><a href="{% url 'planning:coach_completion_report' %}" style="color: var(--link-color);"><i class="bi bi-cash-coin"></i> Completion Report</a></li>
-                    <li><a href="{% url 'admin:planning_payslip_changelist' %}" style="color: var(--link-color);"><i class="bi bi-receipt"></i> Payslip Management</a></li>
+                        {# Other Admin-only links #}
+                        <li><a href="{% url 'planning:session_staffing' %}" style="color: var(--link-color);"><i class="bi bi-person-check-fill"></i> Staffing</a></li>
+                        <li><a href="{% url 'planning:coach_completion_report' %}" style="color: var(--link-color);"><i class="bi bi-cash-coin"></i> Completion Report</a></li>
+                        {# Payslip Management link was here and is now removed #}
                     {% endif %}
+
                 {% elif request.user.is_authenticated %}
                     <li><a href="{% url 'planning:serve_react_pwa_base' %}" style="color: var(--link-color);"><i class="bi bi-controller"></i> SoloSync App</a></li>
-                    {% endif %}
+                {% endif %}
             </ul>
 
             <div class="nav-right-items">
                 <button id="theme-toggle" title="Toggle theme" style="background: none; border: none; color: var(--heading-color); font-size: 1.4em; cursor: pointer; padding: 5px;">
                     <i class="bi bi-sun-fill"></i> 
                 </button>
+                
+                {# --- ADDED: Admin Homepage Link for Superusers --- #}
+                {% if request.user.is_superuser %}
+                    <a href="{% url 'admin:index' %}" class="admin-link" title="Admin Site">
+                        <i class="bi bi-gear-wide-connected"></i>
+                    </a>
+                {% endif %}
+
                 {% if request.user.is_authenticated %}
                     <span style="color: var(--subheading-color); font-size: 0.9em; white-space: nowrap;">Hi, {{ request.user.username }}</span>
                     <form method="post" action="{% url 'logout' %}" class="logout-form">

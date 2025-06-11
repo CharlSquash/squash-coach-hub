@@ -450,7 +450,8 @@ def homepage_view(request):
         'recent_group_assessments': None,
         'unconfirmed_staffing_alerts': [],
         'sessions_for_direct_confirmation': [],
-        'page_title': "Dashboard"
+        'page_title': "Dashboard",
+        'solosync_imported': 'solosync_api' in settings.INSTALLED_APPS # Pass flag to template
     }
 
     upcoming_sessions_base_qs = Session.objects.filter(
@@ -501,15 +502,14 @@ def homepage_view(request):
             
             unconfirmed_coaches_for_this_session = []
             assigned_coaches_on_session = list(session.coaches_attending.all()) 
-            # Ensure that avail.coach is a User instance, which it should be due to select_related('coach') on CoachAvailability query
-            availability_map = {avail.coach.id: avail for avail in session.all_coach_availabilities_for_session} # <<< CORRECTED HERE
+            availability_map = {avail.coach.id: avail for avail in session.all_coach_availabilities_for_session}
 
             for coach_profile_assigned in assigned_coaches_on_session:
                 coach_user_assigned = coach_profile_assigned.user
                 if not coach_user_assigned: 
                     continue
 
-                availability_record = availability_map.get(coach_user_assigned.id) # Use coach_user_assigned.id here
+                availability_record = availability_map.get(coach_user_assigned.id)
                 
                 if not availability_record or availability_record.is_available is None: 
                     status = "Pending Response"
@@ -612,27 +612,21 @@ def homepage_view(request):
             messages.warning(request, "Your user account is not linked to a Coach profile.")
         except Exception as e: 
             messages.error(request, f"Could not load dashboard data: {str(e)}")
-            
-    # SoloSync Logs
-    solosync_imported = 'solosync_api' in settings.INSTALLED_APPS
-    SoloSessionLog = None
-    if solosync_imported:
+    
+    # --- CONSOLIDATED SoloSync Logic ---
+    # This block now runs for all authenticated users after the main dashboard logic
+    if context['solosync_imported']:
         try:
             from solosync_api.models import SoloSessionLog
-        except ImportError:
-            solosync_imported = False
-            SoloSessionLog = None
-    
-    if solosync_imported and SoloSessionLog is not None:
-        try:
             context['recent_solo_logs'] = SoloSessionLog.objects.select_related(
                 'player', 'routine'
             ).order_by('-completed_at')[:10]
-        except FieldError as e:
-            print(f"FieldError fetching SoloSessionLog: {e}") 
-        except Exception as e:
-            print(f"Error fetching SoloSessionLog: {e}")
-
+        except (ImportError, FieldError, Exception) as e:
+            # If there's any issue fetching logs, we just won't display them
+            print(f"Could not fetch SoloSessionLog for dashboard: {e}")
+            context['recent_solo_logs'] = [] # Ensure it's an empty list on error
+            context['solosync_imported'] = False # Set flag to false so template hides the card
+            
     return render(request, 'planning/homepage.html', context)
 
 @login_required
